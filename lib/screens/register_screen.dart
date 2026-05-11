@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _acceptTerms = false;
+  bool _isLoading = false;
   String? _selectedDocumentType;
   String? _photoPath;
 
@@ -50,12 +52,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 40),
-
-                // Logo
                 Center(child: _buildLogo()),
                 const SizedBox(height: 20),
-
-                // Títulos
                 Text(
                   'Crea tu cuenta',
                   style: GoogleFonts.nunito(
@@ -67,14 +65,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Únete y empieza a cuidar tu cultivo',
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: GoogleFonts.nunito(fontSize: 15, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 28),
-
-                // Foto de perfil
                 Center(
                   child: Stack(
                     children: [
@@ -82,31 +75,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         radius: 45,
                         backgroundColor: AppColors.primaryLight,
                         child: _photoPath == null
-                            ? const Icon(
-                                Icons.person,
-                                size: 45,
-                                color: AppColors.primary,
-                              )
+                            ? const Icon(Icons.person, size: 45, color: AppColors.primary)
                             : null,
                       ),
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: GestureDetector(
-                          onTap: () {
-                            // lógica para seleccionar foto
-                          },
+                          onTap: () {},
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: const BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 16,
-                            ),
+                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
                           ),
                         ),
                       ),
@@ -114,233 +97,148 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Tipo de documento
                 DropdownButtonFormField<String>(
                   value: _selectedDocumentType,
                   decoration: InputDecoration(
                     hintText: 'Tipo de documento',
-                    prefixIcon: const Icon(
-                      Icons.badge_outlined,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: const Icon(Icons.badge_outlined, color: AppColors.textSecondary),
                     filled: true,
                     fillColor: AppColors.surfaceVariant,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                        color: AppColors.border,
-                        width: 1.5,
-                      ),
+                      borderSide: const BorderSide(color: AppColors.border, width: 1.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
-                      ),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                        color: AppColors.error,
-                        width: 1.5,
-                      ),
+                      borderSide: const BorderSide(color: AppColors.error, width: 1.5),
                     ),
                     focusedErrorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                        color: AppColors.error,
-                        width: 2,
-                      ),
+                      borderSide: const BorderSide(color: AppColors.error, width: 2),
                     ),
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'CC',
-                      child: Text('Cédula de ciudadanía'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'CE',
-                      child: Text('Cédula de extranjería'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'PA',
-                      child: Text('Pasaporte'),
-                    ),
+                    DropdownMenuItem(value: 'CC', child: Text('Cédula de ciudadanía')),
+                    DropdownMenuItem(value: 'CE', child: Text('Cédula de extranjería')),
+                    DropdownMenuItem(value: 'PA', child: Text('Pasaporte')),
                   ],
                   onChanged: (v) => setState(() => _selectedDocumentType = v),
-                  validator: (v) =>
-                      v == null ? 'Selecciona el tipo de documento' : null,
+                  validator: (v) => v == null ? 'Selecciona el tipo de documento' : null,
                 ),
                 const SizedBox(height: 14),
-
-                // Número de documento
                 TextFormField(
                   controller: _documentController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     hintText: 'Número de documento',
-                    prefixIcon: Icon(
-                      Icons.numbers_outlined,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: Icon(Icons.numbers_outlined, color: AppColors.textSecondary),
                   ),
-                  validator: (v) =>
-                      v!.isEmpty ? 'Ingresa tu número de documento' : null,
+                  validator: (v) => v!.isEmpty ? 'Ingresa tu número de documento' : null,
                 ),
                 const SizedBox(height: 14),
-
-                // Nombre
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
                     hintText: 'Nombre',
-                    prefixIcon: Icon(
-                      Icons.person_outline,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: Icon(Icons.person_outline, color: AppColors.textSecondary),
                   ),
                   validator: (v) => v!.isEmpty ? 'Ingresa tu nombre' : null,
                 ),
                 const SizedBox(height: 14),
-
-                // Apellido
                 TextFormField(
                   controller: _lastNameController,
                   decoration: const InputDecoration(
                     hintText: 'Apellido',
-                    prefixIcon: Icon(
-                      Icons.person_outline,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: Icon(Icons.person_outline, color: AppColors.textSecondary),
                   ),
                   validator: (v) => v!.isEmpty ? 'Ingresa tu apellido' : null,
                 ),
                 const SizedBox(height: 14),
-
-                // Teléfono
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(
                     hintText: 'Teléfono',
-                    prefixIcon: Icon(
-                      Icons.phone_outlined,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textSecondary),
                   ),
                   validator: (v) => v!.isEmpty ? 'Ingresa tu teléfono' : null,
                 ),
                 const SizedBox(height: 14),
-
-                // Dirección
                 TextFormField(
                   controller: _addressController,
                   decoration: const InputDecoration(
                     hintText: 'Dirección',
-                    prefixIcon: Icon(
-                      Icons.location_on_outlined,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.textSecondary),
                   ),
                   validator: (v) => v!.isEmpty ? 'Ingresa tu dirección' : null,
                 ),
                 const SizedBox(height: 14),
-
-                // Correo
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     hintText: 'Correo electrónico',
-                    prefixIcon: Icon(
-                      Icons.email_outlined,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
                   ),
                   validator: (v) => v!.isEmpty ? 'Ingresa tu correo' : null,
                 ),
                 const SizedBox(height: 14),
-
-                // Contraseña
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     hintText: 'Contraseña',
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textSecondary),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                         color: AppColors.textSecondary,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   validator: (v) {
                     if (v!.isEmpty) return 'Ingresa tu contraseña';
                     if (v.length < 8) return 'Mínimo 8 caracteres';
-                    if (!v.contains(RegExp(r'[0-9]')))
-                      return 'Debe contener al menos un número';
-                    if (!v.contains(RegExp(r'[a-zA-Z]')))
-                      return 'Debe contener al menos una letra';
+                    if (!v.contains(RegExp(r'[0-9]'))) return 'Debe contener al menos un número';
+                    if (!v.contains(RegExp(r'[a-zA-Z]'))) return 'Debe contener al menos una letra';
                     return null;
                   },
                 ),
                 const SizedBox(height: 14),
-
-                // Confirmar contraseña
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirm,
                   decoration: InputDecoration(
                     hintText: 'Confirmar contraseña',
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textSecondary),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirm
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                        _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                         color: AppColors.textSecondary,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscureConfirm = !_obscureConfirm),
+                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
                     ),
                   ),
-                  validator: (v) => v != _passwordController.text
-                      ? 'Las contraseñas no coinciden'
-                      : null,
+                  validator: (v) => v != _passwordController.text ? 'Las contraseñas no coinciden' : null,
                 ),
                 const SizedBox(height: 16),
-
-                // Términos y condiciones
                 Row(
                   children: [
                     Checkbox(
                       value: _acceptTerms,
                       activeColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                       onChanged: (v) => setState(() => _acceptTerms = v!),
                     ),
                     Expanded(
                       child: RichText(
                         text: TextSpan(
-                          style: GoogleFonts.nunito(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                          style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary),
                           children: [
                             const TextSpan(text: 'Acepto los '),
                             TextSpan(
@@ -358,28 +256,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
                 const SizedBox(height: 28),
-
-                // Botón crear cuenta
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate() && _acceptTerms) {
-                      // lógica de registro aquí
-                    }
-                  },
-                  child: const Text('Crear cuenta'),
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          if (_formKey.currentState!.validate() && _acceptTerms) {
+                            setState(() => _isLoading = true);
+                            try {
+                              final result = await AuthService.registrarCafetero(
+                                nombre: _nameController.text,
+                                apellido: _lastNameController.text,
+                                correo: _emailController.text,
+                                password: _passwordController.text,
+                                telefono: _phoneController.text,
+                              );
+                              if (result['statusCode'] == 201) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('¡Cuenta creada! Inicia sesión')),
+                                  );
+                                  Navigator.pop(context);
+                                }
+                              } else {
+                                final msg = result['body']['message'] ?? 'Error al registrar';
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(msg)),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('No se pudo conectar al servidor')),
+                                );
+                              }
+                            } finally {
+                              setState(() => _isLoading = false);
+                            }
+                          } else if (!_acceptTerms) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Acepta los términos y condiciones')),
+                            );
+                          }
+                        },
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Crear cuenta'),
                 ),
                 const SizedBox(height: 24),
-
-                // Ir a login
                 Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         '¿Ya tienes cuenta? ',
-                        style: GoogleFonts.nunito(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: GoogleFonts.nunito(color: AppColors.textSecondary),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
