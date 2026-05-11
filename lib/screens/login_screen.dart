@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
 import 'register_screen.dart';
+import 'profile_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -59,10 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     hintText: 'Correo electrónico',
-                    prefixIcon: Icon(
-                      Icons.email_outlined,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
                   ),
                   validator: (v) => v!.isEmpty ? 'Ingresa tu correo' : null,
                 ),
@@ -72,10 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     hintText: 'Contraseña',
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                      color: AppColors.textSecondary,
-                    ),
+                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textSecondary),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
@@ -105,12 +102,52 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // lógica de login aquí
-                    }
-                  },
-                  child: const Text('Iniciar sesión'),
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          if (_formKey.currentState!.validate()) {
+                            setState(() => _isLoading = true);
+                            try {
+                              final result = await AuthService.login(
+                                correo: _emailController.text,
+                                password: _passwordController.text,
+                              );
+                              if (result['statusCode'] == 200) {
+                                final usuario = result['body']['data'];
+                                if (mounted) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ProfileScreen(usuario: usuario),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                final msg = result['body']['message'] ?? 'Credenciales incorrectas';
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(msg)),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('No se pudo conectar al servidor')),
+                                );
+                              }
+                            } finally {
+                              setState(() => _isLoading = false);
+                            }
+                          }
+                        },
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Iniciar sesión'),
                 ),
                 const SizedBox(height: 24),
                 _buildDivider(),
@@ -139,16 +176,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Text(
                         '¿No tienes cuenta? ',
-                        style: GoogleFonts.nunito(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: GoogleFonts.nunito(color: AppColors.textSecondary),
                       ),
                       TextButton(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
-                          ),
+                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
                         ),
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         child: Text(
@@ -172,12 +205,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLogo() {
-  return Image.asset(
-    'assets/images/logo_CoffeLife_SinFondo.png',
-    width: 140,
-    height: 140,
-  );
-}
+    return Image.asset(
+      'assets/images/logo_CoffeLife_SinFondo.png',
+      width: 140,
+      height: 140,
+    );
+  }
 
   Widget _buildDivider() {
     return Row(
@@ -187,10 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'o continúa con',
-            style: GoogleFonts.nunito(
-              color: AppColors.textHint,
-              fontSize: 13,
-            ),
+            style: GoogleFonts.nunito(color: AppColors.textHint, fontSize: 13),
           ),
         ),
         const Expanded(child: Divider(color: AppColors.border)),
