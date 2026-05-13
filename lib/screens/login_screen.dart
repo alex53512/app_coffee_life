@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
-import 'profile_screen.dart';
+import 'main_navigation.dart';  // ✅ agrega esta línea
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,218 +13,278 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _formKey            = GlobalKey<FormState>();
+  final _correoController   = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _isLoading = false;
+  bool _verPassword = false;
+  bool _cargando    = false;
+  String? _errorGeneral;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _correoController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _iniciarSesion() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() { _cargando = true; _errorGeneral = null; });
+
+    try {
+      final result = await AuthService.login(
+        correo: _correoController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+    if (result['success'] == true) {
+  final usuario = result['data'];
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (_) => MainNavigation(usuario: usuario)), // ✅
+  );
+      } else {
+        setState(() => _errorGeneral = result['message']);
+      }
+    } catch (e) {
+      setState(() => _errorGeneral = 'No se pudo conectar al servidor');
+    } finally {
+      setState(() => _cargando = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.crema,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 60),
-                Center(child: _buildLogo()),
-                const SizedBox(height: 32),
-                Text(
-                  '¡Bienvenido de vuelta!',
-                  style: GoogleFonts.nunito(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Inicia sesión para cuidar tu cultivo',
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 36),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    hintText: 'Correo electrónico',
-                    prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
-                  ),
-                  validator: (v) => v!.isEmpty ? 'Ingresa tu correo' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    hintText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textSecondary),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: AppColors.textSecondary,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  validator: (v) => v!.isEmpty ? 'Ingresa tu contraseña' : null,
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      '¿Olvidaste tu contraseña?',
-                      style: GoogleFonts.nunito(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () async {
-                          if (_formKey.currentState!.validate()) {
-                            setState(() => _isLoading = true);
-                            try {
-                              final result = await AuthService.login(
-                                correo: _emailController.text,
-                                password: _passwordController.text,
-                              );
-                              if (result['statusCode'] == 200) {
-                                final usuario = result['body']['data'];
-                                if (mounted) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ProfileScreen(usuario: usuario),
-                                    ),
-                                  );
-                                }
-                              } else {
-                                final msg = result['body']['message'] ?? 'Credenciales incorrectas';
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(msg)),
-                                  );
-                                }
-                              }
-                            } catch (e) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('No se pudo conectar al servidor')),
-                                );
-                              }
-                            } finally {
-                              setState(() => _isLoading = false);
-                            }
-                          }
-                        },
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Iniciar sesión'),
-                ),
-                const SizedBox(height: 24),
-                _buildDivider(),
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.g_mobiledata_rounded, size: 26),
-                  label: Text(
-                    'Continuar con Google',
-                    style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.phone_outlined, size: 22),
-                  label: Text(
-                    'Continuar con número de celular',
-                    style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+          child: Column(
+            children: [
+              _buildCabecera(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '¿No tienes cuenta? ',
-                        style: GoogleFonts.nunito(color: AppColors.textSecondary),
+                        'Iniciar sesión',
+                        style: GoogleFonts.inter(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textoPrincipal,
+                        ),
                       ),
-                      TextButton(
+                      const SizedBox(height: 4),
+                      Text(
+                        'Bienvenido de nuevo a CoffeeLife',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: AppTheme.textoSecundario,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // ── Correo ────────────────────────────
+                      _label('Correo electrónico'),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _correoController,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          hintText: 'tucorreo@ejemplo.com',
+                          prefixIcon: Icon(Icons.email_outlined,
+                              color: AppTheme.textoSecundario),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
+                          if (!v.contains('@')) return 'Correo no válido';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 18),
+
+                      // ── Contraseña ────────────────────────
+                      _label('Contraseña'),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_verPassword,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _iniciarSesion(),
+                        decoration: InputDecoration(
+                          hintText: '••••••••',
+                          prefixIcon: const Icon(Icons.lock_outline,
+                              color: AppTheme.textoSecundario),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _verPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: AppTheme.textoSecundario,
+                            ),
+                            onPressed: () =>
+                                setState(() => _verPassword = !_verPassword),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
+                          if (v.length < 6) return 'Mínimo 6 caracteres';
+                          return null;
+                        },
+                      ),
+
+                      // ── Error general ─────────────────────
+                      if (_errorGeneral != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.error.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: AppTheme.error.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: AppTheme.error, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorGeneral!,
+                                  style: GoogleFonts.inter(
+                                      color: AppTheme.error, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {},
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.verdePrincipal,
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Text(
+                            '¿Olvidaste tu contraseña?',
+                            style: GoogleFonts.inter(fontSize: 13),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── Botón ingresar ────────────────────
+                      ElevatedButton(
+                        onPressed: _cargando ? null : _iniciarSesion,
+                        child: _cargando
+                            ? const SizedBox(
+                                height: 22, width: 22,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2.5),
+                              )
+                            : const Text('Ingresar'),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // ── Registrarse ───────────────────────
+                      OutlinedButton(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const RegisterScreen()),
                         ),
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        child: const Text('Registrarse'),
+                      ),
+
+                      const SizedBox(height: 28),
+                      Center(
                         child: Text(
-                          'Regístrate',
-                          style: GoogleFonts.nunito(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
+                          'Tu asistente inteligente para\ncuidar tus plantas de café 🌿',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppTheme.textoSecundario,
+                            height: 1.6,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLogo() {
-    return Image.asset(
-      'assets/images/logo_CoffeLife_SinFondo.png',
-      width: 140,
-      height: 140,
+  Widget _buildCabecera() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.verdeOscuro, AppTheme.verdePrincipal],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(36),
+          bottomRight: Radius.circular(36),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 40),
+      child: Column(
+        children: [
+          Image.asset(
+            'assets/images/logo_CoffeLife_SinFondo.png',
+            width: 100,
+            height: 100,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '¡Hola! Soy Coffee AI 🌿',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tu asistente inteligente para el café',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            'o continúa con',
-            style: GoogleFonts.nunito(color: AppColors.textHint, fontSize: 13),
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.border)),
-      ],
+  Widget _label(String texto) {
+    return Text(
+      texto,
+      style: GoogleFonts.inter(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: AppTheme.textoPrincipal,
+      ),
     );
   }
 }
