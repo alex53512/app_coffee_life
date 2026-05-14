@@ -23,54 +23,120 @@ class _AprenderScreenState extends State<AprenderScreen> {
       'subtitulo': 'Conoce todo sobre esta enfermedad y cómo identificarla.',
       'categoria': 'Roya',
       'color': Colors.red,
-      'icono': Icons.bug_report_outlined,
+      'imagen': 'assets/images/roya_cafe.jpg',
       'tiempo': '5 min',
       'destacado': true,
+      'contenido':
+          'La roya del café (Hemileia vastatrix) es la enfermedad más importante del cultivo. '
+          'Se presenta como manchas amarillas en el haz de la hoja y pústulas anaranjadas en el envés.\n\n'
+          'Síntomas:\n'
+          '• Manchas amarillas en el haz de la hoja\n'
+          '• Pústulas anaranjadas en el envés\n'
+          '• Caída prematura de hojas\n\n'
+          'La enfermedad se desarrolla con mayor rapidez en condiciones de alta humedad '
+          '(superior al 85%) y temperaturas entre 21°C y 25°C.\n\n'
+          'Control:\n'
+          '• Aplicar fungicidas cúpricos preventivamente\n'
+          '• Mejorar ventilación del cultivo\n'
+          '• Eliminar hojas infectadas\n'
+          '• Monitorear regularmente las parcelas',
     },
     {
       'titulo': 'Cómo aplicar fungicidas correctamente',
       'subtitulo': 'Guía práctica para el control químico de enfermedades.',
       'categoria': 'Manejo',
       'color': Colors.orange,
-      'icono': Icons.science_outlined,
+      'imagen': 'assets/images/fungicida.jpg',
       'tiempo': '8 min',
       'destacado': true,
+      'contenido':
+          'Los fungicidas son herramientas clave para el control de enfermedades en el café.\n\n'
+          'Tipos de fungicidas:\n'
+          '• Cúpricos: preventivos, amplio espectro\n'
+          '• Sistémicos: curativos, penetran en la planta\n'
+          '• Biológicos: base de microorganismos\n\n'
+          'Recomendaciones:\n'
+          '• Aplicar en las horas de menor temperatura\n'
+          '• Usar equipo de protección personal\n'
+          '• Respetar los períodos de carencia\n'
+          '• Rotar productos para evitar resistencia',
     },
     {
       'titulo': 'Nutrición del cafeto en floración',
       'subtitulo': 'Los nutrientes clave para maximizar tu cosecha.',
       'categoria': 'Nutrición',
       'color': AppColors.primary,
-      'icono': Icons.eco_outlined,
+      'imagen': 'assets/images/nutricion.jpg',
       'tiempo': '6 min',
       'destacado': false,
+      'contenido':
+          'La etapa de floración es crítica para el cafeto.\n\n'
+          'Nutrientes esenciales:\n'
+          '• Nitrógeno (N): promueve el crecimiento vegetativo\n'
+          '• Fósforo (P): favorece el desarrollo de raíces y flores\n'
+          '• Potasio (K): mejora la calidad del grano\n'
+          '• Boro (B): esencial para la polinización\n\n'
+          'Recomendaciones:\n'
+          '• Realizar análisis de suelo antes de fertilizar\n'
+          '• Aplicar fertilizantes fraccionados\n'
+          '• Mantener el pH del suelo entre 5.5 y 6.5',
     },
     {
       'titulo': 'Señales tempranas de roya',
       'subtitulo': 'Aprende a detectar la roya antes de que se propague.',
       'categoria': 'Roya',
       'color': Colors.red,
-      'icono': Icons.search_outlined,
+      'imagen': 'assets/images/roya2.jpg',
       'tiempo': '4 min',
       'destacado': false,
+      'contenido':
+          'Detectar la roya en sus etapas iniciales es fundamental.\n\n'
+          'Señales tempranas:\n'
+          '• Pequeñas manchas amarillo pálido en el haz\n'
+          '• Polvo anaranjado en el envés (esporas)\n'
+          '• Las hojas afectadas caen prematuramente\n\n'
+          'Cómo monitorear:\n'
+          '• Revisar las hojas inferiores de la planta\n'
+          '• Inspeccionar al menos 10 plantas por lote\n'
+          '• Registrar el porcentaje de hojas afectadas',
     },
     {
       'titulo': 'Cosecha selectiva vs mecanizada',
-      'subtitulo': 'Ventajas y desventajas de cada método de recolección.',
+      'subtitulo': 'Ventajas y desventajas de cada método.',
       'categoria': 'Cosecha',
       'color': Colors.brown,
-      'icono': Icons.agriculture_outlined,
+      'imagen': 'assets/images/cosecha.jpg',
       'tiempo': '7 min',
       'destacado': false,
+      'contenido':
+          'La elección del método de cosecha impacta la calidad del café.\n\n'
+          'Cosecha selectiva:\n'
+          '• Solo se recolectan los frutos maduros\n'
+          '• Mayor calidad del grano\n'
+          '• Mayor costo de mano de obra\n\n'
+          'Cosecha mecanizada:\n'
+          '• Se recolectan todos los frutos a la vez\n'
+          '• Menor costo operativo\n'
+          '• Puede incluir frutos verdes',
     },
     {
       'titulo': 'Control biológico de plagas',
       'subtitulo': 'Alternativas naturales para proteger tu cultivo.',
       'categoria': 'Manejo',
       'color': Colors.teal,
-      'icono': Icons.nature_outlined,
+      'imagen': 'assets/images/plagas.jpg',
       'tiempo': '5 min',
       'destacado': false,
+      'contenido':
+          'El control biológico usa organismos vivos para reducir plagas.\n\n'
+          'Métodos principales:\n'
+          '• Uso de hongos entomopatógenos\n'
+          '• Liberación de parasitoides naturales\n'
+          '• Fomento de depredadores naturales\n\n'
+          'Ventajas:\n'
+          '• Menor impacto ambiental\n'
+          '• Sin residuos químicos en el grano\n'
+          '• Sostenible a largo plazo',
     },
   ];
 
@@ -79,9 +145,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
       final matchCategoria = _categoriaSeleccionada == 'Todos' ||
           a['categoria'] == _categoriaSeleccionada;
       final matchBusqueda = _searchController.text.isEmpty ||
-          a['titulo']
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase());
+          a['titulo'].toLowerCase().contains(_searchController.text.toLowerCase());
       return matchCategoria && matchBusqueda;
     }).toList();
   }
@@ -109,14 +173,11 @@ class _AprenderScreenState extends State<AprenderScreen> {
       color: Colors.white,
       child: Row(
         children: [
-          Text(
-            'Aprender',
-            style: GoogleFonts.nunito(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          Text('Aprender',
+              style: GoogleFonts.nunito(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
         ],
       ),
     );
@@ -168,14 +229,11 @@ class _AprenderScreenState extends State<AprenderScreen> {
                 color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                cat,
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : AppColors.textSecondary,
-                ),
-              ),
+              child: Text(cat,
+                  style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : AppColors.textSecondary)),
             ),
           );
         },
@@ -184,36 +242,28 @@ class _AprenderScreenState extends State<AprenderScreen> {
   }
 
   Widget _buildListaArticulos() {
-    final destacados =
-        _articulosFiltrados.where((a) => a['destacado'] == true).toList();
-    final resto =
-        _articulosFiltrados.where((a) => a['destacado'] != true).toList();
+    final destacados = _articulosFiltrados.where((a) => a['destacado'] == true).toList();
+    final resto = _articulosFiltrados.where((a) => a['destacado'] != true).toList();
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         if (destacados.isNotEmpty) ...[
-          Text(
-            'Artículos destacados',
-            style: GoogleFonts.nunito(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          Text('Artículos destacados',
+              style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           ...destacados.map((a) => _articuloDestacado(a)),
           const SizedBox(height: 20),
         ],
         if (resto.isNotEmpty) ...[
-          Text(
-            'Más artículos',
-            style: GoogleFonts.nunito(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          Text('Más artículos',
+              style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           ...resto.map((a) => _articuloSimple(a)),
         ],
@@ -225,8 +275,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
     return GestureDetector(
       onTap: () => _abrirArticulo(a),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -234,74 +283,44 @@ class _AprenderScreenState extends State<AprenderScreen> {
             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: (a['color'] as Color).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(14),
+                topRight: Radius.circular(14),
               ),
-              child: Icon(a['icono'] as IconData,
-                  color: a['color'] as Color, size: 28),
+              child: Image.asset(
+                a['imagen'],
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 160,
+                  color: (a['color'] as Color).withOpacity(0.1),
+                  child: Icon(Icons.image_outlined,
+                      size: 60, color: a['color'] as Color),
+                ),
+              ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    a['titulo'],
-                    style: GoogleFonts.nunito(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+                  Text(a['titulo'],
+                      style: GoogleFonts.nunito(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
-                  Text(
-                    a['subtitulo'],
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: (a['color'] as Color).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          a['categoria'],
-                          style: GoogleFonts.nunito(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: a['color'] as Color,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.access_time,
-                          size: 12, color: AppColors.textSecondary),
-                      const SizedBox(width: 3),
-                      Text(
-                        a['tiempo'],
-                        style: GoogleFonts.nunito(
-                            fontSize: 11, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
+                  Text(a['subtitulo'],
+                      style: GoogleFonts.nunito(
+                          fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios,
-                size: 14, color: AppColors.textSecondary),
           ],
         ),
       ),
@@ -323,34 +342,33 @@ class _AprenderScreenState extends State<AprenderScreen> {
         ),
         child: Row(
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: (a['color'] as Color).withOpacity(0.1),
-                shape: BoxShape.circle,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                a['imagen'],
+                width: 60, height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 60, height: 60,
+                  color: (a['color'] as Color).withOpacity(0.1),
+                  child: Icon(Icons.image_outlined,
+                      color: a['color'] as Color),
+                ),
               ),
-              child: Icon(a['icono'] as IconData,
-                  color: a['color'] as Color, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    a['titulo'],
-                    style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    '${a['categoria']} · ${a['tiempo']}',
-                    style: GoogleFonts.nunito(
-                        fontSize: 11, color: AppColors.textSecondary),
-                  ),
+                  Text(a['titulo'],
+                      style: GoogleFonts.nunito(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  Text('${a['categoria']} · ${a['tiempo']}',
+                      style: GoogleFonts.nunito(
+                          fontSize: 11, color: AppColors.textSecondary)),
                 ],
               ),
             ),
@@ -365,14 +383,11 @@ class _AprenderScreenState extends State<AprenderScreen> {
   void _abrirArticulo(Map<String, dynamic> articulo) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => _ArticuloScreen(articulo: articulo),
-      ),
+      MaterialPageRoute(builder: (_) => _ArticuloScreen(articulo: articulo)),
     );
   }
 }
 
-// ── Pantalla detalle del artículo ─────────────────────────────────────────
 class _ArticuloScreen extends StatelessWidget {
   final Map<String, dynamic> articulo;
   const _ArticuloScreen({required this.articulo});
@@ -380,88 +395,50 @@ class _ArticuloScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
+                    Image.asset(
+                      articulo['imagen'],
+                      height: 220,
                       width: double.infinity,
-                      height: 180,
-                      decoration: BoxDecoration(
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 220,
                         color: (articulo['color'] as Color).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(
-                        articulo['icono'] as IconData,
-                        size: 80,
-                        color: (articulo['color'] as Color).withOpacity(0.6),
+                        child: Icon(Icons.image_outlined,
+                            size: 80, color: articulo['color'] as Color),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: (articulo['color'] as Color).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            articulo['categoria'],
-                            style: GoogleFonts.nunito(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: articulo['color'] as Color,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Icon(Icons.access_time,
-                            size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          articulo['tiempo'],
-                          style: GoogleFonts.nunito(
-                              fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      articulo['titulo'],
-                      style: GoogleFonts.nunito(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'La roya del café (Hemileia vastatrix) es la enfermedad más importante del cultivo. '
-                      'Se presenta como manchas amarillas en el haz de la hoja y pústulas anaranjadas en el envés.\n\n'
-                      'Síntomas:\n'
-                      '• Manchas amarillas en el haz de la hoja\n'
-                      '• Pústulas anaranjadas en el envés\n'
-                      '• Caída prematura de hojas\n\n'
-                      'La enfermedad se desarrolla con mayor rapidez en condiciones de alta humedad '
-                      '(superior al 85%) y temperaturas entre 21°C y 25°C.\n\n'
-                      'Control:\n'
-                      '• Aplicar fungicidas cúpricos preventivamente\n'
-                      '• Mejorar ventilación del cultivo\n'
-                      '• Eliminar hojas infectadas\n'
-                      '• Monitorear regularmente las parcelas',
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                        height: 1.7,
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(articulo['titulo'],
+                              style: GoogleFonts.nunito(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary)),
+                          const SizedBox(height: 8),
+                          Text(articulo['subtitulo'],
+                              style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  color: AppColors.textSecondary)),
+                          const SizedBox(height: 20),
+                          Text(articulo['contenido'] ?? '',
+                              style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  color: AppColors.textSecondary,
+                                  height: 1.8)),
+                        ],
                       ),
                     ),
                   ],
@@ -485,14 +462,11 @@ class _ArticuloScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
-            child: Text(
-              'Artículo',
-              style: GoogleFonts.nunito(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            child: Text('Artículo',
+                style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
           ),
           IconButton(
             icon: const Icon(Icons.bookmark_border, color: AppColors.textPrimary),
