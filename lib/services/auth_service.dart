@@ -7,7 +7,6 @@ class AuthService {
   static const String _tokenKey = 'auth_token';
   static const String _userKey  = 'auth_user';
 
-  // ── LOGIN ──────────────────────────────────────────────────
   static Future<Map<String, dynamic>> login({
     required String correo,
     required String password,
@@ -17,20 +16,17 @@ class AuthService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'correo': correo, 'password': password}),
     );
-
     final data = jsonDecode(response.body);
-
     if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_tokenKey, data['token']);
-      await prefs.setString(_userKey, jsonEncode(data['data']));
-      return {'success': true, 'data': data['data']};
+      await prefs.setString(_userKey, jsonEncode(data['usuario'] ?? data['data']));
+      return {'success': true, 'data': data['usuario'] ?? data['data']};
     } else {
       return {'success': false, 'message': data['message'] ?? 'Error al iniciar sesión'};
     }
   }
 
-  // ── REGISTER ───────────────────────────────────────────────
   static Future<Map<String, dynamic>> registrarCafetero({
     required String nombre,
     required String apellido,
@@ -42,24 +38,18 @@ class AuthService {
       Uri.parse('$baseUrl/cafeteros'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'nombre': nombre,
-        'apellido': apellido,
-        'correo': correo,
-        'password': password,
-        'telefono': telefono,
+        'nombre': nombre, 'apellido': apellido,
+        'correo': correo, 'password': password, 'telefono': telefono,
       }),
     );
-
     final data = jsonDecode(response.body);
-
     if (response.statusCode == 201) {
-      return {'success': true, 'data': data['data']};
+      return {'success': true, 'data': data['usuario'] ?? data['data']};
     } else {
       return {'success': false, 'message': data['message'] ?? 'Error al registrarse'};
     }
   }
 
-  // ── SESIÓN ─────────────────────────────────────────────────
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey);

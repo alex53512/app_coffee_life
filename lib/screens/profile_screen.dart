@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> usuario;
@@ -11,38 +14,123 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  bool _isEditing = false;
+  final _formKey      = GlobalKey<FormState>();
+  bool _isEditing     = false;
+  bool _cargando      = false;
+  bool _guardando     = false;
 
-  late final TextEditingController _nombreController;
-  late final TextEditingController _apellidoController;
-  late final TextEditingController _correoController;
-  late final TextEditingController _telefonoController;
-  late final TextEditingController _cedulaController;
-  late final TextEditingController _direccionController;
+  late TextEditingController _nombreController;
+  late TextEditingController _apellidoController;
+  late TextEditingController _correoController;
+  late TextEditingController _telefonoController;
 
-  String _tipoDocumento = 'Cédula de ciudadanía';
-  final List<String> _tiposDocumento = [
-    'Cédula de ciudadanía',
-    'Cédula de extranjería',
-    'Pasaporte',
-    'NIT',
-  ];
-
-  final int _totalTrees = 1250;
-  final int _treesWithRust = 85;
-  final double _totalArea = 15.0;
-  final String _lastSync = 'Hoy, 8:00 AM';
+  Map<String, dynamic> _usuarioData = {};
 
   @override
   void initState() {
     super.initState();
-    _nombreController   = TextEditingController(text: widget.usuario['nombre']   ?? '');
-    _apellidoController = TextEditingController(text: widget.usuario['apellido'] ?? '');
-    _correoController   = TextEditingController(text: widget.usuario['correo']   ?? '');
-    _telefonoController = TextEditingController(text: widget.usuario['telefono'] ?? '');
-    _cedulaController   = TextEditingController(text: '');
-    _direccionController = TextEditingController(text: '');
+    _usuarioData = Map.from(widget.usuario);
+    _initControllers(_usuarioData);
+    _cargarPerfil();
+  }
+
+  void _initControllers(Map<String, dynamic> u) {
+    _nombreController    = TextEditingController(text: u['nombre']   ?? '');
+    _apellidoController  = TextEditingController(text: u['apellido'] ?? '');
+    _correoController    = TextEditingController(text: u['correo']   ?? '');
+    _telefonoController  = TextEditingController(text: u['telefono'] ?? '');
+  }
+
+  Future<void> _cargarPerfil() async {
+    final id = widget.usuario['id'] ?? widget.usuario['idUsuario'];
+    if (id == null) return;
+    setState(() => _cargando = true);
+    try {
+      final data = await ApiService.get('/usuarios/$id');
+      final u = data is Map ? data : (data['data'] ?? data);
+      setState(() {
+        _usuarioData = Map<String, dynamic>.from(u);
+        _nombreController.text   = u['nombre']   ?? '';
+        _apellidoController.text = u['apellido'] ?? '';
+        _correoController.text   = u['correo']   ?? '';
+        _telefonoController.text = u['telefono'] ?? '';
+        _cargando = false;
+      });
+    } catch (e) {
+      setState(() => _cargando = false);
+    }
+  }
+
+  Future<void> _guardarCambios() async {
+    if (!_formKey.currentState!.validate()) return;
+    final id = _usuarioData['id'] ?? _usuarioData['idUsuario'];
+    setState(() => _guardando = true);
+    try {
+      await ApiService.put('/usuarios/$id', {
+        'nombre':   _nombreController.text.trim(),
+        'apellido': _apellidoController.text.trim(),
+        'correo':   _correoController.text.trim(),
+        'telefono': _telefonoController.text.trim(),
+      });
+      setState(() { _isEditing = false; _guardando = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Perfil actualizado ✅',
+                style: GoogleFonts.nunito()),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _guardando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e',
+                style: GoogleFonts.nunito()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _cerrarSesion() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Cerrar sesión',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        content: Text('¿Estás seguro que quieres cerrar sesión?',
+            style: GoogleFonts.nunito()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar',
+                style: GoogleFonts.nunito(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                minimumSize: const Size(80, 36)),
+            child: Text('Salir', style: GoogleFonts.nunito()),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+      }
+    }
   }
 
   @override
@@ -51,8 +139,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _apellidoController.dispose();
     _correoController.dispose();
     _telefonoController.dispose();
-    _cedulaController.dispose();
-    _direccionController.dispose();
     super.dispose();
   }
 
@@ -61,85 +147,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildStatsRow(),
-                      const SizedBox(height: 24),
-                      _buildSectionTitle('Información personal'),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _nombreController,
-                        label: 'Nombre',
-                        icon: Icons.person_outline,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _apellidoController,
-                        label: 'Apellido',
-                        icon: Icons.person_outline,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _correoController,
-                        label: 'Correo electrónico',
-                        icon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _telefonoController,
-                        label: 'Teléfono',
-                        icon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _cedulaController,
-                        label: 'Número de documento',
-                        icon: Icons.badge_outlined,
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildField(
-                        controller: _direccionController,
-                        label: 'Dirección',
-                        icon: Icons.location_on_outlined,
-                      ),
-                      const SizedBox(height: 28),
-                      if (_isEditing)
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              setState(() => _isEditing = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Perfil actualizado')),
-                              );
-                            }
-                          },
-                          child: const Text('Guardar cambios'),
+        child: _cargando
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+            : Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInfoRow(),
+                            const SizedBox(height: 24),
+                            _buildSectionTitle('Información personal'),
+                            const SizedBox(height: 12),
+                            _buildField(
+                              controller: _nombreController,
+                              label: 'Nombre',
+                              icon: Icons.person_outline,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildField(
+                              controller: _apellidoController,
+                              label: 'Apellido',
+                              icon: Icons.person_outline,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildField(
+                              controller: _correoController,
+                              label: 'Correo electrónico',
+                              icon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildField(
+                              controller: _telefonoController,
+                              label: 'Teléfono',
+                              icon: Icons.phone_outlined,
+                              keyboardType: TextInputType.phone,
+                            ),
+                            const SizedBox(height: 28),
+                            if (_isEditing)
+                              ElevatedButton(
+                                onPressed: _guardando ? null : _guardarCambios,
+                                child: _guardando
+                                    ? const SizedBox(
+                                        height: 22, width: 22,
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white, strokeWidth: 2.5))
+                                    : const Text('Guardar cambios'),
+                              ),
+                            const SizedBox(height: 12),
+                            // Botón cerrar sesión
+                            OutlinedButton.icon(
+                              onPressed: _cerrarSesion,
+                              icon: const Icon(Icons.logout, color: Colors.red),
+                              label: Text('Cerrar sesión',
+                                  style: GoogleFonts.nunito(
+                                      color: Colors.red, fontWeight: FontWeight.w600)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.red),
+                                minimumSize: const Size(double.infinity, 50),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                      const SizedBox(height: 20),
-                    ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader() {
+    final nombre   = _usuarioData['nombre']   ?? widget.usuario['nombre']   ?? 'U';
+    final apellido = _usuarioData['apellido'] ?? widget.usuario['apellido'] ?? '';
+    final rol      = _usuarioData['rol']?['nombreRol'] ??
+                     widget.usuario['rol']?['nombreRol'] ?? 'Cafetero';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       color: AppColors.primary,
@@ -147,14 +238,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: AppColors.primaryLight,
+            backgroundColor: Colors.white.withOpacity(0.2),
             child: Text(
-              (widget.usuario['nombre'] ?? 'U')[0].toUpperCase(),
+              nombre[0].toUpperCase(),
               style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
+                  fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
           const SizedBox(width: 14),
@@ -162,21 +250,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${widget.usuario['nombre'] ?? ''} ${widget.usuario['apellido'] ?? ''}',
-                  style: GoogleFonts.nunito(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  widget.usuario['rol']?['nombreRol'] ?? 'Cafetero',
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    color: Colors.white70,
-                  ),
-                ),
+                Text('$nombre $apellido',
+                    style: GoogleFonts.nunito(
+                        fontSize: 18, fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+                Text(rol,
+                    style: GoogleFonts.nunito(
+                        fontSize: 13, color: Colors.white70)),
               ],
             ),
           ),
@@ -192,54 +272,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildInfoRow() {
+    final correo  = _usuarioData['correo']   ?? widget.usuario['correo']   ?? '';
+    final telefono = _usuarioData['telefono'] ?? widget.usuario['telefono'] ?? 'Sin teléfono';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+      ),
+      child: Column(
+        children: [
+          _infoItem(Icons.email_outlined, correo),
+          const Divider(height: 16),
+          _infoItem(Icons.phone_outlined, telefono),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoItem(IconData icon, String text) {
     return Row(
       children: [
-        _buildStatCard('$_totalTrees', 'Árboles', Icons.park_outlined),
-        const SizedBox(width: 10),
-        _buildStatCard('$_treesWithRust', 'Con roya', Icons.bug_report_outlined),
-        const SizedBox(width: 10),
-        _buildStatCard('${_totalArea}ha', 'Área', Icons.map_outlined),
+        Icon(icon, color: AppColors.primary, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(text,
+              style: GoogleFonts.nunito(
+                  fontSize: 14, color: AppColors.textPrimary)),
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: AppColors.primary, size: 22),
-            const SizedBox(height: 4),
-            Text(value,
-                style: GoogleFonts.nunito(
-                    fontWeight: FontWeight.w800, fontSize: 16)),
-            Text(label,
-                style: GoogleFonts.nunito(
-                    fontSize: 11, color: AppColors.textSecondary)),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.nunito(
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        color: AppColors.textPrimary,
-      ),
-    );
+    return Text(title,
+        style: GoogleFonts.nunito(
+            fontSize: 16, fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary));
   }
 
   Widget _buildField({
@@ -258,6 +330,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         filled: true,
         fillColor: _isEditing ? AppColors.surfaceVariant : Colors.grey.shade100,
       ),
+      validator: (v) => v == null || v.trim().isEmpty ? 'Campo requerido' : null,
     );
   }
 }
