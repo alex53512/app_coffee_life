@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_theme.dart';
 import '../services/dashboard_service.dart';
 import '../services/auth_service.dart';
+import 'notificaciones_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Map<String, dynamic> usuario;
@@ -63,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildHeader(nombre),
+                          _buildHeader(context, nombre),
                           const SizedBox(height: 20),
                           _buildResumenCard(),
                           const SizedBox(height: 16),
@@ -89,7 +90,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Text('No se pudo conectar al servidor',
               style: GoogleFonts.nunito(fontSize: 16, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
-          Text(_error ?? '', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary), textAlign: TextAlign.center),
+          Text(_error ?? '',
+              style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary),
+              textAlign: TextAlign.center),
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: _cargarDatos,
@@ -102,50 +105,58 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(String nombre) {
+  Widget _buildHeader(BuildContext context, String nombre) {
     return Row(
       children: [
-        // Avatar circular
         CircleAvatar(
           radius: 24,
           backgroundColor: AppColors.primary,
           child: Text(
             nombre[0].toUpperCase(),
             style: const TextStyle(
-              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
           ),
         ),
         const SizedBox(width: 12),
         Text(
           'Hola, $nombre',
           style: GoogleFonts.nunito(
-            fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
         ),
         const Spacer(),
-        // Campana con badge
-        Stack(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              child: const Icon(Icons.notifications_outlined,
-                  color: AppColors.textPrimary, size: 28),
-            ),
-            if (_recomendaciones.isNotEmpty)
-              Positioned(
-                right: 6, top: 6,
-                child: Container(
-                  width: 16, height: 16,
-                  decoration: const BoxDecoration(
-                      color: Colors.green, shape: BoxShape.circle),
-                  child: Center(
-                    child: Text(
-                      '${_recomendaciones.length > 9 ? '9+' : _recomendaciones.length}',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+        // ✅ Campana con navegación a Notificaciones
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificacionesScreen()),
+          ),
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: const Icon(Icons.notifications_outlined,
+                    color: AppColors.textPrimary, size: 28),
+              ),
+              if (_recomendaciones.isNotEmpty)
+                Positioned(
+                  right: 6, top: 6,
+                  child: Container(
+                    width: 16, height: 16,
+                    decoration: const BoxDecoration(
+                        color: Colors.green, shape: BoxShape.circle),
+                    child: Center(
+                      child: Text(
+                        '${_recomendaciones.length > 9 ? '9+' : _recomendaciones.length}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -177,15 +188,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Salud general del cultivo',
-                            style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white70)),
                         const SizedBox(height: 4),
                         Text('Buena',
                             style: GoogleFonts.nunito(
-                                fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                       ],
                     ),
                   ),
-                  // Ícono hoja
                   Container(
                     width: 48, height: 48,
                     decoration: BoxDecoration(
@@ -211,7 +224,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: GoogleFonts.nunito(
                       fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
               const SizedBox(height: 8),
-              // Barra de progreso
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
@@ -268,18 +280,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildChart() {
-    // Puntos de la gráfica de riesgo
     final spots = [
-      const FlSpot(0, 1200),
-      const FlSpot(1, 1800),
-      const FlSpot(2, 1600),
-      const FlSpot(3, 2200),
-      const FlSpot(4, 2000),
-      const FlSpot(5, 2500),
-      const FlSpot(6, 2300),
-      const FlSpot(7, 2800),
-      const FlSpot(8, 3000),
-      const FlSpot(9, 3200),
+      const FlSpot(0, 1200), const FlSpot(1, 1800),
+      const FlSpot(2, 1600), const FlSpot(3, 2200),
+      const FlSpot(4, 2000), const FlSpot(5, 2500),
+      const FlSpot(6, 2300), const FlSpot(7, 2800),
+      const FlSpot(8, 3000), const FlSpot(9, 3200),
     ];
 
     return Container(
@@ -335,16 +341,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                      sideTitles: SideTitles(showTitles: false)),
                   rightTitles: AxisTitles(
                       sideTitles: SideTitles(showTitles: false)),
                   topTitles: AxisTitles(
                       sideTitles: SideTitles(showTitles: false)),
                 ),
                 borderData: FlBorderData(show: false),
-                minX: 0, maxX: 9,
-                minY: 0, maxY: 4000,
+                minX: 0, maxX: 9, minY: 0, maxY: 4000,
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
