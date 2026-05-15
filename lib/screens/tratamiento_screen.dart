@@ -1,9 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
-class TratamientoScreen extends StatelessWidget {
+class TratamientoScreen extends StatefulWidget {
   const TratamientoScreen({super.key});
+
+  @override
+  State<TratamientoScreen> createState() => _TratamientoScreenState();
+}
+
+class _TratamientoScreenState extends State<TratamientoScreen> {
+  bool _cargando = true;
+  Map<String, dynamic>? _tratamiento;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarTratamiento();
+  }
+
+  Future<void> _cargarTratamiento() async {
+    setState(() => _cargando = true);
+    try {
+      final data = await ApiService.get('/tratamientos');
+      final lista = data is List ? data : (data['data'] ?? []);
+      setState(() {
+        _tratamiento = lista.isNotEmpty ? lista[0] : null;
+        _cargando = false;
+      });
+    } catch (e) {
+      setState(() => _cargando = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,27 +43,29 @@ class TratamientoScreen extends StatelessWidget {
           children: [
             _buildHeader(context),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    _buildProductoCard(),
-                    const SizedBox(height: 16),
-                    _buildDetallesCard(),
-                    const SizedBox(height: 16),
-                    _buildCondicionesCard(),
-                    const SizedBox(height: 16),
-                    _buildNotasCard(),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Guardar tratamiento'),
+              child: _cargando
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          _buildProductoCard(),
+                          const SizedBox(height: 16),
+                          _buildDetallesCard(),
+                          const SizedBox(height: 16),
+                          _buildCondicionesCard(),
+                          const SizedBox(height: 16),
+                          _buildNotasCard(),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.check_circle_outline),
+                            label: const Text('Guardar tratamiento'),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -68,14 +99,16 @@ class TratamientoScreen extends StatelessWidget {
   }
 
   Widget _buildProductoCard() {
+    final nombre = _tratamiento?['nombre'] ?? 'Fungicida Cúprico';
+    final dosis  = _tratamiento?['dosisRecomendada'] ??
+                   _tratamiento?['dosis_recomendada'] ?? '250 g / 200 L de agua';
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,34 +119,33 @@ class TratamientoScreen extends StatelessWidget {
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text('Fungicida Cúprico',
+          Text(nombre,
               style: GoogleFonts.nunito(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 12),
-          _rowItem(Icons.scale_outlined, 'Dosis', '250 g / 200 L de agua'),
+          _rowItem(Icons.scale_outlined, 'Dosis', dosis.toString()),
         ],
       ),
     );
   }
 
   Widget _buildDetallesCard() {
+    final frecuencia = _tratamiento?['frecuencia'] ?? 'Cada 15 días';
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: Column(
         children: [
-          _rowItem(Icons.repeat_outlined, 'Frecuencia', 'Cada 15 días'),
+          _rowItem(Icons.repeat_outlined, 'Frecuencia', frecuencia.toString()),
           const Divider(height: 20),
-          _rowItem(Icons.calendar_today_outlined,
-              'Próxima aplicación', '28 May 2024'),
+          _rowItem(Icons.calendar_today_outlined, 'Próxima aplicación', '28 May 2024'),
         ],
       ),
     );
@@ -125,9 +157,7 @@ class TratamientoScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,14 +177,15 @@ class TratamientoScreen extends StatelessWidget {
   }
 
   Widget _buildNotasCard() {
+    final ingrediente = _tratamiento?['ingredienteActivo'] ??
+                        _tratamiento?['ingrediente_activo'] ?? 'Hidróxido de cobre';
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,6 +197,7 @@ class TratamientoScreen extends StatelessWidget {
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
           Text(
+            'Ingrediente activo: $ingrediente\n\n'
             'Aplicar en horas de la mañana y cubrir el envés de las hojas '
             'completamente. Usar equipo de protección personal durante la aplicación.',
             style: GoogleFonts.nunito(
