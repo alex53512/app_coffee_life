@@ -24,14 +24,43 @@ class ApiService {
     }
     throw Exception('Error ${response.statusCode}: ${response.body}');
   }
+
+  static Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
+    final headers = await _headers();
+    final response = await http.post(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Error ${response.statusCode}: ${response.body}');
+  }
+
   static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
-  final headers = await _headers();
-  final response = await http.put(
-    Uri.parse('$baseUrl$endpoint'),
-    headers: headers,
-    body: jsonEncode(body),
-  );
-  if (response.statusCode == 200) return jsonDecode(response.body);
-  throw Exception('Error ${response.statusCode}: ${response.body}');
-}
+    final headers = await _headers();
+    final response = await http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Error ${response.statusCode}: ${response.body}');
+  }
+
+  static Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
+    final headers = await _headers();
+    final response = await http.patch(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Error ${response.statusCode}: ${response.body}');
+  }
 }

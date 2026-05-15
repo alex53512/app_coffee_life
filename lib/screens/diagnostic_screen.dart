@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
+import 'tratamiento_screen.dart';
 
-/// HU4: captura imagen con instrucciones popup y validación 3kb
-/// HU5: análisis IA con resultado, confianza y recomendaciones
 class DiagnosticScreen extends StatefulWidget {
   const DiagnosticScreen({super.key});
 
@@ -12,14 +13,14 @@ class DiagnosticScreen extends StatefulWidget {
 }
 
 class _DiagnosticScreenState extends State<DiagnosticScreen> {
-  // 'idle' | 'analyzing' | 'result'
   String _stage = 'idle';
+  final _picker = ImagePicker();
+  String? _imagenPath;
 
-  // Resultado simulado de la IA (HU5)
-  static const _diagnosisText = 'Roya encontrada';
+  static const _diagnosisText  = 'Roya encontrada';
   static const _scientificName = 'Hemileia vastatrix';
   static const double _confidence = 0.92;
-  static const _severity = 'Alta';
+  static const _severity      = 'Alta';
   static const _severityColor = Color(0xFFD32F2F);
 
   @override
@@ -53,31 +54,33 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: AppColors.textPrimary, size: 20),
             onPressed: () {
               if (_stage != 'idle') {
-                setState(() => _stage = 'idle');
+                setState(() { _stage = 'idle'; _imagenPath = null; });
               } else {
                 Navigator.pop(context);
               }
             },
           ),
           Expanded(
-            child: Text(
-              'Diagnóstico',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-            ),
+            child: Text('Diagnóstico',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
           ),
           IconButton(
-            icon: const Icon(Icons.info_outline_rounded, color: AppColors.textSecondary, size: 22),
+            icon: const Icon(Icons.info_outline_rounded,
+                color: AppColors.textSecondary, size: 22),
             onPressed: () => _showModelInfoDialog(context),
           ),
         ],
       ),
     );
   }
-
 
   Widget _buildIdleView() {
     return SingleChildScrollView(
@@ -90,7 +93,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           const SizedBox(height: 20),
           _buildViewfinder(),
           const SizedBox(height: 20),
-
           ElevatedButton.icon(
             onPressed: _onTakePhoto,
             icon: const Icon(Icons.camera_alt_rounded, size: 20),
@@ -104,7 +106,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 20),
-
           _buildFileSizeNote(),
         ],
       ),
@@ -116,25 +117,29 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       children: [
         Container(
           width: 60, height: 60,
-          decoration: const BoxDecoration(color: AppColors.primaryLight, shape: BoxShape.circle),
-          child: const Icon(Icons.biotech_outlined, color: AppColors.primary, size: 30),
+          decoration: const BoxDecoration(
+              color: AppColors.primaryLight, shape: BoxShape.circle),
+          child: const Icon(Icons.biotech_outlined,
+              color: AppColors.primary, size: 30),
         ),
         const SizedBox(height: 14),
-        Text(
-          'Diagnostica la roya\nde tu planta',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.2),
-        ),
+        Text('Diagnostica la roya\nde tu planta',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.nunito(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                height: 1.2)),
         const SizedBox(height: 8),
-        Text(
-          'Toma una foto de la hoja de café para\nidentificar si tiene síntomas de roya.',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
-        ),
+        Text('Toma una foto de la hoja de café para\nidentificar si tiene síntomas de roya.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.nunito(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.4)),
       ],
     );
   }
-
 
   Widget _buildViewfinder() {
     return GestureDetector(
@@ -148,7 +153,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
         child: Stack(
           children: [
-            // Esquinas de encuadre
             _corner(top: true, left: true),
             _corner(top: true, left: false),
             _corner(top: false, left: true),
@@ -159,12 +163,16 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 children: [
                   Container(
                     width: 68, height: 68,
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
-                    child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 32),
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        shape: BoxShape.circle),
+                    child: const Icon(Icons.camera_alt_outlined,
+                        color: Colors.white, size: 32),
                   ),
                   const SizedBox(height: 10),
                   Text('Toca para capturar',
-                      style: GoogleFonts.nunito(color: Colors.white70, fontSize: 13)),
+                      style: GoogleFonts.nunito(
+                          color: Colors.white70, fontSize: 13)),
                 ],
               ),
             ),
@@ -182,9 +190,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       right: left ? null : 14,
       child: SizedBox(
         width: 22, height: 22,
-        child: CustomPaint(
-          painter: _CornerPainter(top: top, left: left),
-        ),
+        child: CustomPaint(painter: _CornerPainter(top: top, left: left)),
       ),
     );
   }
@@ -199,19 +205,20 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: Color(0xFFE65100), size: 18),
+          const Icon(Icons.info_outline_rounded,
+              color: Color(0xFFE65100), size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'La imagen debe tener un tamaño máximo de 3 KB para garantizar el análisis correcto.',
-              style: GoogleFonts.nunito(fontSize: 12, color: const Color(0xFFE65100)),
+              style: GoogleFonts.nunito(
+                  fontSize: 12, color: const Color(0xFFE65100)),
             ),
           ),
         ],
       ),
     );
   }
-
 
   Widget _buildAnalyzingView() {
     return Center(
@@ -223,32 +230,32 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           children: [
             Container(
               width: 100, height: 100,
-              decoration: BoxDecoration(color: AppColors.primaryLight, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                  color: AppColors.primaryLight, shape: BoxShape.circle),
               child: const Padding(
                 padding: EdgeInsets.all(24),
                 child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 3,
-                ),
+                    color: AppColors.primary, strokeWidth: 3),
               ),
             ),
             const SizedBox(height: 28),
-            Text(
-              'Analizando imagen...',
-              style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-            ),
+            Text('Analizando imagen...',
+                style: GoogleFonts.nunito(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
             const SizedBox(height: 10),
-            Text(
-              'El modelo de IA está procesando la hoja.\nEsto tomará unos segundos.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
-            ),
+            Text('El modelo de IA está procesando la hoja.\nEsto tomará unos segundos.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.5)),
           ],
         ),
       ),
     );
   }
-
 
   Widget _buildResultView() {
     return SingleChildScrollView(
@@ -265,13 +272,19 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           _buildRecommendationsCard(),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TratamientoScreen()),
+            ),
             icon: const Icon(Icons.healing_outlined, size: 20),
             label: const Text('Ver tratamiento completo'),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => setState(() => _stage = 'idle'),
+            onPressed: () => setState(() {
+              _stage = 'idle';
+              _imagenPath = null;
+            }),
             icon: const Icon(Icons.add_a_photo_outlined, size: 20),
             label: Text('Nuevo diagnóstico',
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
@@ -285,34 +298,58 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   Widget _buildImagePreview() {
     return Stack(
       children: [
-        Container(
-          width: double.infinity,
-          height: 190,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2D5E2B),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Center(
-            child: Icon(Icons.eco_outlined, color: Colors.white24, size: 64),
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: _imagenPath != null
+              ? Image.network(
+                  _imagenPath!,
+                  width: double.infinity,
+                  height: 190,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _placeholderImage(),
+                )
+              : Image.asset(
+                  'assets/images/roya_cafe.jpg',
+                  width: double.infinity,
+                  height: 190,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _placeholderImage(),
+                ),
         ),
         Positioned(
           top: 12, right: 12,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(color: _severityColor, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(
+                color: _severityColor,
+                borderRadius: BorderRadius.circular(20)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 13),
+                const Icon(Icons.warning_amber_rounded,
+                    color: Colors.white, size: 13),
                 const SizedBox(width: 4),
                 Text('Riesgo $_severity',
-                    style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                    style: GoogleFonts.nunito(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _placeholderImage() {
+    return Container(
+      width: double.infinity,
+      height: 190,
+      decoration: const BoxDecoration(color: Color(0xFF2D5E2B)),
+      child: const Center(
+        child: Icon(Icons.eco_outlined, color: Colors.white24, size: 64),
+      ),
     );
   }
 
@@ -328,16 +365,23 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 decoration: BoxDecoration(
                     color: _severityColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.coronavirus_outlined, color: _severityColor, size: 22),
+                child: Icon(Icons.coronavirus_outlined,
+                    color: _severityColor, size: 22),
               ),
               const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Diagnóstico',
-                      style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                      style: GoogleFonts.nunito(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600)),
                   Text(_diagnosisText,
-                      style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: _severityColor)),
+                      style: GoogleFonts.nunito(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: _severityColor)),
                 ],
               ),
             ],
@@ -364,9 +408,15 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Confianza del modelo',
-                  style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
               Text('${(_confidence * 100).round()}%',
-                  style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  style: GoogleFonts.nunito(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary)),
             ],
           ),
           const SizedBox(height: 12),
@@ -381,7 +431,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           ),
           const SizedBox(height: 8),
           Text('Alta precisión – resultado confiable',
-              style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+              style: GoogleFonts.nunito(
+                  fontSize: 12, color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -402,7 +453,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Recomendaciones',
-              style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              style: GoogleFonts.nunito(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 14),
           ...recs.asMap().entries.map((e) {
             final rec = e.value;
@@ -425,9 +479,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(rec.title,
-                              style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                              style: GoogleFonts.nunito(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary)),
                           Text(rec.subtitle,
-                              style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+                              style: GoogleFonts.nunito(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -446,7 +505,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     );
   }
 
-
   Widget _card({required Widget child}) {
     return Container(
       width: double.infinity,
@@ -454,17 +512,25 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.primary.withOpacity(0.07),
+              blurRadius: 12,
+              offset: const Offset(0, 4))
+        ],
       ),
       child: child,
     );
   }
 
-  Widget _detailRow(String label, String value, {Color? valueColor, bool isItalic = false}) {
+  Widget _detailRow(String label, String value,
+      {Color? valueColor, bool isItalic = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
+        Text(label,
+            style: GoogleFonts.nunito(
+                fontSize: 13, color: AppColors.textSecondary)),
         Text(value,
             style: GoogleFonts.nunito(
               fontSize: 13,
@@ -476,53 +542,28 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     );
   }
 
-
-  void _onTakePhoto() {
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.tips_and_updates_outlined, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text('Consejos de captura',
-                style: GoogleFonts.nunito(fontSize: 17, fontWeight: FontWeight.w800)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _tipRow(Icons.wb_sunny_outlined, 'Usa buena iluminación natural'),
-            _tipRow(Icons.zoom_in_rounded, 'Acerca la cámara a la hoja'),
-            _tipRow(Icons.visibility_outlined, 'Fotografía el haz (parte superior)'),
-            _tipRow(Icons.center_focus_strong_outlined, 'Asegúrate de que toda la hoja esté visible'),
-            _tipRow(Icons.image_outlined, 'Imagen máxima: 3 KB'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancelar', style: GoogleFonts.nunito(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _startAnalysis();
-            },
-            icon: const Icon(Icons.camera_alt_rounded, size: 18),
-            label: Text('Abrir cámara', style: GoogleFonts.nunito()),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
-          ),
-        ],
-      ),
+  void _onTakePhoto() async {
+    final XFile? foto = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 800,
+      imageQuality: 80,
     );
+    if (foto != null) {
+      setState(() => _imagenPath = foto.path);
+      _startAnalysis();
+    }
   }
 
-  void _onSelectGallery() {
-
-    _startAnalysis();
+  void _onSelectGallery() async {
+    final XFile? foto = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      imageQuality: 80,
+    );
+    if (foto != null) {
+      setState(() => _imagenPath = foto.path);
+      _startAnalysis();
+    }
   }
 
   Widget _tipRow(IconData icon, String text) {
@@ -532,15 +573,28 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         children: [
           Icon(icon, color: AppColors.primary, size: 18),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary))),
+          Expanded(
+              child: Text(text,
+                  style: GoogleFonts.nunito(
+                      fontSize: 13, color: AppColors.textSecondary))),
         ],
       ),
     );
   }
 
-  void _startAnalysis() async {
+  Future<void> _startAnalysis() async {
     setState(() => _stage = 'analyzing');
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+      await ApiService.post('/analisis_ia', {
+        'resultado': _diagnosisText,
+        'confianza': (_confidence * 100).round(),
+        'version_modelo': '1.0',
+        'id_estado_analisis': 1,
+      });
+    } catch (e) {
+      print('Error guardando análisis: $e');
+    }
     if (mounted) setState(() => _stage = 'result');
   }
 
@@ -555,7 +609,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           'El modelo está entrenado con imágenes representativas de plantas con roya (Hemileia vastatrix). '
           'Se actualiza continuamente con nuevos datos para mejorar su precisión. '
           'Los resultados son orientativos; consulta con un agrónomo para decisiones críticas.',
-          style: GoogleFonts.nunito(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+          style: GoogleFonts.nunito(
+              color: AppColors.textSecondary, fontSize: 13, height: 1.5),
         ),
         actions: [
           ElevatedButton(
@@ -569,8 +624,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   }
 }
 
-
-
 class _Rec {
   final IconData icon;
   final Color color;
@@ -578,8 +631,6 @@ class _Rec {
   final String subtitle;
   const _Rec(this.icon, this.color, this.title, this.subtitle);
 }
-
-
 
 class _CornerPainter extends CustomPainter {
   final bool top, left;
@@ -595,13 +646,21 @@ class _CornerPainter extends CustomPainter {
 
     final path = Path();
     if (top && left) {
-      path.moveTo(0, size.height); path.lineTo(0, 0); path.lineTo(size.width, 0);
+      path.moveTo(0, size.height);
+      path.lineTo(0, 0);
+      path.lineTo(size.width, 0);
     } else if (top && !left) {
-      path.moveTo(0, 0); path.lineTo(size.width, 0); path.lineTo(size.width, size.height);
+      path.moveTo(0, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width, size.height);
     } else if (!top && left) {
-      path.moveTo(0, 0); path.lineTo(0, size.height); path.lineTo(size.width, size.height);
+      path.moveTo(0, 0);
+      path.lineTo(0, size.height);
+      path.lineTo(size.width, size.height);
     } else {
-      path.moveTo(0, size.height); path.lineTo(size.width, size.height); path.lineTo(size.width, 0);
+      path.moveTo(0, size.height);
+      path.lineTo(size.width, size.height);
+      path.lineTo(size.width, 0);
     }
     canvas.drawPath(path, paint);
   }
