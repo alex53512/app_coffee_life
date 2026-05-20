@@ -17,11 +17,39 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   final _picker = ImagePicker();
   String? _imagenPath;
 
+  // Cultivos
+  List _cultivos = [];
+  int? _cultivoSeleccionado;
+  bool _cargandoCultivos = false;
+
+  // Resultado análisis (hardcoded por ahora, luego vendrá de la IA real)
   static const _diagnosisText  = 'Roya encontrada';
   static const _scientificName = 'Hemileia vastatrix';
   static const double _confidence = 0.92;
   static const _severity      = 'Alta';
   static const _severityColor = Color(0xFFD32F2F);
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarCultivos();
+  }
+
+  Future<void> _cargarCultivos() async {
+    setState(() => _cargandoCultivos = true);
+    try {
+      final data = await ApiService.get('/cultivos');
+      setState(() {
+        _cultivos = data is List ? data : (data['data'] ?? []);
+        if (_cultivos.isNotEmpty) {
+          _cultivoSeleccionado = _cultivos[0]['idCultivo'];
+        }
+        _cargandoCultivos = false;
+      });
+    } catch (e) {
+      setState(() => _cargandoCultivos = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,16 +119,19 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           const SizedBox(height: 8),
           _buildIntro(),
           const SizedBox(height: 20),
+          // ── Selector de cultivo ──────────────────────────────
+          _buildCultivoSelector(),
+          const SizedBox(height: 20),
           _buildViewfinder(),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: _onTakePhoto,
+            onPressed: _cultivoSeleccionado == null ? null : _onTakePhoto,
             icon: const Icon(Icons.camera_alt_rounded, size: 20),
             label: const Text('Tomar foto'),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: _onSelectGallery,
+            onPressed: _cultivoSeleccionado == null ? null : _onSelectGallery,
             icon: const Icon(Icons.photo_library_outlined, size: 20),
             label: Text('Seleccionar de galería',
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
@@ -109,6 +140,99 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           _buildFileSizeNote(),
         ],
       ),
+    );
+  }
+
+  Widget _buildCultivoSelector() {
+    if (_cargandoCultivos) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    if (_cultivos.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3E0),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFFB74D)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded,
+                color: Color(0xFFE65100), size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'No tienes cultivos registrados. Registra uno primero.',
+                style: GoogleFonts.nunito(
+                    fontSize: 13, color: const Color(0xFFE65100)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Selecciona el cultivo',
+            style: GoogleFonts.nunito(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.04), blurRadius: 6)
+            ],
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              isExpanded: true,
+              value: _cultivoSeleccionado,
+              icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.primary),
+              style: GoogleFonts.nunito(
+                  fontSize: 14, color: AppColors.textPrimary),
+              items: _cultivos.map<DropdownMenuItem<int>>((c) {
+                final id     = c['idCultivo'] as int;
+                final nombre = c['nombreCultivo'] ?? 'Cultivo $id';
+                final finca  = c['finca']?['nombreFinca'] ?? '';
+                return DropdownMenuItem<int>(
+                  value: id,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(nombre,
+                          style: GoogleFonts.nunito(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary)),
+                      if (finca.isNotEmpty)
+                        Text(finca,
+                            style: GoogleFonts.nunito(
+                                fontSize: 11,
+                                color: AppColors.textSecondary)),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) =>
+                  setState(() => _cultivoSeleccionado = val),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -143,7 +267,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
   Widget _buildViewfinder() {
     return GestureDetector(
-      onTap: _onTakePhoto,
+      onTap: _cultivoSeleccionado == null ? null : _onTakePhoto,
       child: Container(
         width: double.infinity,
         height: 210,
@@ -308,13 +432,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => _placeholderImage(),
                 )
-              : Image.asset(
-                  'assets/images/roya_cafe.jpg',
-                  width: double.infinity,
-                  height: 190,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _placeholderImage(),
-                ),
+              : _placeholderImage(),
         ),
         Positioned(
           top: 12, right: 12,
@@ -425,7 +543,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             child: LinearProgressIndicator(
               value: _confidence,
               backgroundColor: AppColors.border,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
               minHeight: 10,
             ),
           ),
@@ -459,7 +578,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                   color: AppColors.textPrimary)),
           const SizedBox(height: 14),
           ...recs.asMap().entries.map((e) {
-            final rec = e.value;
+            final rec    = e.value;
             final isLast = e.key == recs.length - 1;
             return Column(
               children: [
@@ -566,35 +685,35 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     }
   }
 
-  Widget _tipRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-              child: Text(text,
-                  style: GoogleFonts.nunito(
-                      fontSize: 13, color: AppColors.textSecondary))),
-        ],
-      ),
-    );
-  }
-
   Future<void> _startAnalysis() async {
     setState(() => _stage = 'analyzing');
+
     try {
       await Future.delayed(const Duration(seconds: 2));
+
+      final hoy = DateTime.now();
+      final fechaStr =
+          '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
+
+      // 1. Crear el monitoreo
+      await ApiService.post('/monitoreos', {
+        'id_cultivo': _cultivoSeleccionado,
+        'fecha_monitoreo': fechaStr,
+        'observaciones': '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% — $_scientificName',
+      });
+
+      // 2. Guardar el análisis IA
       await ApiService.post('/analisis_ia', {
         'resultado': _diagnosisText,
         'confianza': (_confidence * 100).round(),
         'version_modelo': '1.0',
         'id_estado_analisis': 1,
       });
+
     } catch (e) {
-      print('Error guardando análisis: $e');
+      print('Error guardando monitoreo/análisis: $e');
     }
+
     if (mounted) setState(() => _stage = 'result');
   }
 

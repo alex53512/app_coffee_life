@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import 'monitoreo_detalle_screen.dart';
 
 class MontoreosScreen extends StatefulWidget {
   const MontoreosScreen({super.key});
@@ -35,6 +36,56 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     }
   }
 
+  Future<void> _eliminarMonitoreo(dynamic m) async {
+    final id = m['idMonitoreo'] ?? m['id_monitoreo'];
+    try {
+      await ApiService.delete('/monitoreos/$id');
+      setState(() => _monitoreos.removeWhere((item) =>
+          (item['idMonitoreo'] ?? item['id_monitoreo']) == id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Monitoreo eliminado'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al eliminar: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmarEliminar(dynamic m) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Eliminar monitoreo',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        content: Text(
+            '¿Seguro que quieres eliminar este monitoreo? Esta acción no se puede deshacer.',
+            style: GoogleFonts.nunito(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar',
+                style: GoogleFonts.nunito(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Eliminar', style: GoogleFonts.nunito()),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true) _eliminarMonitoreo(m);
+  }
+
   Color _colorNivel(dynamic m) {
     final nivel = _labelNivel(m).toLowerCase();
     if (nivel.contains('alt') || nivel.contains('roya encontrada')) return Colors.red;
@@ -65,7 +116,19 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
 
   String _parcela(dynamic m) {
-    return m['finca']?['nombreFinca'] ?? m['nombreFinca'] ?? 'Sin finca';
+    return m['cultivo']?['finca']?['nombreFinca']
+        ?? m['finca']?['nombreFinca']
+        ?? m['nombreFinca']
+        ?? 'Sin finca';
+  }
+
+  String? _imagenUrl(dynamic m) {
+    final imagenes = m['imagenes'];
+    if (imagenes == null || imagenes is! List || imagenes.isEmpty) return null;
+    final ruta = imagenes[0]['rutaImagen'] ?? imagenes[0]['ruta_imagen'];
+    if (ruta == null || ruta.toString().isEmpty) return null;
+    if (ruta.toString().startsWith('http')) return ruta.toString();
+    return 'https://coffeelife-api.up.railway.app/$ruta';
   }
 
   @override
@@ -216,57 +279,96 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     final titulo  = _titulo(m);
     final fecha   = _fecha(m);
     final parcela = _parcela(m);
+    final imgUrl  = _imagenUrl(m);
 
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MonitoreoDetalleScreen(
+            monitoreo: Map<String, dynamic>.from(m),
+          ),
+        ),
+      ),
+      onLongPress: () => _confirmarEliminar(m),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: imgUrl != null
+                  ? Image.network(
+                      imgUrl,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _iconoFallback(color),
+                    )
+                  : _iconoFallback(color),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(fecha,
+                      style: GoogleFonts.nunito(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                  const SizedBox(height: 2),
+                  Text(titulo,
+                      style: GoogleFonts.nunito(
+                          fontSize: 14, fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                  Row(
+                    children: [
+                      const Icon(Icons.landscape_rounded,
+                          size: 12, color: AppColors.textSecondary),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(parcela,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: AppColors.textSecondary)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(nivel,
+                  style: GoogleFonts.nunito(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.arrow_forward_ios,
+                size: 14, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _iconoFallback(Color color) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        children: [
-          // Ícono circular con hoja
-          Container(
-            width: 46, height: 46,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.eco_rounded, color: color, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(fecha,
-                    style: GoogleFonts.nunito(
-                        fontSize: 11, color: AppColors.textSecondary)),
-                const SizedBox(height: 2),
-                Text(titulo,
-                    style: GoogleFonts.nunito(
-                        fontSize: 14, fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary)),
-                Text(parcela,
-                    style: GoogleFonts.nunito(
-                        fontSize: 12, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-          // Badge nivel
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(nivel,
-                style: GoogleFonts.nunito(
-                    fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-          ),
-        ],
-      ),
+      child: Icon(Icons.eco_rounded, color: color, size: 26),
     );
   }
 

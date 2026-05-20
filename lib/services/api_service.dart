@@ -3,12 +3,13 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3333';
+  static const String baseUrl = 'http://10.3.44.177:3333';
 
   static Future<Map<String, String>> _headers() async {
     final token = await AuthService.getToken();
     return {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'Authorization': 'Bearer $token',
     };
   }
@@ -60,6 +61,18 @@ class ApiService {
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
+    }
+    throw Exception('Error ${response.statusCode}: ${response.body}');
+  }
+
+  static Future<dynamic> delete(String endpoint) async {
+    final headers = await _headers();
+    final response = await http.delete(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return response.body.isNotEmpty ? jsonDecode(response.body) : {};
     }
     throw Exception('Error ${response.statusCode}: ${response.body}');
   }
