@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_theme.dart';
 import '../services/dashboard_service.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import 'notificaciones_screen.dart';
 import 'clima_screen.dart';
 
@@ -21,6 +22,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List _fincas          = [];
   List _monitoreos      = [];
   List _recomendaciones = [];
+  List _cultivos        = [];
+  int _fincaSeleccionada = 0;
+  int? _cultivoSeleccionado;
 
   @override
   void initState() {
@@ -34,16 +38,76 @@ class _HomeScreenState extends State<HomeScreen> {
     print('🔑 TOKEN: $token');
     try {
       final data = await DashboardService.getDashboard();
+      final cultivos = await ApiService.get('/cultivos');
       setState(() {
         _fincas          = data['fincas']          ?? [];
         _monitoreos      = data['monitoreos']       ?? [];
         _recomendaciones = data['recomendaciones']  ?? [];
+        _cultivos        = cultivos is List ? cultivos : (cultivos['data'] ?? []);
+        _fincaSeleccionada = 0;
+        _cultivoSeleccionado = null;
         _cargando        = false;
       });
     } catch (e) {
       print('❌ ERROR: $e');
       setState(() { _error = e.toString(); _cargando = false; });
     }
+  }
+
+  List get _cultivosFincaActual {
+    if (_fincas.isEmpty) return [];
+    final fincaActual = _fincas[_fincaSeleccionada];
+    final idFinca = fincaActual['idFinca'] ?? fincaActual['id_finca'];
+    return _cultivos.where((c) =>
+      (c['idFinca'] ?? c['id_finca']).toString() == idFinca.toString()
+    ).toList();
+  }
+
+  Map<String, dynamic> _getSaludCultivo() {
+    if (_fincas.isEmpty) {
+      return {'texto': 'Buena', 'porcentaje': 0.15, 'nivel': 'Bajo'};
+    }
+
+    final fincaActual = _fincas[_fincaSeleccionada];
+    final idFinca = fincaActual['idFinca'] ?? fincaActual['id_finca'];
+
+    List monitoreosFiltrados;
+
+    if (_cultivoSeleccionado != null) {
+      monitoreosFiltrados = _monitoreos.where((m) {
+        final idCultivo = m['idCultivo'] ?? m['id_cultivo'];
+        return idCultivo.toString() == _cultivoSeleccionado.toString();
+      }).toList();
+    } else {
+      monitoreosFiltrados = _monitoreos.where((m) {
+        final idCultivo = m['idCultivo'] ?? m['id_cultivo'];
+        final cultivo = _cultivos.where((c) =>
+          (c['idFinca'] ?? c['id_finca']).toString() == idFinca.toString() &&
+          (c['idCultivo'] ?? c['id_cultivo']).toString() == idCultivo.toString()
+        ).toList();
+        return cultivo.isNotEmpty;
+      }).toList();
+    }
+
+    if (monitoreosFiltrados.isEmpty) {
+      return {'texto': 'Buena', 'porcentaje': 0.15, 'nivel': 'Bajo'};
+    }
+
+    final total = monitoreosFiltrados.length;
+    final conRoya = monitoreosFiltrados.where((m) {
+      final obs = (m['observaciones'] ?? '').toString().toLowerCase();
+      return obs.contains('roya') ||
+             obs.contains('alto') ||
+             obs.contains('critico') ||
+             obs.contains('crítico') ||
+             obs.contains('enfermedad');
+    }).length;
+
+    final porcentaje = total > 0 ? conRoya / total : 0.0;
+
+    if (porcentaje < 0.3) return {'texto': 'Buena', 'porcentaje': 0.15, 'nivel': 'Bajo'};
+    if (porcentaje <= 0.6) return {'texto': 'Regular', 'porcentaje': porcentaje, 'nivel': 'Medio'};
+    return {'texto': 'Crítica', 'porcentaje': porcentaje, 'nivel': 'Alto'};
   }
 
   @override
@@ -71,6 +135,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildResumenCard(),
                           const SizedBox(height: 16),
                           _buildStatsRow(),
+                          const SizedBox(height: 20),
+                          _buildFincasSection(context),
                           const SizedBox(height: 20),
                           _buildChart(),
                           const SizedBox(height: 16),
@@ -104,8 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _cargarDatos,
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
-            style:
-                ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
           ),
         ],
       ),
@@ -136,8 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
         GestureDetector(
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
-                builder: (_) => const NotificacionesScreen()),
+            MaterialPageRoute(builder: (_) => const NotificacionesScreen()),
           ),
           child: Stack(
             children: [
@@ -172,6 +236,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildResumenCard() {
+    final salud = _getSaludCultivo();
+    final fincaNombre = _fincas.isNotEmpty
+        ? (_fincas[_fincaSeleccionada]['nombreFinca'] ?? 'Mi Finca')
+        : 'Mi Finca';
+
+    final cultivoNombre = _cultivoSeleccionado != null
+        ? _cultivos.firstWhere(
+            (c) => (c['idCultivo'] ?? c['id_cultivo']).toString() ==
+                _cultivoSeleccionado.toString(),
+            orElse: () => {})['nombreCultivo'] ?? 'Cultivo seleccionado'
+        : null;
+
+    Color colorSalud = AppColors.primary;
+    if (salud['texto'] == 'Regular') colorSalud = Colors.orange;
+    if (salud['texto'] == 'Crítica') colorSalud = Colors.red;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -185,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            color: colorSalud,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
@@ -198,11 +278,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(cultivoNombre ?? fincaNombre,
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white70)),
+                        const SizedBox(height: 2),
                         Text('Salud general del cultivo',
                             style: GoogleFonts.nunito(
                                 fontSize: 12, color: Colors.white70)),
                         const SizedBox(height: 4),
-                        Text('Buena',
+                        Text(salud['texto'],
                             style: GoogleFonts.nunito(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
@@ -228,13 +312,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text('Índice de riesgo',
                       style: GoogleFonts.nunito(
                           fontSize: 12, color: Colors.white70)),
-                  Text('25%',
+                  Text('${((salud['porcentaje'] as double) * 100).round()}%',
                       style: GoogleFonts.nunito(
                           fontSize: 12, color: Colors.white)),
                 ],
               ),
               const SizedBox(height: 4),
-              Text('Bajo',
+              Text(salud['nivel'],
                   style: GoogleFonts.nunito(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -243,7 +327,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
-                  value: 0.25,
+                  value: salud['porcentaje'] as double,
                   backgroundColor: Colors.white.withOpacity(0.25),
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(Colors.white),
@@ -258,14 +342,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsRow() {
+    final cultivosFinca = _cultivosFincaActual;
     return Row(
       children: [
-        _statCard('1,250', 'Árboles\nmonitoreados', Colors.black),
+        _statCard('${_monitoreos.length}', 'Monitoreos\nrealizados', Colors.black),
         const SizedBox(width: 10),
-        _statCard('85', 'Árboles con\nroya', Colors.black),
+        _statCard('${cultivosFinca.length}', 'Cultivos\nactivos', Colors.black),
         const SizedBox(width: 10),
-        _statCard('${_recomendaciones.length}', 'Alertas\nactivas',
-            Colors.red),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificacionesScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.05), blurRadius: 8),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Alertas\nactivas',
+                      style: GoogleFonts.nunito(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text('${_recomendaciones.length}',
+                          style: GoogleFonts.nunito(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.red)),
+                      const Spacer(),
+                      const Icon(Icons.arrow_forward_ios,
+                          size: 10, color: Colors.red),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -278,8 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05), blurRadius: 8),
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
           ],
         ),
         child: Column(
@@ -300,7 +423,257 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildFincasSection(BuildContext context) {
+    if (_fincas.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Mis Fincas',
+                style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            Text('${_fincas.length} registrada${_fincas.length > 1 ? 's' : ''}',
+                style: GoogleFonts.nunito(
+                    fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_fincas.length > 1) ...[
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _fincas.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final finca = _fincas[i];
+                final selected = i == _fincaSeleccionada;
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    _fincaSeleccionada = i;
+                    _cultivoSeleccionado = null;
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: selected ? AppColors.primary : AppColors.border,
+                      ),
+                    ),
+                    child: Text(
+                      finca['nombreFinca'] ?? 'Finca ${i + 1}',
+                      style: GoogleFonts.nunito(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: selected
+                              ? Colors.white
+                              : AppColors.textSecondary),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        _buildFincaCard(_fincas[_fincaSeleccionada]),
+      ],
+    );
+  }
+
+  Widget _buildFincaCard(Map<String, dynamic> finca) {
+    final cultivos  = _cultivosFincaActual;
+    final nombre    = finca['nombreFinca']   ?? 'Mi Finca';
+    final municipio = finca['municipio']     ?? 'Sin municipio';
+    final area      = finca['areaHectareas'] ?? finca['area_hectareas'] ?? '-';
+    final altitud   = finca['altitudMsnm']   ?? finca['altitud_msnm']   ?? '-';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.park_outlined,
+                    color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nombre,
+                        style: GoogleFonts.nunito(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary)),
+                    Text(municipio,
+                        style: GoogleFonts.nunito(
+                            fontSize: 12,
+                            color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _fincaDato(Icons.straighten_outlined, '$area ha', 'Área'),
+              Container(width: 1, height: 36, color: AppColors.border),
+              _fincaDato(Icons.terrain_outlined, '$altitud msnm', 'Altitud'),
+              Container(width: 1, height: 36, color: AppColors.border),
+              _fincaDato(Icons.eco_outlined, '${cultivos.length}', 'Cultivos'),
+            ],
+          ),
+          if (cultivos.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text('Cultivos registrados',
+                    style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const SizedBox(width: 6),
+                Text('(toca para ver su salud)',
+                    style: GoogleFonts.nunito(
+                        fontSize: 11,
+                        color: AppColors.textSecondary)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...cultivos.map((c) {
+              final idCultivo = c['idCultivo'] ?? c['id_cultivo'];
+              final selected = _cultivoSeleccionado?.toString() ==
+                  idCultivo.toString();
+              return GestureDetector(
+                onTap: () => setState(() {
+                  _cultivoSeleccionado = selected ? null : idCultivo;
+                }),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primaryLight
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: selected
+                        ? Border.all(color: AppColors.primary, width: 1.5)
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.circle,
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          size: 8),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          c['nombreCultivo'] ??
+                              c['nombre_cultivo'] ??
+                              'Cultivo',
+                          style: GoogleFonts.nunito(
+                              fontSize: 12,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.normal,
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppColors.primary.withOpacity(0.2)
+                              : AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          c['tipoCultivo'] ?? c['tipo_cultivo'] ?? 'Café',
+                          style: GoogleFonts.nunito(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary),
+                        ),
+                      ),
+                      if (selected)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 6),
+                          child: Icon(Icons.check_circle,
+                              color: AppColors.primary, size: 16),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _fincaDato(IconData icon, String valor, String label) {
+    return Column(
+      children: [
+        Icon(icon, color: AppColors.primary, size: 18),
+        const SizedBox(height: 4),
+        Text(valor,
+            style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        Text(label,
+            style: GoogleFonts.nunito(
+                fontSize: 11, color: AppColors.textSecondary)),
+      ],
+    );
+  }
+
   Widget _buildChart() {
+    final salud = _getSaludCultivo();
+    final colorGrafica = salud['nivel'] == 'Bajo'
+        ? AppColors.primary
+        : salud['nivel'] == 'Medio'
+            ? Colors.orange
+            : Colors.red;
+
     final spots = [
       const FlSpot(0, 1200), const FlSpot(1, 1800),
       const FlSpot(2, 1600), const FlSpot(3, 2200),
@@ -315,8 +688,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05), blurRadius: 8),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
         ],
       ),
       child: Column(
@@ -330,11 +702,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary)),
-              Text('Bajo',
+              Text(salud['nivel'],
                   style: GoogleFonts.nunito(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary)),
+                      color: colorGrafica)),
             ],
           ),
           const SizedBox(height: 16),
@@ -379,7 +751,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     spots: spots,
                     isCurved: true,
                     curveSmoothness: 0.4,
-                    color: AppColors.primary,
+                    color: colorGrafica,
                     barWidth: 2.5,
                     isStrokeCapRound: true,
                     dotData: const FlDotData(show: false),
@@ -389,8 +761,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          AppColors.primary.withOpacity(0.3),
-                          AppColors.primary.withOpacity(0.0),
+                          colorGrafica.withOpacity(0.3),
+                          colorGrafica.withOpacity(0.0),
                         ],
                       ),
                     ),
@@ -406,7 +778,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildClimaCard(BuildContext context) {
     final nombreFinca = _fincas.isNotEmpty
-        ? (_fincas[0]['nombreFinca'] ?? 'Mi Finca')
+        ? (_fincas[_fincaSeleccionada]['nombreFinca'] ?? 'Mi Finca')
         : 'Mi Finca';
 
     return GestureDetector(
@@ -421,8 +793,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05), blurRadius: 8),
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
           ],
         ),
         child: Row(

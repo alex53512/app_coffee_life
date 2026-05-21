@@ -68,7 +68,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       final lat = position.latitude;
       final lon = position.longitude;
 
-      final ciudad = '$lat,$lon';
+      final ciudad = 'Popayan,Cauca,Colombia';
 
       final url =
           'https://api.weatherapi.com/v1/forecast.json'
@@ -93,8 +93,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
             data['forecast']['forecastday'] as List;
 
         setState(() {
-          _ciudadActual =
-              '${location['name']}, ${location['country']}';
+        _ciudadActual = '${location['name']}, ${location['region']}, ${location['country']}';
 
           _clima = {
             'temp': current['temp_c'].round(),
