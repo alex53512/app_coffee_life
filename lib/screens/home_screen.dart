@@ -50,15 +50,95 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final nombre = widget.usuario['nombre'] ?? 'Caficultor';
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: _cargando
-            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-            : _error != null
-                ? _buildError()
-                : RefreshIndicator(
-                    onRefresh: _cargarDatos,
-                    color: AppColors.primary,
+      backgroundColor: const Color.fromARGB(255, 208, 196, 171),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(90),
+        child: Container(
+          color: const Color.fromARGB(255, 208, 196, 171),
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: 90,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.primary,
+                      child: Text(
+                        nombre[0].toUpperCase(),
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('Hola, $nombre',
+                        style: GoogleFonts.nunito(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const NotificacionesScreen()),
+                      ),
+                      child: Stack(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(Icons.notifications_outlined,
+                                color: AppColors.textPrimary, size: 28),
+                          ),
+                          if (_recomendaciones.isNotEmpty)
+                            Positioned(
+                              right: 6, top: 6,
+                              child: Container(
+                                width: 16, height: 16,
+                                decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle),
+                                child: Center(
+                                  child: Text(
+                                    '${_recomendaciones.length > 9 ? '9+' : _recomendaciones.length}',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : _error != null
+              ? _buildError()
+              : RefreshIndicator(
+                  onRefresh: _cargarDatos,
+                  color: AppColors.primary,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color.fromARGB(255, 234, 229, 219),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(28),
+                        topRight: Radius.circular(28),
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(
@@ -66,8 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildHeader(context, nombre),
-                          const SizedBox(height: 20),
                           _buildResumenCard(),
                           const SizedBox(height: 16),
                           _buildStatsRow(),
@@ -80,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-      ),
+                ),
     );
   }
 
@@ -104,70 +182,10 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _cargarDatos,
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
-            style:
-                ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, String nombre) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: AppColors.primary,
-          child: Text(
-            nombre[0].toUpperCase(),
-            style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text('Hola, $nombre',
-            style: GoogleFonts.nunito(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
-        const Spacer(),
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const NotificacionesScreen()),
-          ),
-          child: Stack(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.notifications_outlined,
-                    color: AppColors.textPrimary, size: 28),
-              ),
-              if (_recomendaciones.isNotEmpty)
-                Positioned(
-                  right: 6, top: 6,
-                  child: Container(
-                    width: 16, height: 16,
-                    decoration: const BoxDecoration(
-                        color: Colors.green, shape: BoxShape.circle),
-                    child: Center(
-                      child: Text(
-                        '${_recomendaciones.length > 9 ? '9+' : _recomendaciones.length}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -183,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(20),
@@ -201,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text('Salud general del cultivo',
                             style: GoogleFonts.nunito(
                                 fontSize: 12, color: Colors.white70)),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 14),
                         Text('Buena',
                             style: GoogleFonts.nunito(
                                 fontSize: 28,
@@ -221,33 +239,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Índice de riesgo',
-                      style: GoogleFonts.nunito(
-                          fontSize: 12, color: Colors.white70)),
-                  Text('25%',
-                      style: GoogleFonts.nunito(
-                          fontSize: 12, color: Colors.white)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text('Bajo',
-                  style: GoogleFonts.nunito(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: 0.25,
-                  backgroundColor: Colors.white.withOpacity(0.25),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(Colors.white),
-                  minHeight: 8,
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Índice de riesgo',
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white70)),
+                        Text('25%',
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Bajo',
+                        style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: 0.25,
+                        backgroundColor: Colors.white.withOpacity(0.25),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -264,8 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 10),
         _statCard('85', 'Árboles con\nroya', Colors.black),
         const SizedBox(width: 10),
-        _statCard('${_recomendaciones.length}', 'Alertas\nactivas',
-            Colors.red),
+        _statCard('${_recomendaciones.length}', 'Alertas\nactivas', Colors.red),
       ],
     );
   }

@@ -24,10 +24,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic> _usuarioData = {};
   Map<String, dynamic>? _finca;
 
-  // =========================
-  // CONTROLLERS
-  // =========================
-
   final TextEditingController _nombreController =
       TextEditingController();
 
@@ -144,10 +140,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _finca = fincas[0];
         }
 
-        // =========================
-        // CARGAR DATOS
-        // =========================
-
         _nombreController.text =
             _usuarioData['nombre'] ?? '';
 
@@ -200,305 +192,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() => _cargando = false);
     }
-  }
-
-  // =========================
-  // GUARDAR LOCALMENTE
-  // =========================
-
-  Future<void> _guardarCambios() async {
-
-    setState(() {
-
-      _usuarioData['nombre'] =
-          _nombreController.text;
-
-      _usuarioData['apellido'] =
-          _apellidoController.text;
-
-      _usuarioData['correo'] =
-          _correoController.text;
-
-      _usuarioData['telefono'] =
-          _telefonoController.text;
-
-      _usuarioData['cedula'] =
-          _cedulaController.text;
-
-      _usuarioData['asociacion'] =
-          _asociacionController.text;
-
-      if (_finca != null) {
-
-        _finca!['nombreFinca'] =
-            _fincaController.text;
-
-        _finca!['municipio'] =
-            _municipioController.text;
-
-        _finca!['vereda'] =
-            _veredaController.text;
-
-        _finca!['departamento'] =
-            _departamentoController.text;
-
-        _finca!['cultivoPrincipal'] =
-            _cultivoController.text;
-
-        _finca!['areaHectareas'] =
-            _hectareasController.text;
-
-        _finca!['cantidadArboles'] =
-            _arbolesController.text;
-
-        _finca!['altitudMsnm'] =
-            _altitudController.text;
-
-        _finca!['produccionMensual'] =
-            _produccionController.text;
-      }
-    });
-
-    Navigator.pop(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Cambios guardados localmente',
-        ),
-      ),
-    );
-  }
-
-  // =========================
-  // MODAL EDITAR
-  // =========================
-
-  void _mostrarFormularioEditar() {
-
-    showModalBottomSheet(
-
-      context: context,
-
-      isScrollControlled: true,
-
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
-      ),
-
-      builder: (context) {
-
-        return Padding(
-
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom:
-                MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-
-          child: SingleChildScrollView(
-
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-
-              children: [
-
-                Text(
-                  'Editar perfil',
-                  style: GoogleFonts.nunito(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                TextField(
-                  controller: _nombreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _apellidoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Apellido',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _correoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Correo',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _telefonoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Teléfono',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _cedulaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Cédula',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _fincaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre de la finca',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _municipioController,
-                  decoration: const InputDecoration(
-                    labelText: 'Municipio',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _veredaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Vereda',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _departamentoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Departamento',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _cultivoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Cultivo principal',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _hectareasController,
-                  decoration: const InputDecoration(
-                    labelText: 'Área en hectáreas',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _arbolesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Cantidad de árboles',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _altitudController,
-                  decoration: const InputDecoration(
-                    labelText: 'Altitud msnm',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _produccionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Producción mensual',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: _asociacionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Asociación campesina',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-
-                  child: ElevatedButton(
-
-                    onPressed: _guardarCambios,
-
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size(
-                        double.infinity,
-                        50,
-                      ),
-                    ),
-
-                    child: Text(
-                      'Guardar cambios',
-                      style: GoogleFonts.nunito(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _cerrarSesion() async {
@@ -601,11 +294,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           _buildAvatarSection(),
 
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 16),
 
                           _buildFincaItem(),
-
-                          const SizedBox(height: 8),
 
                           _buildInfoSection(),
 
@@ -667,7 +358,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         vertical: 12,
       ),
 
-      color: AppColors.background,
+      color: const Color.fromARGB(255, 208, 196, 171),
 
       child: Row(
         children: [
@@ -699,7 +390,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
 
-            onPressed: _mostrarFormularioEditar,
+            onPressed: () {},
           ),
         ],
       ),
@@ -731,7 +422,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         vertical: 28,
       ),
 
-      color: Colors.white,
+      color: const Color.fromARGB(255, 208, 196, 171),
 
       child: Column(
         children: [
@@ -790,143 +481,181 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildFincaItem() {
 
-    return Container(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
 
-      color: Colors.white,
+      child: Container(
 
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 4,
-      ),
+        decoration: BoxDecoration(
+          color: Colors.white,
 
-      child: _rowItem(
-        label: 'Mi finca',
-        valor:
-            _finca?['nombreFinca'] ??
-            'Sin finca registrada',
-        icono: Icons.park_outlined,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(22),
+            topRight: Radius.circular(22),
+          ),
+
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 6,
+        ),
+
+        child: _rowItem(
+          label: 'Mi finca',
+          valor:
+              _finca?['nombreFinca'] ??
+              'Sin finca registrada',
+          icono: Icons.park_outlined,
+        ),
       ),
     );
   }
 
   Widget _buildInfoSection() {
 
-    return Container(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
 
-      color: Colors.white,
+      child: Container(
 
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 4,
-      ),
+        decoration: BoxDecoration(
+          color: Colors.white,
 
-      child: Column(
-        children: [
-
-          _rowItem(
-            label: 'Área total',
-            valor:
-                '${_finca?['areaHectareas'] ?? '0'} hectáreas',
-            icono: Icons.straighten_outlined,
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(22),
+            bottomRight: Radius.circular(22),
           ),
 
-          _divider(),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
 
-          _rowItem(
-            label: 'Altitud',
-            valor:
-                '${_finca?['altitudMsnm'] ?? '0'} msnm',
-            icono: Icons.terrain_outlined,
-          ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 4,
+        ),
 
-          _divider(),
+        child: Column(
+          children: [
 
-          _rowItem(
-            label: 'Municipio',
-            valor:
-                _finca?['municipio'] ??
-                'No registrado',
-            icono: Icons.location_on_outlined,
-          ),
+            _rowItem(
+              label: 'Área total',
+              valor:
+                  '${_finca?['areaHectareas'] ?? '0'} hectáreas',
+              icono: Icons.straighten_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Teléfono',
-            valor:
-                _usuarioData['telefono'] ??
-                'No registrado',
-            icono: Icons.phone_outlined,
-          ),
+            _rowItem(
+              label: 'Altitud',
+              valor:
+                  '${_finca?['altitudMsnm'] ?? '0'} msnm',
+              icono: Icons.terrain_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Cédula',
-            valor:
-                _usuarioData['cedula'] ??
-                'No registrada',
-            icono: Icons.badge_outlined,
-          ),
+            _rowItem(
+              label: 'Municipio',
+              valor:
+                  _finca?['municipio'] ??
+                  'No registrado',
+              icono: Icons.location_on_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Vereda',
-            valor:
-                _finca?['vereda'] ??
-                'No registrada',
-            icono: Icons.map_outlined,
-          ),
+            _rowItem(
+              label: 'Teléfono',
+              valor:
+                  _usuarioData['telefono'] ??
+                  'No registrado',
+              icono: Icons.phone_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Departamento',
-            valor:
-                _finca?['departamento'] ??
-                'No registrado',
-            icono: Icons.location_city_outlined,
-          ),
+            _rowItem(
+              label: 'Cédula',
+              valor:
+                  _usuarioData['cedula'] ??
+                  'No registrada',
+              icono: Icons.badge_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Cultivo principal',
-            valor:
-                _finca?['cultivoPrincipal'] ??
-                'No registrado',
-            icono: Icons.eco_outlined,
-          ),
+            _rowItem(
+              label: 'Vereda',
+              valor:
+                  _finca?['vereda'] ??
+                  'No registrada',
+              icono: Icons.map_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Cantidad de árboles',
-            valor:
-                '${_finca?['cantidadArboles'] ?? '0'}',
-            icono: Icons.forest_outlined,
-          ),
+            _rowItem(
+              label: 'Departamento',
+              valor:
+                  _finca?['departamento'] ??
+                  'No registrado',
+              icono: Icons.location_city_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Producción mensual',
-            valor:
-                '${_finca?['produccionMensual'] ?? '0'} kg',
-            icono: Icons.agriculture_outlined,
-          ),
+            _rowItem(
+              label: 'Cultivo principal',
+              valor:
+                  _finca?['cultivoPrincipal'] ??
+                  'No registrado',
+              icono: Icons.eco_outlined,
+            ),
 
-          _divider(),
+            _divider(),
 
-          _rowItem(
-            label: 'Asociación',
-            valor:
-                _usuarioData['asociacion'] ??
-                'No registrada',
-            icono: Icons.groups_outlined,
-          ),
-        ],
+            _rowItem(
+              label: 'Cantidad de árboles',
+              valor:
+                  '${_finca?['cantidadArboles'] ?? '0'}',
+              icono: Icons.forest_outlined,
+            ),
+
+            _divider(),
+
+            _rowItem(
+              label: 'Producción mensual',
+              valor:
+                  '${_finca?['produccionMensual'] ?? '0'} kg',
+              icono: Icons.agriculture_outlined,
+            ),
+
+            _divider(),
+
+            _rowItem(
+              label: 'Asociación',
+              valor:
+                  _usuarioData['asociacion'] ??
+                  'No registrada',
+              icono: Icons.groups_outlined,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -935,7 +664,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required String valor,
     required IconData icono,
-    bool conFlecha = false,
   }) {
 
     return Padding(
@@ -984,14 +712,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-
-          if (conFlecha)
-
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: AppColors.textSecondary,
-            ),
         ],
       ),
     );

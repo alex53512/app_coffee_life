@@ -8,23 +8,23 @@ class AppColors {
   // =========================================================
 
   // VERDE PRINCIPAL
-  static const Color primary = Color(0xFF658C21);
+  static const Color primary = Color(0xFF5B7B1F);
 
   // VERDE OSCURO
   static const Color primaryDark = Color(0xFF2E7D32);
 
   // VERDE CLARO
-  static const Color primaryLight = Color(0xFFE6EFD2);
+  static const Color primaryLight = Color(0xFFDEEBB8);
 
   // VERDE ACTIVO
-  static const Color primaryActive = Color(0xFF78A12A);
+  static const Color primaryActive = Color(0xFF5B7B1F);
 
   // =========================================================
   // FONDOS
   // =========================================================
 
   // FONDO CREMA EXACTO
-  static const Color background = Color(0xFFEFDEC0);
+  static const Color background = Color(0xFFEDE0C4);
 
   // OLAS DECORATIVAS
   static const Color wave = Color(0xFFE7D4B1);
@@ -53,7 +53,7 @@ class AppColors {
   // BORDES
   // =========================================================
 
-  static const Color border = Color(0xFFE8DCC7);
+  static const Color border = Color(0xFFDDDDDD);
 
   // =========================================================
   // SOMBRAS
@@ -74,8 +74,6 @@ class AppColors {
   // =========================================================
   // COMPATIBILIDAD
   // =========================================================
-
-  // PARA EVITAR ERRORES EN OTRAS PANTALLAS
 
   static const Color surface = Colors.white;
 
@@ -156,7 +154,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
 
         backgroundColor:
-            Colors.white,
+            AppColors.background,
 
         foregroundColor:
             AppColors.textPrimary,
@@ -202,10 +200,10 @@ class AppTheme {
           foregroundColor:
               Colors.white,
 
-          elevation: 2,
+          elevation: 0,
 
           shadowColor:
-              Colors.black.withOpacity(0.12),
+              Colors.transparent,
 
           minimumSize:
               const Size(
@@ -216,15 +214,14 @@ class AppTheme {
           shape:
               RoundedRectangleBorder(
             borderRadius:
-                BorderRadius.circular(
-                    18),
+                BorderRadius.circular(28),
           ),
 
           textStyle:
               GoogleFonts.nunito(
             fontSize: 16,
             fontWeight:
-                FontWeight.w800,
+                FontWeight.w700,
           ),
         ),
       ),
@@ -240,7 +237,7 @@ class AppTheme {
             OutlinedButton.styleFrom(
 
           foregroundColor:
-              AppColors.primary,
+              AppColors.textPrimary,
 
           backgroundColor:
               Colors.white,
@@ -255,21 +252,20 @@ class AppTheme {
               const BorderSide(
             color:
                 AppColors.border,
-            width: 1.4,
+            width: 1.2,
           ),
 
           shape:
               RoundedRectangleBorder(
             borderRadius:
-                BorderRadius.circular(
-                    18),
+                BorderRadius.circular(28),
           ),
 
           textStyle:
               GoogleFonts.nunito(
             fontSize: 15,
             fontWeight:
-                FontWeight.w700,
+                FontWeight.w600,
           ),
         ),
       ),
@@ -303,14 +299,13 @@ class AppTheme {
             OutlineInputBorder(
 
           borderRadius:
-              BorderRadius.circular(
-                  18),
+              BorderRadius.circular(18),
 
           borderSide:
               const BorderSide(
             color:
                 AppColors.border,
-            width: 1.4,
+            width: 1.2,
           ),
         ),
 
@@ -318,8 +313,7 @@ class AppTheme {
             OutlineInputBorder(
 
           borderRadius:
-              BorderRadius.circular(
-                  18),
+              BorderRadius.circular(18),
 
           borderSide:
               const BorderSide(
@@ -333,8 +327,7 @@ class AppTheme {
             OutlineInputBorder(
 
           borderRadius:
-              BorderRadius.circular(
-                  18),
+              BorderRadius.circular(18),
 
           borderSide:
               const BorderSide(
@@ -348,8 +341,7 @@ class AppTheme {
             OutlineInputBorder(
 
           borderRadius:
-              BorderRadius.circular(
-                  18),
+              BorderRadius.circular(18),
 
           borderSide:
               const BorderSide(
@@ -369,31 +361,22 @@ class AppTheme {
         color:
             Colors.white,
 
-        elevation: 0,
+        elevation: 2,
 
         margin:
             EdgeInsets.zero,
 
         shadowColor:
-            Colors.black.withOpacity(
-                0.05),
+            Colors.black.withOpacity(0.08),
 
         surfaceTintColor:
             Colors.transparent,
 
         shape:
             RoundedRectangleBorder(
-
           borderRadius:
-              BorderRadius.circular(
-                  22),
-
-          side:
-              const BorderSide(
-            color:
-                AppColors.border,
-            width: 1,
-          ),
+              BorderRadius.circular(20),
+          side: BorderSide.none,
         ),
       ),
 

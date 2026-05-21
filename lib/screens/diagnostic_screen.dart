@@ -54,7 +54,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color.fromARGB(255, 234, 229, 219),
       body: SafeArea(
         child: Column(
           children: [
@@ -77,7 +77,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: const Color.fromARGB(255, 208, 196, 171),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
