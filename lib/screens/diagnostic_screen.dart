@@ -119,7 +119,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           const SizedBox(height: 8),
           _buildIntro(),
           const SizedBox(height: 20),
-          // ── Selector de cultivo ──────────────────────────────
           _buildCultivoSelector(),
           const SizedBox(height: 20),
           _buildViewfinder(),
@@ -695,23 +694,44 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       final fechaStr =
           '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
 
-      // 1. Crear el monitoreo
-      await ApiService.post('/monitoreos', {
+      print('>>> Intentando crear monitoreo...');
+      print('>>> id_cultivo: $_cultivoSeleccionado');
+      print('>>> fecha: $fechaStr');
+
+      // 1. Crear el monitoreo y capturar su ID
+      final monitoreoResp = await ApiService.post('/monitoreos', {
         'id_cultivo': _cultivoSeleccionado,
         'fecha_monitoreo': fechaStr,
         'observaciones': '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% — $_scientificName',
       });
 
-      // 2. Guardar el análisis IA
+      print('>>> Respuesta monitoreo: $monitoreoResp');
+
+      final idMonitoreo = monitoreoResp['data']?['idMonitoreo'];
+      print('>>> idMonitoreo capturado: $idMonitoreo');
+
+      // 2. Guardar el análisis IA relacionado al monitoreo
       await ApiService.post('/analisis_ia', {
         'resultado': _diagnosisText,
         'confianza': (_confidence * 100).round(),
         'version_modelo': '1.0',
         'id_estado_analisis': 1,
+        if (idMonitoreo != null) 'id_monitoreo': idMonitoreo,
       });
 
+      print('>>> Todo guardado correctamente ✓');
+
     } catch (e) {
-      print('Error guardando monitoreo/análisis: $e');
+      print('>>> ERROR: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
     }
 
     if (mounted) setState(() => _stage = 'result');
