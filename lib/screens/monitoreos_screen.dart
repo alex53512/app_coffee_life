@@ -1,70 +1,66 @@
-import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../services/app_state.dart';
 import 'monitoreo_detalle_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-
+ 
 class MontoreosScreen extends StatefulWidget {
   const MontoreosScreen({super.key});
-
+ 
   @override
   State<MontoreosScreen> createState() => _MontoreosScreenState();
 }
-
+ 
 class _MontoreosScreenState extends State<MontoreosScreen> {
   int _tabIndex = 0;
   bool _cargando = true;
   String? _error;
   List _monitoreos = [];
-  Timer? _timer;
-
+ 
   @override
   void initState() {
     super.initState();
     _cargarMonitoreos();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_tabIndex == 1) _cargarMonitoreos();
-    });
+    AppState.instance.addListener(_onFincaCambiada);
   }
-
+ 
+  void _onFincaCambiada() {
+    _cargarMonitoreos();
+  }
+ 
   @override
   void dispose() {
-    _timer?.cancel();
+    AppState.instance.removeListener(_onFincaCambiada);
     super.dispose();
   }
-
+ 
   Future<void> _cargarMonitoreos() async {
     setState(() {
       _cargando = true;
       _error = null;
     });
-
+ 
     try {
       final data = await ApiService.get('/monitoreos');
-      final monitoreos = data is List ? data : (data['data'] ?? []);
-
-      // Por cada monitoreo buscamos el cultivo completo que sí trae la finca
-      for (int i = 0; i < monitoreos.length; i++) {
-        final idCultivo = monitoreos[i]['cultivo']?['idCultivo'] ??
-            monitoreos[i]['idCultivo'] ??
-            monitoreos[i]['id_cultivo'];
-
-        if (idCultivo != null) {
-          try {
-            final cultivo = await ApiService.get('/cultivos/$idCultivo');
-            monitoreos[i]['cultivo'] = cultivo;
-          } catch (_) {
-            // Si falla uno, seguimos con los demás
-          }
-        }
-      }
-
+      final todos = data is List ? data : (data['data'] ?? []);
+ 
+      // Filtrar por cultivos de la finca seleccionada en AppState
+      final cultivosFinca = AppState.instance.cultivosFinca;
+      final idsCultivos = cultivosFinca
+          .map((c) => (c['idCultivo'] ?? c['id_cultivo']).toString())
+          .toSet();
+ 
       setState(() {
-        _monitoreos = monitoreos;
+        _monitoreos = idsCultivos.isEmpty
+            ? todos
+            : todos.where((m) {
+                final idCultivo =
+                    (m['idCultivo'] ?? m['id_cultivo'])?.toString() ?? '';
+                return idsCultivos.contains(idCultivo);
+              }).toList();
         _cargando = false;
       });
     } catch (e) {
@@ -74,19 +70,19 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       });
     }
   }
-
+ 
   Future<void> _eliminarMonitoreo(dynamic m) async {
     final id = m['idMonitoreo'] ?? m['id_monitoreo'];
-
+ 
     try {
       await ApiService.delete('/monitoreos/$id');
-
+ 
       setState(() {
         _monitoreos.removeWhere(
           (item) => (item['idMonitoreo'] ?? item['id_monitoreo']) == id,
         );
       });
-
+ 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -103,7 +99,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       }
     }
   }
-
+ 
   Future<void> _confirmarEliminar(dynamic m) async {
     final confirmado = await showDialog<bool>(
       context: context,
@@ -135,24 +131,25 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         ],
       ),
     );
-
+ 
     if (confirmado == true) {
       _eliminarMonitoreo(m);
     }
   }
-
+ 
+  // ── Nivel calculado desde observaciones ─────────────────────────
   String _labelNivel(dynamic m) {
     final obs = (m['observaciones'] ?? m['cultivo']?['observaciones'] ?? '')
         .toString()
         .toLowerCase();
-
+ 
     if (obs.contains('alto') ||
         obs.contains('roya detectado') ||
         obs.contains('critico') ||
         obs.contains('enfermedad')) {
       return 'Alto';
     }
-
+ 
     if (obs.contains('medio') ||
         obs.contains('manchas') ||
         obs.contains('sospechosas') ||
@@ -160,32 +157,32 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         obs.contains('observacion')) {
       return 'Medio';
     }
-
+ 
     return 'Bajo';
   }
-
+ 
   Color _colorNivel(dynamic m) {
     final nivel = _labelNivel(m).toLowerCase();
     if (nivel.contains('alt')) return Colors.red;
     if (nivel.contains('med')) return Colors.orange;
     return AppColors.primary;
   }
-
+ 
   String _titulo(dynamic m) {
     final nivel = _labelNivel(m).toLowerCase();
     if (nivel.contains('alt')) return 'Roya encontrada';
     if (nivel.contains('med')) return 'Riesgo medio';
     return 'Riesgo bajo';
   }
-
+ 
   String _fecha(dynamic m) {
     final f = m['fechaMonitoreo'] ??
         m['fecha_monitoreo'] ??
         m['fechaRegistro'] ??
         '';
-
+ 
     if (f.isEmpty) return 'Sin fecha';
-
+ 
     try {
       final dt = DateTime.parse(f);
       const meses = [
@@ -197,7 +194,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       return f;
     }
   }
-
+ 
   String _parcela(dynamic m) {
     return m['cultivo']?['finca']?['nombreFinca'] ??
         m['finca']?['nombreFinca'] ??
@@ -205,36 +202,23 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         m['cultivo']?['nombreCultivo'] ??
         'Sin finca';
   }
-
+ 
   String? _imagenUrl(dynamic m) {
     final imagenes = m['imagenes'];
-
+ 
     if (imagenes == null || imagenes is! List || imagenes.isEmpty) {
       return null;
     }
-
+ 
     final ruta = imagenes[0]['rutaImagen'] ?? imagenes[0]['ruta_imagen'];
-
+ 
     if (ruta == null || ruta.toString().isEmpty) return null;
-
+ 
     if (ruta.toString().startsWith('http')) return ruta.toString();
-
+ 
     return 'https://coffeelife-api.up.railway.app/$ruta';
   }
-
-  List<LatLng> _generarPoligono(double lat, double lng, double areaHa) {
-    final ladoMetros = sqrt(areaHa * 10000) / 2;
-    final ladoLat = ladoMetros / 111000;
-    final ladoLng = ladoMetros / (111000 * cos(lat * pi / 180));
-
-    return [
-      LatLng(lat + ladoLat, lng - ladoLng),
-      LatLng(lat + ladoLat, lng + ladoLng),
-      LatLng(lat - ladoLat, lng + ladoLng),
-      LatLng(lat - ladoLat, lng - ladoLng),
-    ];
-  }
-
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -262,7 +246,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 90,
@@ -329,7 +313,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _buildTabs() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -354,10 +338,10 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _tabItem(String label, int index) {
     final isActive = _tabIndex == index;
-
+ 
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _tabIndex = index),
@@ -381,7 +365,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _buildError() {
     return Center(
       child: Column(
@@ -404,7 +388,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _buildHistorial() {
     if (_monitoreos.isEmpty) {
       return Center(
@@ -424,7 +408,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         ),
       );
     }
-
+ 
     return RefreshIndicator(
       onRefresh: _cargarMonitoreos,
       color: AppColors.primary,
@@ -436,7 +420,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _monitoreoCard(dynamic m) {
     final color = _colorNivel(m);
     final nivel = _labelNivel(m);
@@ -444,7 +428,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     final fecha = _fecha(m);
     final parcela = _parcela(m);
     final imgUrl = _imagenUrl(m);
-
+ 
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -551,7 +535,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _iconoFallback(Color color) {
     return Container(
       width: 56,
@@ -563,154 +547,25 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       child: Icon(Icons.eco_rounded, color: color, size: 26),
     );
   }
-
+ 
   Widget _buildMapa() {
-    final poligonos = <Polygon>[];
-    final marcadores = <Marker>[];
-    LatLng? centroInicial;
-
-    final Map<int, dynamic> fincasVistas = {};
-
-    for (final m in _monitoreos) {
-      final finca = m['cultivo']?['finca'];
-      if (finca == null) continue;
-
-      final idFinca = finca['idFinca'] ?? finca['id_finca'];
-      final lat = double.tryParse(finca['latitud']?.toString() ?? '');
-      final lng = double.tryParse(finca['longitud']?.toString() ?? '');
-      if (lat == null || lng == null) continue;
-
-      centroInicial ??= LatLng(lat, lng);
-
-      if (fincasVistas.containsKey(idFinca)) {
-        final nivelExistente = _labelNivel(fincasVistas[idFinca]);
-        final nivelNuevo = _labelNivel(m);
-        final prioridad = {'Alto': 3, 'Medio': 2, 'Bajo': 1};
-        if ((prioridad[nivelNuevo] ?? 0) > (prioridad[nivelExistente] ?? 0)) {
-          fincasVistas[idFinca] = m;
-        }
-        continue;
-      }
-      fincasVistas[idFinca] = m;
-    }
-
-    for (final entry in fincasVistas.entries) {
-      final m = entry.value;
-      final finca = m['cultivo']?['finca'];
-      final lat = double.tryParse(finca['latitud'].toString());
-      final lng = double.tryParse(finca['longitud'].toString());
-      if (lat == null || lng == null) continue;
-
-      final areaHa = double.tryParse(
-            finca['areaHectareas']?.toString() ?? '',
-          ) ??
-          1.0;
-
-      final color = _colorNivel(m);
-      final nombre = finca['nombreFinca'] ?? 'Lote';
-      final puntos = _generarPoligono(lat, lng, areaHa);
-
-      poligonos.add(
-        Polygon(
-          points: puntos,
-          color: color.withOpacity(0.30),
-          borderColor: color,
-          borderStrokeWidth: 2.5,
-          label: nombre,
-          labelStyle: GoogleFonts.nunito(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-            shadows: [
-              const Shadow(color: Colors.black54, blurRadius: 4),
-            ],
-          ),
-        ),
-      );
-
-      marcadores.add(
-        Marker(
-          point: LatLng(lat, lng),
-          width: 32,
-          height: 32,
-          child: Container(
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withOpacity(0.5),
-                  blurRadius: 6,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: const Icon(Icons.eco_rounded, color: Colors.white, size: 16),
-          ),
-        ),
-      );
-    }
-
-    final sinCoordenadas = _monitoreos.where((m) {
-      final finca = m['cultivo']?['finca'];
-      if (finca == null) return true;
-      final lat = double.tryParse(finca['latitud']?.toString() ?? '');
-      final lng = double.tryParse(finca['longitud']?.toString() ?? '');
-      return lat == null || lng == null;
-    }).length;
-
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Mapa de riesgo',
-                    style: GoogleFonts.nunito(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'En vivo',
-                        style: GoogleFonts.nunito(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              'Mapa de riesgo',
+              style: GoogleFonts.nunito(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 14),
             Container(
-              height: 380,
+              height: 320,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -726,9 +581,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: FlutterMap(
-                  options: MapOptions(
-                    initialCenter: centroInicial ?? const LatLng(5.0689, -75.5174),
-                    initialZoom: poligonos.isNotEmpty ? 14.0 : 8.0,
+                  options: const MapOptions(
+                    initialCenter: LatLng(5.0689, -75.5174),
+                    initialZoom: 8.0,
                   ),
                   children: [
                     TileLayer(
@@ -736,10 +591,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.coffeelife.app',
                     ),
-                    if (poligonos.isNotEmpty)
-                      PolygonLayer(polygons: poligonos),
-                    if (marcadores.isNotEmpty)
-                      MarkerLayer(markers: marcadores),
                   ],
                 ),
               ),
@@ -758,66 +609,21 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Referencias',
-                    style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   _legendaItem(Colors.red, 'Alto riesgo'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _legendaItem(Colors.orange, 'Medio riesgo'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _legendaItem(AppColors.primary, 'Bajo riesgo'),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${poligonos.length} lote${poligonos.length != 1 ? 's' : ''} visible${poligonos.length != 1 ? 's' : ''}',
-                    style: GoogleFonts.nunito(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
                 ],
               ),
             ),
-            if (sinCoordenadas > 0) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: Colors.orange, size: 18),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '$sinCoordenadas monitoreo${sinCoordenadas != 1 ? 's' : ''} sin coordenadas de finca registradas.',
-                        style: GoogleFonts.nunito(
-                          fontSize: 12,
-                          color: Colors.orange.shade800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
-
+ 
   Widget _legendaItem(Color color, String label) {
     return Row(
       children: [
@@ -829,7 +635,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
             borderRadius: BorderRadius.circular(3),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Text(
           label,
           style: GoogleFonts.nunito(
