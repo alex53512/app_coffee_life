@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
@@ -16,16 +19,21 @@ class DiagnosticScreen extends StatefulWidget {
 class _DiagnosticScreenState extends State<DiagnosticScreen> {
   String _stage = 'idle';
   final _picker = ImagePicker();
-  String? _imagenPath;
+  XFile? _imagenFile;
+  Uint8List? _imagenBytes;
  
   List _cultivos = [];
   int? _cultivoSeleccionado;
  
-  static const _diagnosisText  = 'Roya encontrada';
-  static const _scientificName = 'Hemileia vastatrix';
-  static const double _confidence = 0.92;
-  static const _severity      = 'Alta';
-  static const _severityColor = Color(0xFFD32F2F);
+  // ── Resultados reales de la IA ────────────────────────────
+  static const String _iaBaseUrl = 'http://10.219.21.128:8000';
+ 
+  String _diagnosisText  = '';
+  String _scientificName = '';
+  double _confidence     = 0.0;
+  String _severity       = '';
+  Color  _severityColor  = AppColors.primary;
+  List<Map<String, dynamic>> _detections = [];
  
   @override
   void initState() {
@@ -40,9 +48,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     super.dispose();
   }
  
-  void _onFincaCambiada() {
-    _cargarDesdeAppState();
-  }
+  void _onFincaCambiada() => _cargarDesdeAppState();
  
   void _cargarDesdeAppState() {
     final cultivos = AppState.instance.cultivosFinca;
@@ -52,12 +58,51 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           ? (_cultivos[0]['idCultivo'] ?? _cultivos[0]['id_cultivo'])
           : null;
       _stage = 'idle';
-      _imagenPath = null;
+      _imagenFile = null;
+      _imagenBytes = null;
     });
   }
  
   String get _nombreFinca =>
       AppState.instance.fincaSeleccionada?['nombreFinca'] ?? 'Mi Finca';
+ 
+  // ── Lógica de severidad ───────────────────────────────────
+  void _procesarDetecciones(List detections) {
+    if (detections.isEmpty) {
+      _diagnosisText  = 'Planta sana';
+      _scientificName = 'Sin patógenos detectados';
+      _confidence     = 1.0;
+      _severity       = 'Ninguna';
+      _severityColor  = AppColors.primary;
+      _detections     = [];
+      return;
+    }
+ 
+    final top = detections[0];
+    final conf = (top['confidence'] as num).toDouble();
+    final clase = (top['class'] as String).toLowerCase();
+ 
+    _confidence     = conf;
+    _detections     = List<Map<String, dynamic>>.from(detections);
+    _scientificName = 'Hemileia vastatrix';
+ 
+    if (clase.contains('roya') || clase.contains('rust')) {
+      _diagnosisText = 'Roya encontrada';
+    } else {
+      _diagnosisText = clase[0].toUpperCase() + clase.substring(1);
+    }
+ 
+    if (conf >= 0.75) {
+      _severity      = 'Alta';
+      _severityColor = const Color(0xFFD32F2F);
+    } else if (conf >= 0.45) {
+      _severity      = 'Media';
+      _severityColor = const Color(0xFFE65100);
+    } else {
+      _severity      = 'Baja';
+      _severityColor = const Color(0xFF388E3C);
+    }
+  }
  
   @override
   Widget build(BuildContext context) {
@@ -94,7 +139,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 color: AppColors.textPrimary, size: 20),
             onPressed: () {
               if (_stage != 'idle') {
-                setState(() { _stage = 'idle'; _imagenPath = null; });
+                setState(() { _stage = 'idle'; _imagenFile = null; _imagenBytes = null; });
               } else {
                 Navigator.pop(context);
               }
@@ -106,12 +151,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               children: [
                 Text('Diagnóstico',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.nunito(
+                    style: GoogleFonts.dmSans(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary)),
                 Text(_nombreFinca,
-                    style: GoogleFonts.nunito(
+                    style: GoogleFonts.dmSans(
                         fontSize: 11,
                         color: AppColors.textSecondary)),
               ],
@@ -150,10 +195,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             onPressed: _cultivoSeleccionado == null ? null : _onSelectGallery,
             icon: const Icon(Icons.photo_library_outlined, size: 20),
             label: Text('Seleccionar de galería',
-                style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(height: 20),
-          _buildFileSizeNote(),
           const SizedBox(height: 20),
         ],
       ),
@@ -169,20 +212,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFFFB74D)),
         ),
-        child: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded,
-                color: Color(0xFFE65100), size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Esta finca no tiene cultivos registrados.',
-                style: GoogleFonts.nunito(
-                    fontSize: 13, color: const Color(0xFFE65100)),
-              ),
-            ),
-          ],
-        ),
+        child: Text('Esta finca no tiene cultivos registrados.',
+            style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFE65100))),
       );
     }
  
@@ -190,7 +221,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Selecciona el cultivo',
-            style: GoogleFonts.nunito(
+            style: GoogleFonts.dmSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary)),
@@ -201,33 +232,27 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.04), blurRadius: 6)
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               isExpanded: true,
               value: _cultivoSeleccionado,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.primary),
-              style: GoogleFonts.nunito(
-                  fontSize: 14, color: AppColors.textPrimary),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+              style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textPrimary),
               items: _cultivos.map<DropdownMenuItem<int>>((c) {
                 final id     = (c['idCultivo'] ?? c['id_cultivo']) as int;
                 final nombre = c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo $id';
                 return DropdownMenuItem<int>(
                   value: id,
                   child: Text(nombre,
-                      style: GoogleFonts.nunito(
+                      style: GoogleFonts.dmSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                 );
               }).toList(),
-              onChanged: (val) =>
-                  setState(() => _cultivoSeleccionado = val),
+              onChanged: (val) => setState(() => _cultivoSeleccionado = val),
             ),
           ),
         ),
@@ -238,15 +263,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   Widget _buildIntro() {
     return Column(
       children: [
-        Container(
-          width: 60, height: 60,
-          
-         //aquiiiiiiiiiiiiiiiiiiiiiiiiii
-        ),
         const SizedBox(height: 14),
         Text('Diagnostica la roya\nde tu planta',
             textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
+            style: GoogleFonts.dmSans(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
@@ -254,7 +274,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         const SizedBox(height: 8),
         Text('Toma una foto de la hoja de café para\nidentificar si tiene síntomas de roya.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
+            style: GoogleFonts.dmSans(
                 fontSize: 14,
                 color: AppColors.textSecondary,
                 height: 1.4)),
@@ -292,8 +312,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text('Toca para capturar',
-                      style: GoogleFonts.nunito(
-                          color: Colors.white70, fontSize: 13)),
+                      style: GoogleFonts.dmSans(color: Colors.white70, fontSize: 13)),
                 ],
               ),
             ),
@@ -305,38 +324,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
  
   Widget _corner({required bool top, required bool left}) {
     return Positioned(
-      top: top ? 14 : null,
-      bottom: top ? null : 14,
-      left: left ? 14 : null,
-      right: left ? null : 14,
+      top: top ? 14 : null, bottom: top ? null : 14,
+      left: left ? 14 : null, right: left ? null : 14,
       child: SizedBox(
         width: 22, height: 22,
         child: CustomPaint(painter: _CornerPainter(top: top, left: left)),
-      ),
-    );
-  }
- 
-  Widget _buildFileSizeNote() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFB74D)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline_rounded,
-              color: Color(0xFFE65100), size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'La imagen debe tener un tamaño máximo de 3 KB para garantizar el análisis correcto.',
-              style: GoogleFonts.nunito(
-                  fontSize: 12, color: const Color(0xFFE65100)),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -361,14 +353,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             ),
             const SizedBox(height: 28),
             Text('Analizando imagen...',
-                style: GoogleFonts.nunito(
+                style: GoogleFonts.dmSans(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 10),
             Text('El modelo de IA está procesando la hoja.\nEsto tomará unos segundos.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
+                style: GoogleFonts.dmSans(
                     fontSize: 14,
                     color: AppColors.textSecondary,
                     height: 1.5)),
@@ -404,11 +396,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           OutlinedButton.icon(
             onPressed: () => setState(() {
               _stage = 'idle';
-              _imagenPath = null;
+              _imagenFile = null;
+              _imagenBytes = null;
             }),
             icon: const Icon(Icons.add_a_photo_outlined, size: 20),
             label: Text('Nuevo diagnóstico',
-                style: GoogleFonts.nunito(fontWeight: FontWeight.w600)),
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 20),
         ],
@@ -421,13 +414,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: _imagenPath != null
-              ? Image.network(
-                  _imagenPath!,
+          child: _imagenBytes != null
+              ? Image.memory(
+                  _imagenBytes!,
                   width: double.infinity,
                   height: 190,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _placeholderImage(),
                 )
               : _placeholderImage(),
         ),
@@ -438,19 +430,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             decoration: BoxDecoration(
                 color: _severityColor,
                 borderRadius: BorderRadius.circular(20)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.warning_amber_rounded,
-                    color: Colors.white, size: 13),
-                const SizedBox(width: 4),
-                Text('Riesgo $_severity',
-                    style: GoogleFonts.nunito(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white)),
-              ],
-            ),
+            child: Text('Riesgo $_severity',
+                style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white)),
           ),
         ),
       ],
@@ -488,12 +472,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Diagnóstico',
-                      style: GoogleFonts.nunito(
+                      style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w600)),
                   Text(_diagnosisText,
-                      style: GoogleFonts.nunito(
+                      style: GoogleFonts.dmSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: _severityColor)),
@@ -517,6 +501,13 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   }
  
   Widget _buildConfidenceCard() {
+    final pct = (_confidence * 100).round();
+    final label = pct >= 75
+        ? 'Alta precisión – resultado confiable'
+        : pct >= 45
+            ? 'Precisión media – revisar con un experto'
+            : 'Baja precisión – se recomienda nueva foto';
+ 
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,12 +516,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Confianza del modelo',
-                  style: GoogleFonts.nunito(
+                  style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
-              Text('${(_confidence * 100).round()}%',
-                  style: GoogleFonts.nunito(
+              Text('$pct%',
+                  style: GoogleFonts.dmSans(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary)),
@@ -542,14 +533,13 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             child: LinearProgressIndicator(
               value: _confidence,
               backgroundColor: AppColors.border,
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor: AlwaysStoppedAnimation<Color>(_severityColor),
               minHeight: 10,
             ),
           ),
           const SizedBox(height: 8),
-          Text('Alta precisión – resultado confiable',
-              style: GoogleFonts.nunito(
+          Text(label,
+              style: GoogleFonts.dmSans(
                   fontSize: 12, color: AppColors.textSecondary)),
         ],
       ),
@@ -557,21 +547,32 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   }
  
   Widget _buildRecommendationsCard() {
-    final recs = [
-      _Rec(Icons.medication_outlined, const Color(0xFF1565C0),
-          'Aplicar fungicida recomendado', 'Fungicida Cúprico 250g/200L agua'),
-      _Rec(Icons.air_outlined, const Color(0xFF2E7D32),
-          'Mejorar ventilación del cultivo', 'Poda para mayor aireación'),
-      _Rec(Icons.delete_outline_rounded, const Color(0xFFE65100),
-          'Eliminar hojas afectadas', 'Retirar y destruir hojas con síntomas'),
-    ];
+    final bool tieneRoya = _diagnosisText.toLowerCase().contains('roya');
+ 
+    final recs = tieneRoya
+        ? [
+            _Rec(Icons.medication_outlined, const Color(0xFF1565C0),
+                'Aplicar fungicida recomendado', 'Fungicida Cúprico 250g/200L agua'),
+            _Rec(Icons.air_outlined, const Color(0xFF2E7D32),
+                'Mejorar ventilación del cultivo', 'Poda para mayor aireación'),
+            _Rec(Icons.delete_outline_rounded, const Color(0xFFE65100),
+                'Eliminar hojas afectadas', 'Retirar y destruir hojas con síntomas'),
+          ]
+        : [
+            _Rec(Icons.check_circle_outline, AppColors.primary,
+                'Planta en buen estado', 'Continúa con el manejo habitual'),
+            _Rec(Icons.water_drop_outlined, const Color(0xFF1565C0),
+                'Mantén el riego adecuado', 'Riega según las condiciones del clima'),
+            _Rec(Icons.search_outlined, const Color(0xFF388E3C),
+                'Monitorea regularmente', 'Revisa las hojas cada 15 días'),
+          ];
  
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Recomendaciones',
-              style: GoogleFonts.nunito(
+              style: GoogleFonts.dmSans(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary)),
@@ -597,12 +598,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(rec.title,
-                              style: GoogleFonts.nunito(
+                              style: GoogleFonts.dmSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary)),
                           Text(rec.subtitle,
-                              style: GoogleFonts.nunito(
+                              style: GoogleFonts.dmSans(
                                   fontSize: 12,
                                   color: AppColors.textSecondary)),
                         ],
@@ -647,10 +648,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: GoogleFonts.nunito(
-                fontSize: 13, color: AppColors.textSecondary)),
+            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.textSecondary)),
         Text(value,
-            style: GoogleFonts.nunito(
+            style: GoogleFonts.dmSans(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: valueColor ?? AppColors.textPrimary,
@@ -667,8 +667,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       imageQuality: 80,
     );
     if (foto != null) {
-      setState(() => _imagenPath = foto.path);
-      _startAnalysis();
+      final bytes = await foto.readAsBytes();
+      setState(() { _imagenFile = foto; _imagenBytes = bytes; });
+      _startAnalysis(foto, bytes);
     }
   }
  
@@ -679,40 +680,71 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       imageQuality: 80,
     );
     if (foto != null) {
-      setState(() => _imagenPath = foto.path);
-      _startAnalysis();
+      final bytes = await foto.readAsBytes();
+      setState(() { _imagenFile = foto; _imagenBytes = bytes; });
+      _startAnalysis(foto, bytes);
     }
   }
  
-  Future<void> _startAnalysis() async {
-    setState(() => _stage = 'analyzing');
- 
-    try {
-      await Future.delayed(const Duration(seconds: 2));
- 
-      final hoy = DateTime.now();
-      final fechaStr =
-          '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
- 
-      await ApiService.post('/monitoreos', {
-        'id_cultivo': _cultivoSeleccionado,
-        'fecha_monitoreo': fechaStr,
-        'observaciones': '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% — $_scientificName',
-      });
- 
-      await ApiService.post('/analisis_ia', {
-        'resultado': _diagnosisText,
-        'confianza': (_confidence * 100).round(),
-        'version_modelo': '1.0',
-        'id_estado_analisis': 1,
-      });
- 
-    } catch (e) {
-      print('Error guardando monitoreo/análisis: $e');
+  Future<void> _startAnalysis(XFile foto, Uint8List bytes) async {
+  setState(() => _stage = 'analyzing');
+
+  // ── 1) Llamada a la IA (independiente) ───────────────
+  try {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_iaBaseUrl/predict'),
+    );
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: foto.name.isNotEmpty ? foto.name : 'imagen.jpg',
+    ));
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    // 👇 IMPORTANTE: imprime para ver qué te devuelve realmente
+    debugPrint('Respuesta IA: ${response.body}');
+
+    final jsonData = jsonDecode(response.body);
+
+    if (jsonData['success'] == true) {
+      _procesarDetecciones(jsonData['detections'] ?? []);
+    } else {
+      _procesarDetecciones([]);
     }
- 
-    if (mounted) setState(() => _stage = 'result');
+  } catch (e) {
+    debugPrint('❌ Error llamando a la IA: $e');
+    _procesarDetecciones([]);
   }
+
+  // ── 2) Guardar en TU backend (independiente, NO debe afectar el resultado) ─
+  try {
+    final hoy = DateTime.now();
+    final fechaStr =
+        '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
+
+    await ApiService.post('/monitoreos', {
+      'id_cultivo': _cultivoSeleccionado,
+      'fecha_monitoreo': fechaStr,
+      'observaciones':
+          '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% — $_scientificName',
+    });
+
+    await ApiService.post('/analisis_ia', {
+      'resultado': _diagnosisText,
+      'confianza': (_confidence * 100).round(),
+      'version_modelo': '1.0',
+      'id_estado_analisis': 1,
+    });
+  } catch (e) {
+    debugPrint('⚠️ Error guardando en backend (no afecta diagnóstico): $e');
+    // Aquí NO tocamos _procesarDetecciones, el resultado de la IA queda intacto
+  }
+
+  if (mounted) setState(() => _stage = 'result');
+}
  
   void _showModelInfoDialog(BuildContext context) {
     showDialog(
@@ -720,19 +752,19 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Sobre el modelo de IA',
-            style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w800)),
         content: Text(
           'El modelo está entrenado con imágenes representativas de plantas con roya (Hemileia vastatrix). '
           'Se actualiza continuamente con nuevos datos para mejorar su precisión. '
           'Los resultados son orientativos; consulta con un agrónomo para decisiones críticas.',
-          style: GoogleFonts.nunito(
+          style: GoogleFonts.dmSans(
               color: AppColors.textSecondary, fontSize: 13, height: 1.5),
         ),
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx),
             style: ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
-            child: Text('Entendido', style: GoogleFonts.nunito()),
+            child: Text('Entendido', style: GoogleFonts.dmSans()),
           ),
         ],
       ),
@@ -762,21 +794,13 @@ class _CornerPainter extends CustomPainter {
  
     final path = Path();
     if (top && left) {
-      path.moveTo(0, size.height);
-      path.lineTo(0, 0);
-      path.lineTo(size.width, 0);
+      path.moveTo(0, size.height); path.lineTo(0, 0); path.lineTo(size.width, 0);
     } else if (top && !left) {
-      path.moveTo(0, 0);
-      path.lineTo(size.width, 0);
-      path.lineTo(size.width, size.height);
+      path.moveTo(0, 0); path.lineTo(size.width, 0); path.lineTo(size.width, size.height);
     } else if (!top && left) {
-      path.moveTo(0, 0);
-      path.lineTo(0, size.height);
-      path.lineTo(size.width, size.height);
+      path.moveTo(0, 0); path.lineTo(0, size.height); path.lineTo(size.width, size.height);
     } else {
-      path.moveTo(0, size.height);
-      path.lineTo(size.width, size.height);
-      path.lineTo(size.width, 0);
+      path.moveTo(0, size.height); path.lineTo(size.width, size.height); path.lineTo(size.width, 0);
     }
     canvas.drawPath(path, paint);
   }
@@ -784,4 +808,3 @@ class _CornerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter old) => false;
 }
- 

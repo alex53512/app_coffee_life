@@ -47,7 +47,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       final data = await ApiService.get('/monitoreos');
       final todos = data is List ? data : (data['data'] ?? []);
  
-      // Filtrar por cultivos de la finca seleccionada en AppState
       final cultivosFinca = AppState.instance.cultivosFinca;
       final idsCultivos = cultivosFinca
           .map((c) => (c['idCultivo'] ?? c['id_cultivo']).toString())
@@ -137,7 +136,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     }
   }
  
-  // ── Nivel calculado desde observaciones ─────────────────────────
   String _labelNivel(dynamic m) {
     final obs = (m['observaciones'] ?? m['cultivo']?['observaciones'] ?? '')
         .toString()
@@ -205,17 +203,10 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
  
   String? _imagenUrl(dynamic m) {
     final imagenes = m['imagenes'];
- 
-    if (imagenes == null || imagenes is! List || imagenes.isEmpty) {
-      return null;
-    }
- 
+    if (imagenes == null || imagenes is! List || imagenes.isEmpty) return null;
     final ruta = imagenes[0]['rutaImagen'] ?? imagenes[0]['ruta_imagen'];
- 
     if (ruta == null || ruta.toString().isEmpty) return null;
- 
     if (ruta.toString().startsWith('http')) return ruta.toString();
- 
     return 'https://coffeelife-api.up.railway.app/$ruta';
   }
  
@@ -292,20 +283,22 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 ),
               ),
             ),
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.filter_alt_outlined,
-                  color: AppColors.textPrimary,
-                  size: 20,
+            GestureDetector(
+              onTap: _cargarMonitoreos,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                onPressed: _cargarMonitoreos,
+                child: Text(
+                  'Filtrar',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
             ),
           ],
@@ -371,18 +364,21 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.wifi_off, size: 50, color: AppColors.textSecondary),
-          const SizedBox(height: 12),
           Text(
             'Error al cargar monitoreos',
-            style: GoogleFonts.nunito(color: AppColors.textSecondary),
+            style: GoogleFonts.nunito(
+              color: AppColors.textSecondary,
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 12),
-          ElevatedButton.icon(
+          ElevatedButton(
             onPressed: _cargarMonitoreos,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
             style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+            child: Text(
+              'Reintentar',
+              style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -392,19 +388,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   Widget _buildHistorial() {
     if (_monitoreos.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.search_off, size: 60, color: AppColors.textSecondary),
-            const SizedBox(height: 12),
-            Text(
-              'No hay monitoreos registrados',
-              style: GoogleFonts.nunito(
-                color: AppColors.textSecondary,
-                fontSize: 16,
-              ),
-            ),
-          ],
+        child: Text(
+          'No hay monitoreos registrados',
+          style: GoogleFonts.nunito(
+            color: AppColors.textSecondary,
+            fontSize: 16,
+          ),
         ),
       );
     }
@@ -453,6 +442,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         ),
         child: Row(
           children: [
+            // Imagen o color de fondo sin icono
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: imgUrl != null
@@ -461,9 +451,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _iconoFallback(color),
+                      errorBuilder: (_, __, ___) => _colorFallback(color),
                     )
-                  : _iconoFallback(color),
+                  : _colorFallback(color),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -486,25 +476,13 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.landscape_rounded,
-                        size: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          parcela,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.nunito(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    parcela,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -524,19 +502,13 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: AppColors.textSecondary,
-            ),
           ],
         ),
       ),
     );
   }
  
-  Widget _iconoFallback(Color color) {
+  Widget _colorFallback(Color color) {
     return Container(
       width: 56,
       height: 56,
@@ -544,7 +516,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(Icons.eco_rounded, color: color, size: 26),
     );
   }
  
