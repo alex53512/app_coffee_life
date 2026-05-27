@@ -213,7 +213,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 234, 229, 219),
+      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -243,7 +243,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFD2C4AB),
+        color: const Color(0xFFF4E7D6),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),

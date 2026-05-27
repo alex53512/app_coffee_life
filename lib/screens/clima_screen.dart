@@ -291,7 +291,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
     final nivelRoya     = AppState.instance.nivelRoya;
  
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -329,7 +329,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF4E7D6),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
       ),
       child: Row(

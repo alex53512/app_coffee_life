@@ -122,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _finca = Map<String, dynamic>.from(fincas[0]);
         }
  
-        _fotoUrl = _usuarioData['foto_perfil'] as String?;
+        _fotoUrl = _usuarioData['fotoPerfil'] as String?;
  
         _nombreController.text   = _usuarioData['nombre']?.toString() ?? '';
         _apellidoController.text = _usuarioData['apellido']?.toString() ?? '';
@@ -272,6 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _usuarioData['nombre']   = _nombreController.text;
         _usuarioData['apellido'] = _apellidoController.text;
         _usuarioData['telefono'] = _telefonoController.text;
+        _imagenSeleccionada = null;
         _cargando = false;
       });
  
@@ -285,6 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } catch (e) {
       setState(() => _cargando = false);
+      _imagenSeleccionada = null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al guardar: $e'),
@@ -430,7 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF4E7D6),
       body: SafeArea(
         child: _cargando
             ? const Center(
@@ -475,7 +477,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: AppColors.background,
+      color: const Color(0xFFF4E7D6),
       child: Row(
         children: [
           IconButton(
@@ -506,7 +508,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28),
-      color: Colors.white,
+      color: const Color(0xFFF4E7D6),
       child: Column(
         children: [
           Stack(
@@ -571,7 +573,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
  
   Widget _buildInfoSection() {
     return Container(
-      color: Colors.white,
+      color: const Color(0xFFF4E7D6),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Column(
         children: [
@@ -653,6 +655,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
  
   Widget _divider() {
-    return const Divider(height: 1, color: Color(0xFFEEEEEE));
+    return const Divider(height: 1, color: Color.fromARGB(255, 202, 200, 200));
   }
 }

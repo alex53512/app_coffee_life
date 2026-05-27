@@ -127,44 +127,62 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Alto';
   }
  
-  @override
-  Widget build(BuildContext context) {
-    final nombreRaw = (widget.usuario['nombre'] ?? '').toString().trim();
-    final nombre    = nombreRaw.isNotEmpty ? nombreRaw : 'Caficultor';
- 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: _cargando
-            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-            : _error != null
-                ? _buildError()
-                : RefreshIndicator(
-                    onRefresh: _cargarDatos,
-                    color: AppColors.primary,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(context, nombre),
-                          const SizedBox(height: 20),
-                          _buildResumenCard(),
-                          const SizedBox(height: 16),
-                          _buildStatsRow(),
-                          const SizedBox(height: 20),
-                          _buildFincasSection(context),
-                          const SizedBox(height: 20),
-                          _buildChart(),
-                          const SizedBox(height: 20),
-                        ],
+ @override
+Widget build(BuildContext context) {
+  final nombreRaw = (widget.usuario['nombre'] ?? '').toString().trim();
+  final nombre = nombreRaw.isNotEmpty ? nombreRaw : 'Caficultor';
+
+  return Scaffold(
+    backgroundColor: const Color(0xFFFFFEFB),
+
+    body: _cargando
+        ? const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+            ),
+          )
+        : _error != null
+            ? _buildError()
+            : RefreshIndicator(
+                onRefresh: _cargarDatos,
+                color: AppColors.primary,
+                child: Column(
+                  children: [
+
+                    // HEADER COMPLETO
+                    SafeArea(
+                      bottom: false,
+                      child: _buildHeader(context, nombre),
+                    ),
+
+                    // CONTENIDO
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildResumenCard(),
+                            const SizedBox(height: 16),
+                            _buildStatsRow(),
+                            const SizedBox(height: 20),
+                            _buildFincasSection(context),
+                            const SizedBox(height: 20),
+                            _buildChart(),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-      ),
-    );
-  }
+                  ],
+                ),
+              ),
+  );
+}
  
   Widget _buildError() {
     return Center(
@@ -190,37 +208,103 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
  
-  Widget _buildHeader(BuildContext context, String nombre) {
-    return Row(
+ Widget _buildHeader(BuildContext context, String nombre) {
+  return Container(
+    width: double.infinity,
+    color: const Color(0xFFF4E7D6),
+
+    padding: const EdgeInsets.symmetric(
+      horizontal: 20,
+      vertical: 14,
+    ),
+
+    child: Row(
       children: [
+
         CircleAvatar(
           radius: 24,
           backgroundColor: AppColors.primary,
-          child: Text(nombre.isNotEmpty ? nombre[0].toUpperCase() : 'C',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+          child: Text(
+            nombre.isNotEmpty
+                ? nombre[0].toUpperCase()
+                : 'C',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ),
+
         const SizedBox(width: 12),
-        Text('Hola, $nombre',
-            style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-        const Spacer(),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              Text(
+                'Hola, $nombre',
+                style: GoogleFonts.nunito(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: const Color.fromARGB(255, 26, 26, 26),
+                ),
+              ),
+
+              const SizedBox(height: 2),
+
+              Text(
+                'Bienvenido de nuevo',
+                style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+
         GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificacionesScreen())),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const NotificacionesScreen(),
+            ),
+          ),
+
           child: Stack(
             children: [
+
               Container(
                 padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 28),
+                child: const Icon(
+                  Icons.notifications_outlined,
+                  color: AppColors.textPrimary,
+                  size: 28,
+                ),
               ),
+
               if (_recomendaciones.isNotEmpty)
                 Positioned(
-                  right: 6, top: 6,
+                  right: 6,
+                  top: 6,
                   child: Container(
-                    width: 16, height: 16,
-                    decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+
                     child: Center(
                       child: Text(
                         '${_recomendaciones.length > 9 ? "9+" : _recomendaciones.length}',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -229,9 +313,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
- 
+    ),
+  );
+}
   Widget _buildResumenCard() {
     final salud       = _getSaludCultivo();
     final fincaNombre = _fincas.isNotEmpty && _fincaSeleccionada < _fincas.length
@@ -242,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
             orElse: () => {})['nombreCultivo'] ?? 'Cultivo seleccionado'
         : null;
  
-    Color colorSalud = AppColors.primary;
+    Color colorSalud = const Color(0xFF4F8F1F);
     if (salud['texto'] == 'Regular') colorSalud = Colors.orange;
     if (salud['texto'] == 'Crítica') colorSalud = Colors.red;
  

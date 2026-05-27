@@ -14,15 +14,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _correoController = TextEditingController();
-
   final _passwordController = TextEditingController();
 
   bool _verPassword = false;
-
   bool _cargando = false;
-
   String? _errorGeneral;
 
   @override
@@ -49,397 +45,73 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        final usuario = result['data'];
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => MainNavigation(
-              usuario: usuario,
-            ),
+            builder: (_) => MainNavigation(usuario: result['data']),
           ),
         );
       } else {
-        setState(() {
-          _errorGeneral = result['message'];
-        });
+        setState(() => _errorGeneral = result['message']);
       }
     } catch (e) {
-      setState(() {
-        _errorGeneral = 'No se pudo conectar al servidor';
-      });
+      setState(() => _errorGeneral = 'No se pudo conectar al servidor');
     } finally {
-      setState(() {
-        _cargando = false;
-      });
+      setState(() => _cargando = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-
-      body: Stack(
+      backgroundColor: const Color(0xFFFFFEFB),
+      body: Column(
         children: [
-
-          // ===================================================
-          // FONDO DECORATIVO
-          // ===================================================
-
-          _buildBackground(),
-
-          // ===================================================
-          // CONTENIDO
-          // ===================================================
-
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
+          // ── SECCIÓN SUPERIOR VERDE CON HOJAS Y CURVA ──
+          ClipPath(
+            clipper: _OvalBottomClipper(),
+            child: Container(
+              width: double.infinity,
+              height: 300,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF4F8F1F),
+                    Color(0xFF4F8F1F),
+                    Color(0xFF071509),
+                  ],
+                ),
+              ),
+              child: Stack(
                 children: [
-
-                  // HEADER
-                  _buildCabecera(),
-
-                  // CARD LOGIN
-                  Transform.translate(
-                    offset: const Offset(0, -28),
-
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                      ),
-
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-
-                          borderRadius:
-                              BorderRadius.circular(28),
-
-                          border: Border.all(
-                            color: AppColors.border,
-                            width: 1,
+                  // TEXTO CENTRADO
+                  SafeArea(
+                    child: Align(
+                      alignment: const Alignment(0, -0.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/images/logo_cafe.png',
+                            height: 150,
+                            fit: BoxFit.contain,
                           ),
-
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-
-                        child: Form(
-                          key: _formKey,
-
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-
-                            children: [
-
-                              // TITULO
-                              Text(
-                                'Iniciar sesión',
-                                style: GoogleFonts.inter(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  color:
-                                      AppColors.textPrimary,
-                                ),
-                              ),
-
-                              const SizedBox(height: 6),
-
-                              Text(
-                                'Bienvenido de nuevo a CoffeeLife',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color:
-                                      AppColors.textSecondary,
-                                ),
-                              ),
-
-                              const SizedBox(height: 30),
-
-                              // ===================================================
-                              // CORREO
-                              // ===================================================
-
-                              _label(
-                                  'Correo electrónico'),
-
-                              const SizedBox(height: 8),
-
-                              TextFormField(
-                                controller:
-                                    _correoController,
-
-                                keyboardType:
-                                    TextInputType
-                                        .emailAddress,
-
-                                decoration:
-                                    InputDecoration(
-                                  hintText:
-                                      'tucorreo@ejemplo.com',
-
-                                  prefixIcon: Icon(
-                                    Icons.email_outlined,
-                                    color: AppColors
-                                        .textSecondary,
-                                  ),
-                                ),
-
-                                validator: (v) {
-                                  if (v == null ||
-                                      v.trim().isEmpty) {
-                                    return 'Ingresa tu correo';
-                                  }
-
-                                  if (!v.contains('@')) {
-                                    return 'Correo inválido';
-                                  }
-
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              // ===================================================
-                              // PASSWORD
-                              // ===================================================
-
-                              _label('Contraseña'),
-
-                              const SizedBox(height: 8),
-
-                              TextFormField(
-                                controller:
-                                    _passwordController,
-
-                                obscureText:
-                                    !_verPassword,
-
-                                decoration:
-                                    InputDecoration(
-                                  hintText: '••••••••',
-
-                                  prefixIcon: Icon(
-                                    Icons.lock_outline,
-                                    color: AppColors
-                                        .textSecondary,
-                                  ),
-
-                                  suffixIcon:
-                                      IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _verPassword =
-                                            !_verPassword;
-                                      });
-                                    },
-
-                                    icon: Icon(
-                                      _verPassword
-                                          ? Icons
-                                              .visibility_off_outlined
-                                          : Icons
-                                              .visibility_outlined,
-
-                                      color: AppColors
-                                          .textSecondary,
-                                    ),
-                                  ),
-                                ),
-
-                                validator: (v) {
-                                  if (v == null ||
-                                      v.isEmpty) {
-                                    return 'Ingresa tu contraseña';
-                                  }
-
-                                  if (v.length < 6) {
-                                    return 'Mínimo 6 caracteres';
-                                  }
-
-                                  return null;
-                                },
-                              ),
-
-                              // ===================================================
-                              // ERROR
-                              // ===================================================
-
-                              if (_errorGeneral !=
-                                  null) ...[
-                                const SizedBox(height: 16),
-
-                                Container(
-                                  width:
-                                      double.infinity,
-
-                                  padding:
-                                      const EdgeInsets
-                                          .symmetric(
-                                    horizontal: 14,
-                                    vertical: 14,
-                                  ),
-
-                                  decoration:
-                                      BoxDecoration(
-                                    color: AppColors
-                                        .error
-                                        .withOpacity(
-                                            0.08),
-
-                                    borderRadius:
-                                        BorderRadius
-                                            .circular(
-                                                14),
-
-                                    border: Border.all(
-                                      color: AppColors
-                                          .error
-                                          .withOpacity(
-                                              0.18),
-                                    ),
-                                  ),
-
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons
-                                            .error_outline,
-                                        color:
-                                            AppColors
-                                                .error,
-                                        size: 18,
-                                      ),
-
-                                      const SizedBox(
-                                          width: 10),
-
-                                      Expanded(
-                                        child: Text(
-                                          _errorGeneral!,
-                                          style:
-                                              GoogleFonts
-                                                  .inter(
-                                            color:
-                                                AppColors
-                                                    .error,
-                                            fontSize:
-                                                13,
-                                            fontWeight:
-                                                FontWeight
-                                                    .w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-
-                              // ===================================================
-                              // OLVIDASTE PASSWORD
-                              // ===================================================
-
-                              Align(
-                                alignment:
-                                    Alignment.centerRight,
-
-                                child: TextButton(
-                                  onPressed: () {},
-
-                                  style:
-                                      TextButton.styleFrom(
-                                    foregroundColor:
-                                        AppColors
-                                            .primary,
-                                  ),
-
-                                  child: Text(
-                                    '¿Olvidaste tu contraseña?',
-                                    style:
-                                        GoogleFonts.inter(
-                                      fontSize: 13,
-                                      fontWeight:
-                                          FontWeight
-                                              .w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              // ===================================================
-                              // BOTÓN LOGIN
-                              // ===================================================
-
-                              SizedBox(
-                                width: double.infinity,
-
-                                child: ElevatedButton(
-                                  onPressed: _cargando
-                                      ? null
-                                      : _iniciarSesion,
-
-                                  child: _cargando
-                                      ? const SizedBox(
-                                          height: 22,
-                                          width: 22,
-                                          child:
-                                              CircularProgressIndicator(
-                                            color:
-                                                Colors
-                                                    .white,
-                                            strokeWidth:
-                                                2.5,
-                                          ),
-                                        )
-                                      : const Text(
-                                          'Ingresar',
-                                        ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 14),
-
-                              // ===================================================
-                              // BOTÓN REGISTER
-                              // ===================================================
-
-                              SizedBox(
-                                width: double.infinity,
-
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const RegisterScreen(),
-                                      ),
-                                    );
-                                  },
-
-                                  child: const Text(
-                                    'Registrarse',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                          Transform.translate(
+  offset: const Offset(0, -40), // ← sube más el texto
+  child: Text(
+    'Coffee Life',
+    style: GoogleFonts.playfairDisplay(
+      fontSize: 34,
+      fontWeight: FontWeight.w800,
+      color: const Color.fromARGB(255, 14, 15, 14),
+      letterSpacing: 1,
+    ),
+  ),
+),
+                         
+                        ],
                       ),
                     ),
                   ),
@@ -447,171 +119,352 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
 
-  // =========================================================
-  // HEADER
-  // =========================================================
+          // ── SECCIÓN INFERIOR BLANCA ──
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // SALUDO
+                    Text(
+                      '¡Hola!',
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A3A1E),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Inicia sesión para continuar',
+                      style: GoogleFonts.lato(
+                        fontSize: 13,
+                        color: const Color.fromARGB(255, 19, 19, 19),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
-  Widget _buildCabecera() {
-    return Container(
-      width: double.infinity,
+                    // EMAIL
+                    _fieldLabel('CORREO ELECTRÓNICO'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _correoController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: _inputDecoration(
+                        hint: 'correo@ejemplo.com',
+                        icon: Icons.email_outlined,
+                      ),
+                      style: GoogleFonts.lato(
+                        fontSize: 14,
+                        color: const Color.fromARGB(255, 21, 21, 21),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
+                        if (!v.contains('@')) return 'Correo inválido';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
 
-      padding: const EdgeInsets.fromLTRB(
-        24,
-        50,
-        24,
-        90,
-      ),
+                    // PASSWORD
+                    _fieldLabel('CONTRASEÑA'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: !_verPassword,
+                      decoration: _inputDecoration(
+                        hint: '••••••••',
+                        icon: Icons.lock_outline,
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => _verPassword = !_verPassword),
+                          icon: Icon(
+                            _verPassword ? Icons.visibility_off : Icons.visibility,
+                            color: const Color(0xFF3A7A42),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      style: GoogleFonts.lato(
+                        fontSize: 14,
+                        color: const Color(0xFF1A3A1E),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
+                        if (v.length < 6) return 'Mínimo 6 caracteres';
+                        return null;
+                      },
+                    ),
 
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+                    // ERROR
+                    if (_errorGeneral != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          _errorGeneral!,
+                          style: GoogleFonts.lato(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
 
-          colors: [
-            AppColors.primaryDark,
-            AppColors.primary,
-          ],
-        ),
+                    // FORGOT PASSWORD
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {},
+                        child: Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: GoogleFonts.lato(
+                            color: const Color(0xFF2D6E35),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
 
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(42),
-          bottomRight: Radius.circular(42),
-        ),
-      ),
+                    // BOTÓN LOGIN
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _cargando ? null : _iniciarSesion,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F8F1F),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: _cargando
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Text(
+                                'INGRESAR',
+                                style: GoogleFonts.lato(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
-      child: Column(
-        children: [
+                    // DIVIDER
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey.shade200)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'o continúa con',
+                            style: GoogleFonts.lato(
+                              fontSize: 11,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey.shade200)),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
 
-          // LOGO
-          Container(
-            width: 120,
-            height: 120,
+                    // SOCIAL BUTTONS
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _socialButton(Icons.g_mobiledata_rounded, const Color(0xFFC0392B)),
+                        const SizedBox(width: 16),
+                        _socialButton(Icons.apple, Colors.black87),
+                        const SizedBox(width: 16),
+                        _socialButton(Icons.facebook_rounded, const Color(0xFF1877F2)),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
 
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-
-              shape: BoxShape.circle,
-            ),
-
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-
-              child: Image.asset(
-                'assets/images/logo_CoffeLife_SinFondo.png',
+                    // REGISTER
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '¿No tienes cuenta?',
+                          style: GoogleFonts.lato(
+                            color: const Color(0xFF7A9A7E),
+                            fontSize: 13,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Regístrate',
+                            style: GoogleFonts.lato(
+                              color: const Color(0xFF2D6E35),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-
-          const SizedBox(height: 18),
-
-          Text(
-            'CoffeeLife',
-            style: GoogleFonts.inter(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'Cuida tus cultivos con inteligencia',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.92),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // =========================================================
-  // FONDO DECORATIVO
-  // =========================================================
-
-  Widget _buildBackground() {
-    return Stack(
-      children: [
-
-        // FONDO BASE
-        Container(
-          color: AppColors.background,
-        ),
-
-        // OLA GRANDE
-        Positioned(
-          bottom: -120,
-          left: -60,
-          right: -60,
-
-          child: Container(
-            height: 240,
-
-            decoration: BoxDecoration(
-              color: AppColors.wave,
-
-              borderRadius:
-                  BorderRadius.circular(220),
-            ),
-          ),
-        ),
-
-        // CÍRCULO IZQUIERDO
-        Positioned(
-          bottom: -60,
-          left: -50,
-
-          child: Container(
-            width: 220,
-            height: 220,
-
-            decoration: const BoxDecoration(
-              color: AppColors.waveLight,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-
-        // CÍRCULO DERECHO
-        Positioned(
-          bottom: 80,
-          right: -70,
-
-          child: Container(
-            width: 170,
-            height: 170,
-
-            decoration: const BoxDecoration(
-              color: AppColors.waveLight,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // =========================================================
-  // LABEL
-  // =========================================================
-
-  Widget _label(String texto) {
+  Widget _fieldLabel(String text) {
     return Text(
-      texto,
-      style: GoogleFonts.inter(
-        fontSize: 14,
+      text,
+      style: GoogleFonts.lato(
+        fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
+        color: const Color(0xFF2D5A34),
+        letterSpacing: 1,
       ),
     );
   }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.lato(color: Colors.grey.shade400, fontSize: 14),
+      prefixIcon: Icon(icon, color: const Color(0xFF3A7A42), size: 20),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: const Color(0xFFF2F7F2),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFDAEEDD), width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF3A7A42), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _socialButton(IconData icon, Color color) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFDDE8DE), width: 1.5),
+        color: const Color(0xFFF6FAF6),
+      ),
+      child: Icon(icon, color: color, size: 24),
+    );
+  }
+
+  Widget _buildLeaf(double width, double height, Color color, double angle) {
+    return Transform.rotate(
+      angle: angle,
+      child: CustomPaint(
+        size: Size(width, height),
+        painter: _LeafPainter(color),
+      ),
+    );
+  }
+}
+
+// ── CURVA OVAL HACIA ABAJO ──
+class _OvalBottomClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height - 60);
+    path.quadraticBezierTo(
+      size.width / 2,
+      size.height + 60,
+      size.width,
+      size.height - 60,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_OvalBottomClipper old) => false;
+}
+
+// ── PINTOR DE HOJAS ──
+class _LeafPainter extends CustomPainter {
+  final Color color;
+  const _LeafPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path()
+      ..moveTo(size.width * 0.5, 0)
+      ..quadraticBezierTo(size.width, size.height * 0.3, size.width * 0.5, size.height)
+      ..quadraticBezierTo(0, size.height * 0.3, size.width * 0.5, 0)
+      ..close();
+    canvas.drawPath(path, paint);
+
+    final veinPaint = Paint()
+      ..color = color.withOpacity(0.4)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width * 0.5, size.height * 0.1)
+        ..lineTo(size.width * 0.5, size.height * 0.9),
+      veinPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_LeafPainter old) => old.color != color;
 }

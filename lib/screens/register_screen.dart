@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _correoController          = TextEditingController();
   final _passwordController        = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
   bool _verPassword  = false;
   bool _verConfirm   = false;
   bool _acceptTerms  = false;
@@ -76,355 +77,385 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.crema,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildCabecera(context),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFFFFEFB),
+      body: Stack(
+        children: [
+          // ── FONDO VERDE COMPLETO CON HOJAS ──
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF4F8F1F),
+                  Color(0xFF071509),
+                  Color(0xFF4F8F1F),
+                ],
+              ),
+            ),
+            
+          ),
+
+          // ── CONTENIDO ──
+          SafeArea(
+            child: Column(
+              children: [
+                // CABECERA VERDE
+                SizedBox(
+                  height: 220,
+                  child: Stack(
                     children: [
-                      Text(
-                        'Crear cuenta',
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textoPrincipal,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Únete y empieza a cuidar tu cultivo',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: AppTheme.textoSecundario,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── Tipo de documento ─────────────────
-                      _label('Tipo de documento'),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        value: _tipoDocumento,
-                        decoration: const InputDecoration(
-                          hintText: 'Selecciona tu documento',
-                          prefixIcon: Icon(Icons.badge_outlined,
-                              color: AppTheme.textoSecundario),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                              value: 'CC',
-                              child: Text('Cédula de ciudadanía')),
-                          DropdownMenuItem(
-                              value: 'CE',
-                              child: Text('Cédula de extranjería')),
-                          DropdownMenuItem(
-                              value: 'PA', child: Text('Pasaporte')),
-                        ],
-                        onChanged: (v) => setState(() => _tipoDocumento = v),
-                        validator: (v) => v == null
-                            ? 'Selecciona el tipo de documento'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Nombre ────────────────────────────
-                      _label('Nombre'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _nombreController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          hintText: 'Tu nombre',
-                          prefixIcon: Icon(Icons.person_outline,
-                              color: AppTheme.textoSecundario),
-                        ),
-                        validator: (v) =>
-                            v!.trim().isEmpty ? 'Ingresa tu nombre' : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Apellido ──────────────────────────
-                      _label('Apellido'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _apellidoController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          hintText: 'Tu apellido',
-                          prefixIcon: Icon(Icons.person_outline,
-                              color: AppTheme.textoSecundario),
-                        ),
-                        validator: (v) =>
-                            v!.trim().isEmpty ? 'Ingresa tu apellido' : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Teléfono ──────────────────────────
-                      _label('Teléfono'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _telefonoController,
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          hintText: '3001234567',
-                          prefixIcon: Icon(Icons.phone_outlined,
-                              color: AppTheme.textoSecundario),
-                        ),
-                        validator: (v) =>
-                            v!.trim().isEmpty ? 'Ingresa tu teléfono' : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Correo ────────────────────────────
-                      _label('Correo electrónico'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _correoController,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          hintText: 'tucorreo@ejemplo.com',
-                          prefixIcon: Icon(Icons.email_outlined,
-                              color: AppTheme.textoSecundario),
-                        ),
-                        validator: (v) {
-                          if (v!.trim().isEmpty) return 'Ingresa tu correo';
-                          if (!v.contains('@')) return 'Correo no válido';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Contraseña ────────────────────────
-                      _label('Contraseña'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_verPassword,
-                        textInputAction: TextInputAction.next,
-                        decoration: InputDecoration(
-                          hintText: '••••••••',
-                          prefixIcon: const Icon(Icons.lock_outline,
-                              color: AppTheme.textoSecundario),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _verPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              color: AppTheme.textoSecundario,
-                            ),
-                            onPressed: () =>
-                                setState(() => _verPassword = !_verPassword),
+                      // BOTÓN ATRÁS
+                      Positioned(
+                        top: 0,
+                        left: 8,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back_ios,
+                            color: Color(0xFFE8F5E0),
+                            size: 20,
                           ),
+                          onPressed: () => Navigator.pop(context),
                         ),
-                        validator: (v) {
-                          if (v!.isEmpty) return 'Ingresa tu contraseña';
-                          if (v.length < 8) return 'Mínimo 8 caracteres';
-                          if (!v.contains(RegExp(r'[0-9]'))) {
-                            return 'Debe contener al menos un número';
-                          }
-                          if (!v.contains(RegExp(r'[a-zA-Z]'))) {
-                            return 'Debe contener al menos una letra';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 16),
-
-                      // ── Confirmar contraseña ──────────────
-                      _label('Confirmar contraseña'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _confirmPasswordController,
-                        obscureText: !_verConfirm,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _registrar(),
-                        decoration: InputDecoration(
-                          hintText: '••••••••',
-                          prefixIcon: const Icon(Icons.lock_outline,
-                              color: AppTheme.textoSecundario),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _verConfirm
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              color: AppTheme.textoSecundario,
-                            ),
-                            onPressed: () =>
-                                setState(() => _verConfirm = !_verConfirm),
-                          ),
-                        ),
-                        validator: (v) => v != _passwordController.text
-                            ? 'Las contraseñas no coinciden'
-                            : null,
-                      ),
-
-                      // ── Error general ─────────────────────
-                      if (_errorGeneral != null) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.error.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: AppTheme.error.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline,
-                                  color: AppTheme.error, size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorGeneral!,
-                                  style: GoogleFonts.inter(
-                                      color: AppTheme.error, fontSize: 13),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 16),
-
-                      // ── Términos ──────────────────────────
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: _acceptTerms,
-                            activeColor: AppTheme.verdePrincipal,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4)),
-                            onChanged: (v) =>
-                                setState(() => _acceptTerms = v!),
-                          ),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: AppTheme.textoSecundario),
-                                children: [
-                                  const TextSpan(text: 'Acepto los '),
-                                  TextSpan(
-                                    text: 'Términos y condiciones',
-                                    style: GoogleFonts.inter(
-                                      color: AppTheme.verdePrincipal,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Botón registrar ───────────────────
-                      ElevatedButton(
-                        onPressed: _cargando ? null : _registrar,
-                        child: _cargando
-                            ? const SizedBox(
-                                height: 22, width: 22,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2.5),
-                              )
-                            : const Text('Crear cuenta'),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // ── Ya tengo cuenta ───────────────────
+                      // LOGO Y TÍTULO
                       Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              '¿Ya tienes cuenta? ',
-                              style: GoogleFonts.inter(
-                                  color: AppTheme.textoSecundario,
-                                  fontSize: 14),
+                            const SizedBox(height: 20),
+                            Image.asset(
+                              'assets/images/logo_CoffeLife_SinFondo.png',
+                              width: 65,
+                              height: 65,
                             ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppTheme.verdePrincipal,
-                                padding: EdgeInsets.zero,
+                            const SizedBox(height: 10),
+                            Text(
+                              'Únete a Coffee Life',
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFFE8F5E0),
+                                letterSpacing: 0.5,
                               ),
-                              child: Text(
-                                'Inicia sesión',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'CREA TU CUENTA',
+                              style: GoogleFonts.lato(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w300,
+                                color: const Color(0xFF9DC49E),
+                                letterSpacing: 3,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildCabecera(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.verdeOscuro, AppTheme.verdePrincipal],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(36),
-          bottomRight: Radius.circular(36),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          Image.asset(
-            'assets/images/logo_CoffeLife_SinFondo.png',
-            width: 80,
-            height: 80,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Únete a CoffeeLife',
-            style: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+                // ── TARJETA BLANCA CON ÓVALO ARRIBA ──
+                Expanded(
+                  child: ClipPath(
+                    clipper: _OvalTopClipper(),
+                    child: Container(
+                      color: Colors.white,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(28, 40, 28, 24),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '¡Hola!',
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1A3A1E),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Únete y empieza a cuidar tu cultivo',
+                                style: GoogleFonts.lato(
+                                  fontSize: 13,
+                                  color: const Color(0xFF7A9A7E),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+
+                              // TIPO DOCUMENTO
+                              _fieldLabel('TIPO DE DOCUMENTO'),
+                              const SizedBox(height: 8),
+                              DropdownButtonFormField<String>(
+                                value: _tipoDocumento,
+                                decoration: _inputDecoration(
+                                  hint: 'Selecciona tu documento',
+                                  icon: Icons.badge_outlined,
+                                ),
+                                style: GoogleFonts.lato(
+                                  fontSize: 14,
+                                  color: const Color(0xFF1A3A1E),
+                                ),
+                                dropdownColor: Colors.white,
+                                items: const [
+                                  DropdownMenuItem(value: 'CC', child: Text('Cédula de ciudadanía')),
+                                  DropdownMenuItem(value: 'CE', child: Text('Cédula de extranjería')),
+                                  DropdownMenuItem(value: 'PA', child: Text('Pasaporte')),
+                                ],
+                                onChanged: (v) => setState(() => _tipoDocumento = v),
+                                validator: (v) => v == null ? 'Selecciona el tipo de documento' : null,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // NOMBRE
+                              _fieldLabel('NOMBRE'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _nombreController,
+                                textInputAction: TextInputAction.next,
+                                decoration: _inputDecoration(hint: 'Tu nombre', icon: Icons.person_outline),
+                                style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF1A3A1E)),
+                                validator: (v) => v!.trim().isEmpty ? 'Ingresa tu nombre' : null,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // APELLIDO
+                              _fieldLabel('APELLIDO'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _apellidoController,
+                                textInputAction: TextInputAction.next,
+                                decoration: _inputDecoration(hint: 'Tu apellido', icon: Icons.person_outline),
+                                style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF1A3A1E)),
+                                validator: (v) => v!.trim().isEmpty ? 'Ingresa tu apellido' : null,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // TELÉFONO
+                              _fieldLabel('TELÉFONO'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _telefonoController,
+                                keyboardType: TextInputType.phone,
+                                textInputAction: TextInputAction.next,
+                                decoration: _inputDecoration(hint: '3001234567', icon: Icons.phone_outlined),
+                                style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF1A3A1E)),
+                                validator: (v) => v!.trim().isEmpty ? 'Ingresa tu teléfono' : null,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // CORREO
+                              _fieldLabel('CORREO ELECTRÓNICO'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _correoController,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                decoration: _inputDecoration(hint: 'correo@ejemplo.com', icon: Icons.email_outlined),
+                                style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF1A3A1E)),
+                                validator: (v) {
+                                  if (v!.trim().isEmpty) return 'Ingresa tu correo';
+                                  if (!v.contains('@')) return 'Correo no válido';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // CONTRASEÑA
+                              _fieldLabel('CONTRASEÑA'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: !_verPassword,
+                                textInputAction: TextInputAction.next,
+                                decoration: _inputDecoration(
+                                  hint: '••••••••',
+                                  icon: Icons.lock_outline,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _verPassword ? Icons.visibility_off : Icons.visibility,
+                                      color: const Color(0xFF3A7A42),
+                                      size: 20,
+                                    ),
+                                    onPressed: () => setState(() => _verPassword = !_verPassword),
+                                  ),
+                                ),
+                                style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF1A3A1E)),
+                                validator: (v) {
+                                  if (v!.isEmpty) return 'Ingresa tu contraseña';
+                                  if (v.length < 8) return 'Mínimo 8 caracteres';
+                                  if (!v.contains(RegExp(r'[0-9]'))) return 'Debe contener al menos un número';
+                                  if (!v.contains(RegExp(r'[a-zA-Z]'))) return 'Debe contener al menos una letra';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // CONFIRMAR CONTRASEÑA
+                              _fieldLabel('CONFIRMAR CONTRASEÑA'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _confirmPasswordController,
+                                obscureText: !_verConfirm,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => _registrar(),
+                                decoration: _inputDecoration(
+                                  hint: '••••••••',
+                                  icon: Icons.lock_outline,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _verConfirm ? Icons.visibility_off : Icons.visibility,
+                                      color: const Color(0xFF3A7A42),
+                                      size: 20,
+                                    ),
+                                    onPressed: () => setState(() => _verConfirm = !_verConfirm),
+                                  ),
+                                ),
+                                style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF1A3A1E)),
+                                validator: (v) =>
+                                    v != _passwordController.text ? 'Las contraseñas no coinciden' : null,
+                              ),
+
+                              // ERROR GENERAL
+                              if (_errorGeneral != null) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _errorGeneral!,
+                                          style: GoogleFonts.lato(color: Colors.red, fontSize: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              const SizedBox(height: 16),
+
+                              // TÉRMINOS
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _acceptTerms,
+                                    activeColor: const Color(0xFF2D6E35),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    onChanged: (v) => setState(() => _acceptTerms = v!),
+                                  ),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: GoogleFonts.lato(
+                                          fontSize: 13,
+                                          color: const Color(0xFF7A9A7E),
+                                        ),
+                                        children: [
+                                          const TextSpan(text: 'Acepto los '),
+                                          TextSpan(
+                                            text: 'Términos y condiciones',
+                                            style: GoogleFonts.lato(
+                                              color: const Color(0xFF2D6E35),
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // BOTÓN REGISTRAR
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: _cargando ? null : _registrar,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2D6E35),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: _cargando
+                                      ? const SizedBox(
+                                          height: 22,
+                                          width: 22,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2.5,
+                                          ),
+                                        )
+                                      : Text(
+                                          'CREAR CUENTA',
+                                          style: GoogleFonts.lato(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                            letterSpacing: 2,
+                                          ),
+                                        ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // YA TENGO CUENTA
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '¿Ya tienes cuenta?',
+                                    style: GoogleFonts.lato(
+                                      color: const Color(0xFF7A9A7E),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text(
+                                      'Inicia sesión',
+                                      style: GoogleFonts.lato(
+                                        color: const Color(0xFF2D6E35),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -432,14 +463,116 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _label(String texto) {
+  Widget _fieldLabel(String text) {
     return Text(
-      texto,
-      style: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: AppTheme.textoPrincipal,
+      text,
+      style: GoogleFonts.lato(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: const Color(0xFF2D5A34),
+        letterSpacing: 1,
       ),
     );
   }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.lato(color: Colors.grey.shade400, fontSize: 14),
+      prefixIcon: Icon(icon, color: const Color(0xFF3A7A42), size: 20),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: const Color(0xFFF2F7F2),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFDAEEDD), width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF3A7A42), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildLeaf(double width, double height, Color color, double angle) {
+    return Transform.rotate(
+      angle: angle,
+      child: CustomPaint(
+        size: Size(width, height),
+        painter: _LeafPainter(color),
+      ),
+    );
+  }
+}
+
+// ── ÓVALO CONVEXO HACIA ARRIBA (en el borde superior de la tarjeta blanca) ──
+class _OvalTopClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    // Empieza desde abajo izquierda
+    path.moveTo(0, size.height);
+    path.lineTo(0, 60);
+    // Curva convexa hacia arriba
+    path.quadraticBezierTo(
+      size.width / 2,
+      -40,
+      size.width,
+      60,
+    );
+    path.lineTo(size.width, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_OvalTopClipper old) => false;
+}
+
+// ── PINTOR DE HOJAS ──
+class _LeafPainter extends CustomPainter {
+  final Color color;
+  const _LeafPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path()
+      ..moveTo(size.width * 0.5, 0)
+      ..quadraticBezierTo(size.width, size.height * 0.3, size.width * 0.5, size.height)
+      ..quadraticBezierTo(0, size.height * 0.3, size.width * 0.5, 0)
+      ..close();
+    canvas.drawPath(path, paint);
+
+    final veinPaint = Paint()
+      ..color = color.withOpacity(0.4)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width * 0.5, size.height * 0.1)
+        ..lineTo(size.width * 0.5, size.height * 0.9),
+      veinPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_LeafPainter old) => old.color != color;
 }
