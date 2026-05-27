@@ -106,7 +106,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFD2C4AB),
+      backgroundColor: const Color(0xFFFFFEFB),
 
       body: SafeArea(
         child: Column(
@@ -153,7 +153,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
     return Container(
       height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      color: const Color(0xFFD2C4AB),
+      color: const Color(0xFFF4E7D6),
 
       child: SafeArea(
         bottom: false,
@@ -615,10 +615,10 @@ class _ArticuloScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFEFB),
 
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF4E7D6),
         elevation: 0,
         foregroundColor:
             AppColors.textPrimary,

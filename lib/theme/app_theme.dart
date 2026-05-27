@@ -4,35 +4,79 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
 
   // =========================================================
-  // COLORES EXACTOS DEL MOCKUP
+  // COLORES PRINCIPALES
+  // =========================================================
+
+  /// Fondo principal de la app
+  /// Ideal para Scaffold y pantallas completas
+  static const Color blancoCalido = Color(0xFFFFFEFB);
+
+  /// Base clara secundaria
+  /// Úsalo en cards, contenedores o secciones suaves
+  static const Color marfilSuave = Color(0xFFFBF7EF);
+
+  /// Degradado superior
+  /// Perfecto para headers y fondos elegantes
+  static const Color beigeCrema = Color(0xFFF4E7D6);
+
+  /// Ondas inferiores o decoraciones
+  /// Bueno para formas curvas o fondos inferiores
+  static const Color arenaClaro = Color(0xFFEFDCC2);
+
+  /// Capas transparentes o overlays suaves
+  /// Útil para sombras ligeras o efectos glass
+  static const Color duraznoSuave = Color(0xFFF7E9DA);
+
+  /// Sombras suaves y profundidad
+  /// Excelente para bordes y elevaciones suaves
+  static const Color beigeRosado = Color(0xFFF2DDC4);
+
+  /// Detalles cálidos mínimos
+  /// Para íconos, líneas decorativas o pequeños detalles
+  static const Color cafeClaro = Color(0xFFD8B98F);
+
+  // =========================================================
+  // COLORES VERDES
+  // =========================================================
+
+  /// Verde principal
+  /// Botones, textos importantes y acciones principales
+  static const Color verdeOscuro = Color(0xFF4F8F1F);
+
+  /// Verde secundario
+  /// Indicadores, estados activos y detalles visuales
+  static const Color verdeClaro = Color(0xFFB5D75C);
+
+  // =========================================================
+  // ALIASES SEMÁNTICOS (para uso en toda la app)
   // =========================================================
 
   // VERDE PRINCIPAL
-  static const Color primary = Color(0xFF658C21);
+  static const Color primary = verdeOscuro;
 
   // VERDE OSCURO
-  static const Color primaryDark = Color(0xFF2E7D32);
+  static const Color primaryDark = verdeOscuro;
 
   // VERDE CLARO
-  static const Color primaryLight = Color(0xFFE6EFD2);
+  static const Color primaryLight = verdeClaro;
 
   // VERDE ACTIVO
-  static const Color primaryActive = Color(0xFF78A12A);
+  static const Color primaryActive = verdeOscuro;
 
   // =========================================================
   // FONDOS
   // =========================================================
 
-  // FONDO CREMA EXACTO
-  static const Color background = Color(0xFFEFDEC0);
+  // FONDO PRINCIPAL
+  static const Color background = blancoCalido;
 
   // OLAS DECORATIVAS
-  static const Color wave = Color(0xFFE7D4B1);
+  static const Color wave = arenaClaro;
 
-  static const Color waveLight = Color(0xFFF3E7D3);
+  static const Color waveLight = duraznoSuave;
 
   // TARJETAS
-  static const Color card = Colors.white;
+  static const Color card = marfilSuave;
 
   // INPUTS
   static const Color input = Colors.white;
@@ -53,7 +97,7 @@ class AppColors {
   // BORDES
   // =========================================================
 
-  static const Color border = Color(0xFFE8DCC7);
+  static const Color border = beigeRosado;
 
   // =========================================================
   // SOMBRAS
@@ -75,11 +119,9 @@ class AppColors {
   // COMPATIBILIDAD
   // =========================================================
 
-  // PARA EVITAR ERRORES EN OTRAS PANTALLAS
-
   static const Color surface = Colors.white;
 
-  static const Color surfaceVariant = Color(0xFFF8F3EB);
+  static const Color surfaceVariant = marfilSuave;
 
   static const Color white = Colors.white;
 }
@@ -92,9 +134,9 @@ class AppTheme {
 
   static const Color verdePrincipal = AppColors.primary;
 
-  static const Color verdeOscuro = AppColors.primaryDark;
+  static const Color verdeOscuro = AppColors.verdeOscuro;
 
-  static const Color verdeClaro = AppColors.primaryLight;
+  static const Color verdeClaro = AppColors.verdeClaro;
 
   static const Color crema = AppColors.background;
 
@@ -130,10 +172,10 @@ class AppTheme {
             AppColors.primary,
 
         secondary:
-            AppColors.primaryDark,
+            AppColors.verdeClaro,
 
         surface:
-            Colors.white,
+            AppColors.marfilSuave,
 
         error:
             AppColors.error,
@@ -156,7 +198,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
 
         backgroundColor:
-            Colors.white,
+            AppColors.blancoCalido,
 
         foregroundColor:
             AppColors.textPrimary,
@@ -243,7 +285,7 @@ class AppTheme {
               AppColors.primary,
 
           backgroundColor:
-              Colors.white,
+              AppColors.blancoCalido,
 
           minimumSize:
               const Size(
@@ -284,7 +326,7 @@ class AppTheme {
         filled: true,
 
         fillColor:
-            Colors.white,
+            AppColors.blancoCalido,
 
         contentPadding:
             const EdgeInsets.symmetric(
@@ -367,7 +409,7 @@ class AppTheme {
       cardTheme: CardThemeData(
 
         color:
-            Colors.white,
+            AppColors.marfilSuave,
 
         elevation: 0,
 
@@ -405,7 +447,7 @@ class AppTheme {
           const BottomNavigationBarThemeData(
 
         backgroundColor:
-            Colors.white,
+            AppColors.blancoCalido,
 
         selectedItemColor:
             AppColors.primary,

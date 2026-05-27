@@ -2,9 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../services/app_state.dart';
 
 class TratamientoScreen extends StatefulWidget {
-  const TratamientoScreen({super.key});
+  final int cultivoId;
+  final String diagnosisText;
+  final String scientificName;
+  final double confidence;
+
+  const TratamientoScreen({
+    super.key,
+    required this.cultivoId,
+    required this.diagnosisText,
+    required this.scientificName,
+    required this.confidence,
+  });
 
   @override
   State<TratamientoScreen> createState() => _TratamientoScreenState();
@@ -13,6 +25,9 @@ class TratamientoScreen extends StatefulWidget {
 class _TratamientoScreenState extends State<TratamientoScreen> {
   bool _cargando = true;
   Map<String, dynamic>? _tratamiento;
+
+  bool _guardando = false;
+  bool _guardado  = false;
 
   @override
   void initState() {
@@ -34,10 +49,53 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
 
+  Future<void> _guardarMonitoreo() async {
+    if (_guardado || _guardando) return;
+    setState(() => _guardando = true);
+
+    try {
+      final hoy = DateTime.now();
+      final fechaStr =
+          '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
+
+      await ApiService.post('/monitoreos', {
+        'id_cultivo'     : widget.cultivoId,
+        'fecha_monitoreo': fechaStr,
+        'observaciones'  :
+            '${widget.diagnosisText} — Confianza: ${(widget.confidence * 100).round()}% — ${widget.scientificName}',
+      });
+
+      AppState.instance.notifyMonitoreoGuardado();
+
+      if (mounted) {
+        setState(() { _guardando = false; _guardado = true; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Monitoreo guardado correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      debugPrint('Error guardando monitoreo: $e');
+      if (mounted) {
+        setState(() => _guardando = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -58,9 +116,26 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
                           _buildNotasCard(),
                           const SizedBox(height: 20),
                           ElevatedButton.icon(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.check_circle_outline),
-                            label: const Text('Guardar tratamiento'),
+                            onPressed: (_guardado || _guardando) ? null : _guardarMonitoreo,
+                            icon: _guardando
+                                ? const SizedBox(
+                                    width: 18, height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Icon(
+                                    _guardado
+                                        ? Icons.check_circle_outline
+                                        : Icons.check_circle_outline,
+                                    size: 20,
+                                  ),
+                            label: Text(
+                              _guardando
+                                  ? 'Guardando...'
+                                  : _guardado
+                                      ? 'Guardado'
+                                      : 'Guardar tratamiento',
+                            ),
                           ),
                           const SizedBox(height: 20),
                         ],
@@ -76,7 +151,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: Colors.white,
+      color: const Color(0xFFF4E7D6),
       child: Row(
         children: [
           IconButton(

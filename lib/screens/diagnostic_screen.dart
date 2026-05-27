@@ -2,48 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
-import '../services/api_service.dart';
 import '../services/app_state.dart';
 import 'tratamiento_screen.dart';
- 
+
 class DiagnosticScreen extends StatefulWidget {
   const DiagnosticScreen({super.key});
- 
+
   @override
   State<DiagnosticScreen> createState() => _DiagnosticScreenState();
 }
- 
+
 class _DiagnosticScreenState extends State<DiagnosticScreen> {
   String _stage = 'idle';
   final _picker = ImagePicker();
   String? _imagenPath;
- 
+
   List _cultivos = [];
   int? _cultivoSeleccionado;
- 
+
   static const _diagnosisText  = 'Roya encontrada';
   static const _scientificName = 'Hemileia vastatrix';
   static const double _confidence = 0.92;
   static const _severity      = 'Alta';
   static const _severityColor = Color(0xFFD32F2F);
- 
+
   @override
   void initState() {
     super.initState();
     _cargarDesdeAppState();
     AppState.instance.addListener(_onFincaCambiada);
   }
- 
+
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
     super.dispose();
   }
- 
+
   void _onFincaCambiada() {
     _cargarDesdeAppState();
   }
- 
+
   void _cargarDesdeAppState() {
     final cultivos = AppState.instance.cultivosFinca;
     setState(() {
@@ -55,14 +54,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _imagenPath = null;
     });
   }
- 
+
   String get _nombreFinca =>
       AppState.instance.fincaSeleccionada?['nombreFinca'] ?? 'Mi Finca';
- 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 234, 229, 219),
+      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -82,10 +81,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildHeader(BuildContext context) {
     return Container(
-      color: const Color.fromARGB(255, 208, 196, 171),
+      color: const Color(0xFFF4E7D6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
@@ -126,7 +125,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildIdleView() {
     return SingleChildScrollView(
       key: const ValueKey('idle'),
@@ -159,7 +158,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildCultivoSelector() {
     if (_cultivos.isEmpty) {
       return Container(
@@ -185,7 +184,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
       );
     }
- 
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -234,14 +233,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ],
     );
   }
- 
+
   Widget _buildIntro() {
     return Column(
       children: [
         Container(
           width: 60, height: 60,
-          
-         //aquiiiiiiiiiiiiiiiiiiiiiiiiii
         ),
         const SizedBox(height: 14),
         Text('Diagnostica la roya\nde tu planta',
@@ -261,7 +258,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ],
     );
   }
- 
+
   Widget _buildViewfinder() {
     return GestureDetector(
       onTap: _cultivoSeleccionado == null ? null : _onTakePhoto,
@@ -302,7 +299,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _corner({required bool top, required bool left}) {
     return Positioned(
       top: top ? 14 : null,
@@ -315,7 +312,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildFileSizeNote() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -340,7 +337,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildAnalyzingView() {
     return Center(
       key: const ValueKey('analyzing'),
@@ -377,7 +374,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildResultView() {
     return SingleChildScrollView(
       key: const ValueKey('result'),
@@ -395,7 +392,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           ElevatedButton.icon(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const TratamientoScreen()),
+              MaterialPageRoute(
+                builder: (_) => TratamientoScreen(
+                  cultivoId: _cultivoSeleccionado!,
+                  diagnosisText: _diagnosisText,
+                  scientificName: _scientificName,
+                  confidence: _confidence,
+                ),
+              ),
             ),
             icon: const Icon(Icons.healing_outlined, size: 20),
             label: const Text('Ver tratamiento completo'),
@@ -415,7 +419,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildImagePreview() {
     return Stack(
       children: [
@@ -456,7 +460,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ],
     );
   }
- 
+
   Widget _placeholderImage() {
     return Container(
       width: double.infinity,
@@ -467,7 +471,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildDiagnosisCard() {
     return _card(
       child: Column(
@@ -515,7 +519,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildConfidenceCard() {
     return _card(
       child: Column(
@@ -555,7 +559,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _buildRecommendationsCard() {
     final recs = [
       _Rec(Icons.medication_outlined, const Color(0xFF1565C0),
@@ -565,7 +569,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _Rec(Icons.delete_outline_rounded, const Color(0xFFE65100),
           'Eliminar hojas afectadas', 'Retirar y destruir hojas con síntomas'),
     ];
- 
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,7 +626,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ),
     );
   }
- 
+
   Widget _card({required Widget child}) {
     return Container(
       width: double.infinity,
@@ -640,7 +644,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       child: child,
     );
   }
- 
+
   Widget _detailRow(String label, String value,
       {Color? valueColor, bool isItalic = false}) {
     return Row(
@@ -659,7 +663,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       ],
     );
   }
- 
+
   void _onTakePhoto() async {
     final XFile? foto = await _picker.pickImage(
       source: ImageSource.camera,
@@ -671,7 +675,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _startAnalysis();
     }
   }
- 
+
   void _onSelectGallery() async {
     final XFile? foto = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -683,37 +687,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _startAnalysis();
     }
   }
- 
+
+  // Solo analiza — no guarda nada
   Future<void> _startAnalysis() async {
     setState(() => _stage = 'analyzing');
- 
-    try {
-      await Future.delayed(const Duration(seconds: 2));
- 
-      final hoy = DateTime.now();
-      final fechaStr =
-          '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
- 
-      await ApiService.post('/monitoreos', {
-        'id_cultivo': _cultivoSeleccionado,
-        'fecha_monitoreo': fechaStr,
-        'observaciones': '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% — $_scientificName',
-      });
- 
-      await ApiService.post('/analisis_ia', {
-        'resultado': _diagnosisText,
-        'confianza': (_confidence * 100).round(),
-        'version_modelo': '1.0',
-        'id_estado_analisis': 1,
-      });
- 
-    } catch (e) {
-      print('Error guardando monitoreo/análisis: $e');
-    }
- 
+    await Future.delayed(const Duration(seconds: 2));
     if (mounted) setState(() => _stage = 'result');
   }
- 
+
   void _showModelInfoDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -739,7 +720,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     );
   }
 }
- 
+
 class _Rec {
   final IconData icon;
   final Color color;
@@ -747,11 +728,11 @@ class _Rec {
   final String subtitle;
   const _Rec(this.icon, this.color, this.title, this.subtitle);
 }
- 
+
 class _CornerPainter extends CustomPainter {
   final bool top, left;
   const _CornerPainter({required this.top, required this.left});
- 
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -759,7 +740,7 @@ class _CornerPainter extends CustomPainter {
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
- 
+
     final path = Path();
     if (top && left) {
       path.moveTo(0, size.height);
@@ -780,8 +761,7 @@ class _CornerPainter extends CustomPainter {
     }
     canvas.drawPath(path, paint);
   }
- 
+
   @override
   bool shouldRepaint(covariant CustomPainter old) => false;
 }
- 

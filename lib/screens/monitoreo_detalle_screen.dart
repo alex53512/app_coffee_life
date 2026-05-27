@@ -80,13 +80,13 @@ class MonitoreoDetalleScreen extends StatelessWidget {
     final municipio = _municipio();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
             // ── Header ──────────────────────────────────────────
             Container(
-              color: Colors.white,
+              color: const Color(0xFFF4E7D6),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 children: [

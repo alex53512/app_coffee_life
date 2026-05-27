@@ -94,7 +94,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -110,7 +110,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: AppColors.background,
+      color: const Color(0xFFF4E7D6),
       child: Row(
         children: [
           IconButton(
