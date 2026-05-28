@@ -166,33 +166,50 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ✅ Color de Alexander
       backgroundColor: const Color(0xFFFFFEFB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: switch (_stage) {
-                  'result'    => _esResultadoValido
-                                    ? _buildResultView()
-                                    : _buildInvalidView(),
-                  'analyzing' => _buildAnalyzingView(),
-                  _           => _buildIdleView(),
-                },
+      body: Column(
+        children: [
+          // ── HEADER con bordes redondeados inferiores y sombra ──
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: _buildHeader(context),
               ),
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: switch (_stage) {
+                'result'    => _esResultadoValido
+                                  ? _buildResultView()
+                                  : _buildInvalidView(),
+                'analyzing' => _buildAnalyzingView(),
+                _           => _buildIdleView(),
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
  
   Widget _buildHeader(BuildContext context) {
     return Container(
-      // ✅ Color de Alexander
       color: const Color(0xFFF4E7D6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
@@ -474,14 +491,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             ElevatedButton.icon(
               onPressed: () => Navigator.push(
                 context,
-               MaterialPageRoute(
-  builder: (_) => TratamientoScreen(
-    cultivoId:      _cultivoSeleccionado!,
-    diagnosisText:  _diagnosisText,
-    scientificName: _scientificName,
-    confidence:     _confidence,
-  ),
-),
+                MaterialPageRoute(
+                  builder: (_) => TratamientoScreen(
+                    cultivoId:      _cultivoSeleccionado!,
+                    diagnosisText:  _diagnosisText,
+                    scientificName: _scientificName,
+                    confidence:     _confidence,
+                  ),
+                ),
               ),
               icon: const Icon(Icons.healing_outlined, size: 20),
               label: const Text('Ver tratamiento completo'),

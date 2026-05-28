@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'main_navigation.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -67,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
-          // ── SECCIÓN SUPERIOR VERDE CON HOJAS Y CURVA ──
+          // ── SECCIÓN SUPERIOR VERDE CON CURVA ──
           ClipPath(
             clipper: _OvalBottomClipper(),
             child: Container(
@@ -80,13 +81,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   colors: [
                     Color(0xFF4F8F1F),
                     Color(0xFF4F8F1F),
-                    Color(0xFF071509),
+                    Color.fromARGB(255, 24, 66, 30),
                   ],
                 ),
               ),
               child: Stack(
                 children: [
-                  // TEXTO CENTRADO
                   SafeArea(
                     child: Align(
                       alignment: const Alignment(0, -0.0),
@@ -99,18 +99,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             fit: BoxFit.contain,
                           ),
                           Transform.translate(
-  offset: const Offset(0, -40), // ← sube más el texto
-  child: Text(
-    'Coffee Life',
-    style: GoogleFonts.playfairDisplay(
-      fontSize: 34,
-      fontWeight: FontWeight.w800,
-      color: const Color.fromARGB(255, 14, 15, 14),
-      letterSpacing: 1,
-    ),
-  ),
-),
-                         
+                            offset: const Offset(0, -40),
+                            child: Text(
+                              'Coffee Life',
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -120,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // ── SECCIÓN INFERIOR BLANCA ──
+          // ── SECCIÓN INFERIOR ──
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
@@ -129,7 +128,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // SALUDO
                     Text(
                       '¡Hola!',
                       style: GoogleFonts.playfairDisplay(
@@ -180,9 +178,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         hint: '••••••••',
                         icon: Icons.lock_outline,
                         suffixIcon: IconButton(
-                          onPressed: () => setState(() => _verPassword = !_verPassword),
+                          onPressed: () =>
+                              setState(() => _verPassword = !_verPassword),
                           icon: Icon(
-                            _verPassword ? Icons.visibility_off : Icons.visibility,
+                            _verPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                             color: const Color(0xFF3A7A42),
                             size: 20,
                           ),
@@ -220,11 +221,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
 
-                    // FORGOT PASSWORD
+                    // ── OLVIDASTE CONTRASEÑA ← ahora navega a la pantalla ──
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordScreen(),
+                            ),
+                          );
+                        },
                         child: Text(
                           '¿Olvidaste tu contraseña?',
                           style: GoogleFonts.lato(
@@ -269,38 +277,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // DIVIDER
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: Colors.grey.shade200)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'o continúa con',
-                            style: GoogleFonts.lato(
-                              fontSize: 11,
-                              color: Colors.grey.shade400,
-                            ),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Colors.grey.shade200)),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // SOCIAL BUTTONS
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _socialButton(Icons.g_mobiledata_rounded, const Color(0xFFC0392B)),
-                        const SizedBox(width: 16),
-                        _socialButton(Icons.apple, Colors.black87),
-                        const SizedBox(width: 16),
-                        _socialButton(Icons.facebook_rounded, const Color(0xFF1877F2)),
-                      ],
                     ),
                     const SizedBox(height: 24),
 
@@ -369,7 +345,8 @@ class _LoginScreenState extends State<LoginScreen> {
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: const Color(0xFFF2F7F2),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -405,16 +382,6 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Icon(icon, color: color, size: 24),
     );
   }
-
-  Widget _buildLeaf(double width, double height, Color color, double angle) {
-    return Transform.rotate(
-      angle: angle,
-      child: CustomPaint(
-        size: Size(width, height),
-        painter: _LeafPainter(color),
-      ),
-    );
-  }
 }
 
 // ── CURVA OVAL HACIA ABAJO ──
@@ -448,7 +415,8 @@ class _LeafPainter extends CustomPainter {
     final paint = Paint()..color = color;
     final path = Path()
       ..moveTo(size.width * 0.5, 0)
-      ..quadraticBezierTo(size.width, size.height * 0.3, size.width * 0.5, size.height)
+      ..quadraticBezierTo(
+          size.width, size.height * 0.3, size.width * 0.5, size.height)
       ..quadraticBezierTo(0, size.height * 0.3, size.width * 0.5, 0)
       ..close();
     canvas.drawPath(path, paint);

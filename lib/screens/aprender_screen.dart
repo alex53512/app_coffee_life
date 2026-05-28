@@ -25,8 +25,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
   final List<Map<String, dynamic>> _articulos = [
     {
       'titulo': '¿Qué es la roya del café?',
-      'subtitulo':
-          'Conoce todo sobre esta enfermedad y cómo identificarla.',
+      'subtitulo': 'Conoce todo sobre esta enfermedad y cómo identificarla.',
       'categoria': 'Roya',
       'color': Colors.red,
       'imagen': 'assets/images/roya_cafe.jpg',
@@ -37,8 +36,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
     },
     {
       'titulo': 'Cómo aplicar fungicidas correctamente',
-      'subtitulo':
-          'Guía práctica para el control químico de enfermedades.',
+      'subtitulo': 'Guía práctica para el control químico de enfermedades.',
       'categoria': 'Manejo',
       'color': Colors.orange,
       'imagen': 'assets/images/fungicida.jpg',
@@ -49,8 +47,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
     },
     {
       'titulo': 'Nutrición del cafeto en floración',
-      'subtitulo':
-          'Los nutrientes clave para maximizar tu cosecha.',
+      'subtitulo': 'Los nutrientes clave para maximizar tu cosecha.',
       'categoria': 'Nutrición',
       'color': AppColors.primary,
       'imagen': 'assets/images/nutricion.jpg',
@@ -61,8 +58,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
     },
     {
       'titulo': 'Señales tempranas de roya',
-      'subtitulo':
-          'Aprende a detectar la roya antes de que se propague.',
+      'subtitulo': 'Aprende a detectar la roya antes de que se propague.',
       'categoria': 'Roya',
       'color': Colors.red,
       'imagen': 'assets/images/roya2.jpg',
@@ -73,8 +69,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
     },
     {
       'titulo': 'Cosecha selectiva vs mecanizada',
-      'subtitulo':
-          'Ventajas y desventajas de cada método.',
+      'subtitulo': 'Ventajas y desventajas de cada método.',
       'categoria': 'Cosecha',
       'color': Colors.brown,
       'imagen': 'assets/images/cosecha.jpg',
@@ -87,17 +82,13 @@ class _AprenderScreenState extends State<AprenderScreen> {
 
   List<Map<String, dynamic>> get _articulosFiltrados {
     return _articulos.where((a) {
-      final matchCategoria =
-          _categoriaSeleccionada == 'Todos' ||
-              a['categoria'] == _categoriaSeleccionada;
+      final matchCategoria = _categoriaSeleccionada == 'Todos' ||
+          a['categoria'] == _categoriaSeleccionada;
 
-      final matchBusqueda =
-          _searchController.text.isEmpty ||
-              a['titulo']
-                  .toLowerCase()
-                  .contains(
-                    _searchController.text.toLowerCase(),
-                  );
+      final matchBusqueda = _searchController.text.isEmpty ||
+          a['titulo']
+              .toLowerCase()
+              .contains(_searchController.text.toLowerCase());
 
       return matchCategoria && matchBusqueda;
     }).toList();
@@ -106,134 +97,100 @@ class _AprenderScreenState extends State<AprenderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
+      backgroundColor: const Color(0xFFF4E7D6),
+      body: Column(
+        children: [
+          // ── HEADER ──
+          SafeArea(
+            bottom: false,
+            child: _buildHeader(),
+          ),
 
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
+          // BUSCADOR
+          _buildBuscador(),
 
-            // BUSCADOR
-            _buildBuscador(),
+          const SizedBox(height: 4),
 
-            // ESPACIO PEQUEÑO
-            const SizedBox(height: 4),
+          // CATEGORÍAS
+          _buildCategorias(),
 
-            // CATEGORÍAS
-            _buildCategorias(),
+          const SizedBox(height: 18),
 
-            // ESPACIO PARA BAJAR
-            // EL CONTENEDOR REDONDEADO
-            const SizedBox(height: 18),
-
-            // CONTENEDOR REDONDEADO
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 234, 229, 219),
-
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
-                  ),
+          // CONTENEDOR REDONDEADO
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFFFBF7EF),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
                 ),
-
-                clipBehavior: Clip.antiAlias,
-
-                child: _buildListaArticulos(),
               ),
+              clipBehavior: Clip.antiAlias,
+              child: _buildListaArticulos(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      width: double.infinity,
       color: const Color(0xFFF4E7D6),
-
-      child: SafeArea(
-        bottom: false,
-
-        child: Row(
-          children: [
-            Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
               width: 42,
               height: 42,
-
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(12),
               ),
-
               child: const Icon(
                 Icons.menu_book_rounded,
                 color: AppColors.textPrimary,
                 size: 22,
               ),
             ),
-
-            const SizedBox(width: 14),
-
-            Text(
-              'Aprender',
-
-              style: GoogleFonts.nunito(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
+          ),
+          Text(
+            'Aprender',
+            style: GoogleFonts.nunito(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildBuscador() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        2,
-        20,
-        10,
-      ),
-
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
       child: TextField(
         controller: _searchController,
         onChanged: (_) => setState(() {}),
-
         decoration: InputDecoration(
           hintText: 'Buscar contenido...',
-
-          prefixIcon: const Icon(
-            Icons.search,
-            color: AppColors.textSecondary,
-          ),
-
+          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
           filled: true,
-          fillColor: Colors.white,
-
-          contentPadding:
-              const EdgeInsets.symmetric(
-                vertical: 12,
-              ),
-
+          fillColor: const Color.fromARGB(255, 246, 243, 243),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none,
           ),
-
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-
-            borderSide: const BorderSide(
-              color: AppColors.primary,
-              width: 1.5,
-            ),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -243,64 +200,29 @@ class _AprenderScreenState extends State<AprenderScreen> {
   Widget _buildCategorias() {
     return SizedBox(
       height: 50,
-
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-
-        padding:
-            const EdgeInsets.symmetric(
-              horizontal: 20,
-            ),
-
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: _categorias.length,
-
-        separatorBuilder:
-            (_, __) =>
-                const SizedBox(width: 8),
-
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final cat = _categorias[index];
-
-          final isSelected =
-              _categoriaSeleccionada == cat;
+          final isSelected = _categoriaSeleccionada == cat;
 
           return GestureDetector(
-            onTap:
-                () => setState(
-                  () =>
-                      _categoriaSeleccionada =
-                          cat,
-                ),
-
+            onTap: () => setState(() => _categoriaSeleccionada = cat),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color:
-                    isSelected
-                        ? AppColors.primary
-                        : Colors.white,
-
-                borderRadius:
-                    BorderRadius.circular(20),
+                color: isSelected ? AppColors.primary : const Color.fromARGB(255, 249, 248, 248),
+                borderRadius: BorderRadius.circular(20),
               ),
-
               child: Text(
                 cat,
-
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-
-                  color:
-                      isSelected
-                          ? Colors.white
-                          : AppColors
-                              .textSecondary,
+                  color: isSelected ? Colors.white : AppColors.textSecondary,
                 ),
               ),
             ),
@@ -312,169 +234,101 @@ class _AprenderScreenState extends State<AprenderScreen> {
 
   Widget _buildListaArticulos() {
     final destacados =
-        _articulosFiltrados
-            .where(
-              (a) => a['destacado'] == true,
-            )
-            .toList();
-
+        _articulosFiltrados.where((a) => a['destacado'] == true).toList();
     final resto =
-        _articulosFiltrados
-            .where(
-              (a) => a['destacado'] != true,
-            )
-            .toList();
+        _articulosFiltrados.where((a) => a['destacado'] != true).toList();
 
     return ListView(
       padding: const EdgeInsets.all(20),
-
       children: [
         if (destacados.isNotEmpty) ...[
           Text(
             'Artículos destacados',
-
             style: GoogleFonts.nunito(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
           ),
-
           const SizedBox(height: 14),
-
-          ...destacados.map(
-            (a) => _articuloDestacado(a),
-          ),
-
+          ...destacados.map((a) => _articuloDestacado(a)),
           const SizedBox(height: 20),
         ],
-
         if (resto.isNotEmpty) ...[
           Text(
             'Más artículos',
-
             style: GoogleFonts.nunito(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
           ),
-
           const SizedBox(height: 14),
-
-          ...resto.map(
-            (a) => _articuloSimple(a),
-          ),
+          ...resto.map((a) => _articuloSimple(a)),
         ],
       ],
     );
   }
 
-  Widget _articuloDestacado(
-    Map<String, dynamic> a,
-  ) {
+  Widget _articuloDestacado(Map<String, dynamic> a) {
     return GestureDetector(
       onTap: () => _abrirArticulo(a),
-
       child: Container(
-        margin:
-            const EdgeInsets.only(bottom: 16),
-
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-
-          borderRadius:
-              BorderRadius.circular(18),
-
+          color: const Color(0xFFFBF7EF),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.05),
-
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
             ),
           ],
         ),
-
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius:
-                  const BorderRadius.only(
-                    topLeft:
-                        Radius.circular(18),
-
-                    topRight:
-                        Radius.circular(18),
-                  ),
-
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
+              ),
               child: Image.asset(
                 a['imagen'],
-
                 height: 170,
                 width: double.infinity,
                 fit: BoxFit.cover,
-
-                errorBuilder:
-                    (_, __, ___) => Container(
-                      height: 170,
-
-                      color:
-                          (a['color']
-                                  as Color)
-                              .withOpacity(0.1),
-
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: 60,
-                        color:
-                            a['color']
-                                as Color,
-                      ),
-                    ),
+                errorBuilder: (_, __, ___) => Container(
+                  height: 170,
+                  color: (a['color'] as Color).withOpacity(0.1),
+                  child: Icon(
+                    Icons.image_outlined,
+                    size: 60,
+                    color: a['color'] as Color,
+                  ),
+                ),
               ),
             ),
-
             Padding(
-              padding:
-                  const EdgeInsets.all(16),
-
+              padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     a['titulo'],
-
-                    style:
-                        GoogleFonts.nunito(
-                          fontSize: 16,
-                          fontWeight:
-                              FontWeight.w800,
-
-                          color:
-                              AppColors
-                                  .textPrimary,
-                        ),
+                    style: GoogleFonts.nunito(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-
                   const SizedBox(height: 6),
-
                   Text(
                     a['subtitulo'],
-
-                    style:
-                        GoogleFonts.nunito(
-                          fontSize: 13,
-
-                          color:
-                              AppColors
-                                  .textSecondary,
-                        ),
+                    style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -485,103 +339,60 @@ class _AprenderScreenState extends State<AprenderScreen> {
     );
   }
 
-  Widget _articuloSimple(
-    Map<String, dynamic> a,
-  ) {
+  Widget _articuloSimple(Map<String, dynamic> a) {
     return GestureDetector(
       onTap: () => _abrirArticulo(a),
-
       child: Container(
-        margin:
-            const EdgeInsets.only(bottom: 12),
-
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
-
         decoration: BoxDecoration(
           color: Colors.white,
-
-          borderRadius:
-              BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
         ),
-
         child: Row(
           children: [
             ClipRRect(
-              borderRadius:
-                  BorderRadius.circular(10),
-
+              borderRadius: BorderRadius.circular(10),
               child: Image.asset(
                 a['imagen'],
-
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
-
-                errorBuilder:
-                    (_, __, ___) => Container(
-                      width: 60,
-                      height: 60,
-
-                      color:
-                          (a['color']
-                                  as Color)
-                              .withOpacity(0.1),
-
-                      child: Icon(
-                        Icons.image_outlined,
-
-                        color:
-                            a['color']
-                                as Color,
-                      ),
-                    ),
+                errorBuilder: (_, __, ___) => Container(
+                  width: 60,
+                  height: 60,
+                  color: (a['color'] as Color).withOpacity(0.1),
+                  child: Icon(Icons.image_outlined, color: a['color'] as Color),
+                ),
               ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     a['titulo'],
-
-                    style:
-                        GoogleFonts.nunito(
-                          fontSize: 13,
-                          fontWeight:
-                              FontWeight.w700,
-                        ),
+                    style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     '${a['categoria']} · ${a['tiempo']}',
-
-                    style:
-                        GoogleFonts.nunito(
-                          fontSize: 11,
-
-                          color:
-                              AppColors
-                                  .textSecondary,
-                        ),
+                    style: GoogleFonts.nunito(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
             ),
-
             const Icon(
               Icons.arrow_forward_ios,
-
               size: 12,
-
-              color:
-                  AppColors.textSecondary,
+              color: AppColors.textSecondary,
             ),
           ],
         ),
@@ -589,17 +400,11 @@ class _AprenderScreenState extends State<AprenderScreen> {
     );
   }
 
-  void _abrirArticulo(
-    Map<String, dynamic> articulo,
-  ) {
+  void _abrirArticulo(Map<String, dynamic> articulo) {
     Navigator.push(
       context,
-
       MaterialPageRoute(
-        builder:
-            (_) => _ArticuloScreen(
-              articulo: articulo,
-            ),
+        builder: (_) => _ArticuloScreen(articulo: articulo),
       ),
     );
   }
@@ -608,94 +413,59 @@ class _AprenderScreenState extends State<AprenderScreen> {
 class _ArticuloScreen extends StatelessWidget {
   final Map<String, dynamic> articulo;
 
-  const _ArticuloScreen({
-    required this.articulo,
-  });
+  const _ArticuloScreen({required this.articulo});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
-
       appBar: AppBar(
         backgroundColor: const Color(0xFFF4E7D6),
         elevation: 0,
-        foregroundColor:
-            AppColors.textPrimary,
-
+        foregroundColor: AppColors.textPrimary,
         title: Text(
           'Artículo',
-
-          style: GoogleFonts.nunito(
-            fontWeight: FontWeight.w700,
-          ),
+          style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
         ),
       ),
-
       body: SingleChildScrollView(
         child: Column(
           children: [
             Image.asset(
               articulo['imagen'],
-
               height: 220,
               width: double.infinity,
               fit: BoxFit.cover,
-
-              errorBuilder:
-                  (_, __, ___) => Container(
-                    height: 220,
-
-                    color:
-                        (articulo['color']
-                                as Color)
-                            .withOpacity(0.1),
-
-                    child: Icon(
-                      Icons.image_outlined,
-                      size: 80,
-
-                      color:
-                          articulo['color']
-                              as Color,
-                    ),
-                  ),
+              errorBuilder: (_, __, ___) => Container(
+                height: 220,
+                color: (articulo['color'] as Color).withOpacity(0.1),
+                child: Icon(
+                  Icons.image_outlined,
+                  size: 80,
+                  color: articulo['color'] as Color,
+                ),
+              ),
             ),
-
             Padding(
-              padding:
-                  const EdgeInsets.all(20),
-
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     articulo['titulo'],
-
-                    style:
-                        GoogleFonts.nunito(
-                          fontSize: 22,
-                          fontWeight:
-                              FontWeight.w800,
-                        ),
+                    style: GoogleFonts.nunito(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-
                   const SizedBox(height: 10),
-
                   Text(
                     articulo['contenido'],
-
-                    style:
-                        GoogleFonts.nunito(
-                          fontSize: 14,
-                          height: 1.8,
-
-                          color:
-                              AppColors
-                                  .textSecondary,
-                        ),
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      height: 1.8,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),

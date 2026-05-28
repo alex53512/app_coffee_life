@@ -46,6 +46,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     try {
       final data = await ApiService.get('/monitoreos');
       final todos = data is List ? data : (data['data'] ?? []);
+
+       if (todos.isNotEmpty) {
+      print('==============================');
+      print('MONITOREO COMPLETO: ${todos[0]}');
+      print('==============================');
+    }
  
       final cultivosFinca = AppState.instance.cultivosFinca;
       final idsCultivos = cultivosFinca
@@ -214,95 +220,102 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 12),
-            _buildTabs(),
-            const SizedBox(height: 8),
-            Expanded(
-              child: _cargando
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    )
-                  : _error != null
-                      ? _buildError()
-                      : _tabIndex == 0
-                          ? _buildHistorial()
-                          : _buildMapa(),
+      body: Column(
+        children: [
+          // ── HEADER con bordes redondeados inferiores y sombra ──
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: _buildHeader(context),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildTabs(),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _cargando
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _error != null
+                    ? _buildError()
+                    : _tabIndex == 0
+                        ? _buildHistorial()
+                        : _buildMapa(),
+          ),
+        ],
       ),
     );
   }
  
   Widget _buildHeader(BuildContext context) {
     return Container(
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4E7D6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+      width: double.infinity,
+      color: const Color(0xFFF4E7D6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: AppColors.textPrimary,
+                size: 18,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
           ),
-        ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'Monitoreo',
+              style: GoogleFonts.nunito(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: _cargarMonitoreos,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.textPrimary,
-                  size: 18,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
               child: Text(
-                'Monitoreo',
+                'Filtrar',
                 style: GoogleFonts.nunito(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
               ),
             ),
-            GestureDetector(
-              onTap: _cargarMonitoreos,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Filtrar',
-                  style: GoogleFonts.nunito(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -411,12 +424,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
  
   Widget _monitoreoCard(dynamic m) {
-    final color = _colorNivel(m);
-    final nivel = _labelNivel(m);
-    final titulo = _titulo(m);
-    final fecha = _fecha(m);
+    final color   = _colorNivel(m);
+    final nivel   = _labelNivel(m);
+    final titulo  = _titulo(m);
+    final fecha   = _fecha(m);
     final parcela = _parcela(m);
-    final imgUrl = _imagenUrl(m);
+    final imgUrl  = _imagenUrl(m);
  
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -431,7 +444,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFFBF7EF),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -442,7 +455,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         ),
         child: Row(
           children: [
-            // Imagen o color de fondo sin icono
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: imgUrl != null

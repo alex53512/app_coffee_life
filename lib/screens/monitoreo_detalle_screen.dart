@@ -38,8 +38,8 @@ class MonitoreoDetalleScreen extends StatelessWidget {
     if (cultivo is Map) {
       final finca = cultivo['finca'];
       if (finca is Map) {
-        final mun  = finca['municipio'] ?? '';
-        final dep  = finca['departamento'] ?? '';
+        final mun = finca['municipio'] ?? '';
+        final dep = finca['departamento'] ?? '';
         if (mun.isNotEmpty && dep.isNotEmpty) return '$mun, $dep';
         if (mun.isNotEmpty) return mun;
       }
@@ -76,202 +76,225 @@ class MonitoreoDetalleScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imagenes = _imagenes();
+    final imagenes  = _imagenes();
     final municipio = _municipio();
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ──────────────────────────────────────────
-            Container(
-              color: const Color(0xFFF4E7D6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Expanded(
-                    child: Text('Detalle del monitoreo',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.nunito(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
-                  ),
-                  const SizedBox(width: 48),
-                ],
+      body: Column(
+        children: [
+          // ── HEADER con bordes redondeados inferiores y sombra ──
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: _buildHeader(context),
               ),
             ),
+          ),
 
-            // ── Contenido ───────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          // ── Contenido ───────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
 
-                    // Fecha + badge
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                  // Fecha + badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined,
+                              size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 6),
+                          Text(_fecha(),
+                              style: GoogleFonts.nunito(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary)),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: _colorNivel().withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
                           children: [
-                            const Icon(Icons.calendar_today_outlined,
-                                size: 16, color: AppColors.textSecondary),
-                            const SizedBox(width: 6),
-                            Text(_fecha(),
-                                style: GoogleFonts.nunito(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary)),
+                            Icon(Icons.eco_rounded,
+                                size: 13, color: _colorNivel()),
+                            const SizedBox(width: 4),
+                            Text(
+                              monitoreo['nivelRoya'] ??
+                                  monitoreo['nivel_roya'] ??
+                                  'Sin análisis',
+                              style: GoogleFonts.nunito(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _colorNivel()),
+                            ),
                           ],
                         ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ── Tarjeta: Cultivo y Finca ─────────────────
+                  _seccionTitulo('Cultivo y Finca'),
+                  const SizedBox(height: 10),
+                  _card(
+                    child: Column(
+                      children: [
+                        _infoFila(Icons.grass_rounded, 'Cultivo', _cultivo()),
+                        const Divider(height: 20, color: AppColors.border),
+                        _infoFila(Icons.location_on_outlined, 'Finca', _finca()),
+                        if (municipio.isNotEmpty) ...[
+                          const Divider(height: 20, color: AppColors.border),
+                          _infoFila(Icons.map_outlined, 'Ubicación', municipio),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Tarjeta: Observaciones ────────────────────
+                  _seccionTitulo('Observaciones / Diagnóstico'),
+                  const SizedBox(height: 10),
+                  _card(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 5),
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                            color: _colorNivel().withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20),
+                            color: AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.eco_rounded,
-                                  size: 13, color: _colorNivel()),
-                              const SizedBox(width: 4),
-                              Text(
-                                monitoreo['nivelRoya'] ??
-                                    monitoreo['nivel_roya'] ??
-                                    'Sin análisis',
-                                style: GoogleFonts.nunito(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: _colorNivel()),
-                              ),
-                            ],
+                          child: const Icon(Icons.notes_rounded,
+                              color: AppColors.primary, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _observaciones(),
+                            style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                                height: 1.5),
                           ),
                         ),
                       ],
                     ),
+                  ),
 
-                    const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                    // ── Tarjeta: Cultivo y Finca ─────────────────
-                    _seccionTitulo('Cultivo y Finca'),
-                    const SizedBox(height: 10),
-                    _card(
-                      child: Column(
-                        children: [
-                          _infoFila(
-                              Icons.grass_rounded, 'Cultivo', _cultivo()),
-                          const Divider(height: 20, color: AppColors.border),
-                          _infoFila(
-                              Icons.location_on_outlined, 'Finca', _finca()),
-                          if (municipio.isNotEmpty) ...[
-                            const Divider(height: 20, color: AppColors.border),
-                            _infoFila(Icons.map_outlined, 'Ubicación',
-                                municipio),
-                          ],
-                        ],
-                      ),
-                    ),
+                  // ── Tarjeta: Experto ──────────────────────────
+                  _seccionTitulo('Experto asignado'),
+                  const SizedBox(height: 10),
+                  _card(
+                    child: _infoFila(
+                        Icons.person_outline_rounded, 'Experto', _experto()),
+                  ),
 
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                    // ── Tarjeta: Observaciones ────────────────────
-                    _seccionTitulo('Observaciones / Diagnóstico'),
-                    const SizedBox(height: 10),
-                    _card(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 36, height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.notes_rounded,
-                                color: AppColors.primary, size: 20),
+                  // ── Imágenes ──────────────────────────────────
+                  _seccionTitulo('Imágenes (${imagenes.length})'),
+                  const SizedBox(height: 10),
+                  imagenes.isEmpty
+                      ? _card(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.image_not_supported_outlined,
+                                  color: AppColors.textSecondary, size: 20),
+                              const SizedBox(width: 10),
+                              Text('Sin imágenes registradas',
+                                  style: GoogleFonts.nunito(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13)),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _observaciones(),
-                              style: GoogleFonts.nunito(
-                                  fontSize: 14,
-                                  color: AppColors.textPrimary,
-                                  height: 1.5),
-                            ),
+                        )
+                      : GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
                           ),
-                        ],
-                      ),
-                    ),
+                          itemCount: imagenes.length,
+                          itemBuilder: (_, i) {
+                            final url = imagenes[i]['urlImagen'] ??
+                                imagenes[i]['url_imagen'] ?? '';
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: url.isNotEmpty
+                                  ? Image.network(url, fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          _imagenPlaceholder())
+                                  : _imagenPlaceholder(),
+                            );
+                          },
+                        ),
 
-                    const SizedBox(height: 16),
-
-                    // ── Tarjeta: Experto ──────────────────────────
-                    _seccionTitulo('Experto asignado'),
-                    const SizedBox(height: 10),
-                    _card(
-                      child: _infoFila(
-                          Icons.person_outline_rounded, 'Experto', _experto()),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── Imágenes ──────────────────────────────────
-                    _seccionTitulo('Imágenes (${imagenes.length})'),
-                    const SizedBox(height: 10),
-                    imagenes.isEmpty
-                        ? _card(
-                            child: Row(
-                              children: [
-                                const Icon(Icons.image_not_supported_outlined,
-                                    color: AppColors.textSecondary, size: 20),
-                                const SizedBox(width: 10),
-                                Text('Sin imágenes registradas',
-                                    style: GoogleFonts.nunito(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 13)),
-                              ],
-                            ),
-                          )
-                        : GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                            ),
-                            itemCount: imagenes.length,
-                            itemBuilder: (_, i) {
-                              final url = imagenes[i]['urlImagen'] ??
-                                  imagenes[i]['url_imagen'] ?? '';
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: url.isNotEmpty
-                                    ? Image.network(url, fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            _imagenPlaceholder())
-                                    : _imagenPlaceholder(),
-                              );
-                            },
-                          ),
-
-                    const SizedBox(height: 20),
-                  ],
-                ),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFF4E7D6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: AppColors.textPrimary, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          Expanded(
+            child: Text(
+              'Detalle del monitoreo',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.nunito(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
       ),
     );
   }
