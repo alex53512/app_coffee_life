@@ -23,7 +23,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
   void initState() {
     super.initState();
     _cargarClima();
-    // Escuchar cambios de finca/cultivo para reconstruir recomendaciones
     AppState.instance.addListener(_onEstadoCambiado);
   }
  
@@ -61,19 +60,19 @@ class _ClimaScreenState extends State<ClimaScreen> {
       final data     = jsonDecode(response.body);
  
       if (response.statusCode == 200) {
-        final current     = data['current'];
-        final location    = data['location'];
+        final current      = data['current'];
+        final location     = data['location'];
         final forecastDays = data['forecast']['forecastday'] as List;
         setState(() {
           _ciudadActual = '${location['name']}, ${location['region']}';
           _clima = {
-            'temp':       current['temp_c'].round(),
+            'temp':        current['temp_c'].round(),
             'descripcion': current['condition']['text'],
-            'humedad':    current['humidity'],
-            'viento':     current['wind_kph'].round(),
-            'lluvia':     current['precip_mm'] > 1,
-            'icono':      _getEmojiFromCode(current['condition']['code'], current['is_day']),
-            'pronostico': forecastDays.asMap().entries.map((e) {
+            'humedad':     current['humidity'],
+            'viento':      current['wind_kph'].round(),
+            'lluvia':      current['precip_mm'] > 1,
+            'icono':       _getEmojiFromCode(current['condition']['code'], current['is_day']),
+            'pronostico':  forecastDays.asMap().entries.map((e) {
               final dias = ['Hoy', 'Mañana', 'Pasado', 'En 3 días'];
               final day  = e.value['day'];
               return {
@@ -103,10 +102,10 @@ class _ClimaScreenState extends State<ClimaScreen> {
         'temp': 23, 'descripcion': 'Parcialmente nublado',
         'humedad': 60, 'viento': 9, 'lluvia': false, 'icono': '⛅',
         'pronostico': [
-          {'dia': 'Hoy',      'icono': Icons.cloud_rounded,    'max': 24, 'min': 17, 'lluvia': false},
-          {'dia': 'Mañana',   'icono': Icons.wb_sunny_rounded,  'max': 26, 'min': 18, 'lluvia': false},
-          {'dia': 'Pasado',   'icono': Icons.grain_rounded,     'max': 22, 'min': 16, 'lluvia': true},
-          {'dia': 'En 3 días','icono': Icons.cloud_rounded,    'max': 24, 'min': 17, 'lluvia': false},
+          {'dia': 'Hoy',       'icono': Icons.cloud_rounded,   'max': 24, 'min': 17, 'lluvia': false},
+          {'dia': 'Mañana',    'icono': Icons.wb_sunny_rounded, 'max': 26, 'min': 18, 'lluvia': false},
+          {'dia': 'Pasado',    'icono': Icons.grain_rounded,    'max': 22, 'min': 16, 'lluvia': true},
+          {'dia': 'En 3 días', 'icono': Icons.cloud_rounded,   'max': 24, 'min': 17, 'lluvia': false},
         ],
       };
       _cargando = false;
@@ -132,22 +131,17 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Icons.cloud_rounded;
   }
  
-  // ─────────────────────────────────────────────────────────────────────────
-  // Recomendaciones combinadas: CLIMA + NIVEL DE ROYA del cultivo seleccionado
-  // ─────────────────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _getRecomendaciones() {
     final temp    = (_clima['temp']    ?? 22) as int;
     final humedad = (_clima['humedad'] ?? 70) as int;
     final lluvia  = (_clima['lluvia']  ?? false) as bool;
  
-    // Datos del cultivo desde AppState
-    final nivelRoya     = AppState.instance.nivelRoya;       // Bajo | Medio | Alto | Sin datos
-    final cultivoNombre = AppState.instance.cultivoNombre;   // nombre o ''
+    final nivelRoya     = AppState.instance.nivelRoya;
+    final cultivoNombre = AppState.instance.cultivoNombre;
     final tieneCultivo  = cultivoNombre.isNotEmpty;
  
     List<Map<String, dynamic>> recs = [];
  
-    // ── 1. ALERTA DE ROYA (prioridad máxima si hay cultivo seleccionado) ──
     if (tieneCultivo) {
       if (nivelRoya == 'Alto') {
         recs.add({
@@ -186,7 +180,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
       }
     }
  
-    // ── 2. RIEGO ──
     if (lluvia) {
       recs.add({
         'icono': Icons.water_drop_outlined,
@@ -205,7 +198,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
       });
     }
  
-    // ── 3. FUNGICIDAS (combinado con roya y humedad) ──
     if (humedad > 80 && (nivelRoya == 'Alto' || nivelRoya == 'Medio')) {
       recs.add({
         'icono': Icons.science_outlined,
@@ -232,7 +224,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
       });
     }
  
-    // ── 4. COSECHA ──
     if (lluvia) {
       recs.add({
         'icono': Icons.agriculture_outlined,
@@ -257,7 +248,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
       });
     }
  
-    // ── 5. TEMPERATURA ──
     if (temp >= 18 && temp <= 24) {
       recs.add({
         'icono': Icons.thermostat_outlined,
@@ -292,46 +282,63 @@ class _ClimaScreenState extends State<ClimaScreen> {
  
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(fincaNombre, cultivoNombre, nivelRoya),
-            Expanded(
-              child: _cargando
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : RefreshIndicator(
-                      onRefresh: _cargarClima,
-                      color: AppColors.primary,
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            _buildClimaCard(),
-                            const SizedBox(height: 16),
-                            _buildPronosticoCard(),
-                            const SizedBox(height: 16),
-                            _buildRecomendacionesHeader(cultivoNombre, nivelRoya),
-                            const SizedBox(height: 12),
-                            _buildRecomendacionesCard(),
-                          ],
-                        ),
+      body: Column(
+        children: [
+          // ── HEADER con bordes redondeados inferiores y sombra ──
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: _buildHeader(fincaNombre, cultivoNombre, nivelRoya),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _cargando
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : RefreshIndicator(
+                    onRefresh: _cargarClima,
+                    color: AppColors.primary,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          _buildClimaCard(),
+                          const SizedBox(height: 16),
+                          _buildPronosticoCard(),
+                          const SizedBox(height: 16),
+                          _buildRecomendacionesHeader(cultivoNombre, nivelRoya),
+                          const SizedBox(height: 12),
+                          _buildRecomendacionesCard(),
+                        ],
                       ),
                     ),
-            ),
-          ],
-        ),
+                  ),
+          ),
+        ],
       ),
     );
   }
  
   Widget _buildHeader(String fincaNombre, String cultivoNombre, String nivelRoya) {
     return Container(
+      width: double.infinity,
+      color: const Color(0xFFF4E7D6),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4E7D6),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-      ),
       child: Row(
         children: [
           const Icon(Icons.wb_cloudy_rounded, color: AppColors.primary, size: 26),
@@ -364,9 +371,9 @@ class _ClimaScreenState extends State<ClimaScreen> {
   }
  
   Widget _royaBadge(String nivel) {
-    final color = nivel == 'Alto'   ? Colors.red
-                : nivel == 'Medio'  ? Colors.orange
-                : nivel == 'Bajo'   ? AppColors.primary
+    final color = nivel == 'Alto'  ? Colors.red
+                : nivel == 'Medio' ? Colors.orange
+                : nivel == 'Bajo'  ? AppColors.primary
                 : Colors.grey;
     if (nivel == 'Sin datos') return const SizedBox.shrink();
     return Container(
@@ -385,7 +392,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
       child: Column(
         children: [
           Text(_ciudadActual, style: GoogleFonts.nunito(color: AppColors.textSecondary)),
@@ -413,8 +420,11 @@ class _ClimaScreenState extends State<ClimaScreen> {
       children: [
         Icon(icon, color: AppColors.primary, size: 18),
         const SizedBox(height: 2),
-        Text(valor, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-        Text(label, style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+        Text(valor,
+            style: GoogleFonts.nunito(
+                fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        Text(label,
+            style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
       ],
     );
   }
@@ -424,20 +434,21 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: pronostico.map<Widget>((p) {
           return Column(
             children: [
-              Text(p['dia'], style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+              Text(p['dia'],
+                  style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               Icon(p['icono'], color: AppColors.primary),
               const SizedBox(height: 8),
               Text('${p['max']}°/${p['min']}°',
                   style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700)),
               if (p['lluvia'] == true)
-                Text('🌧️', style: const TextStyle(fontSize: 10)),
+                const Text('🌧️', style: TextStyle(fontSize: 10)),
             ],
           );
         }).toList(),
@@ -456,7 +467,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
+                color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
             child: Text(cultivoNombre,
                 style: GoogleFonts.nunito(
                     fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
@@ -477,7 +488,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFFBF7EF),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: (rec['color'] as Color).withOpacity(0.2)),
           ),

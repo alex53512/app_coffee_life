@@ -7,15 +7,15 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
 import 'notificaciones_screen.dart';
- 
+
 class HomeScreen extends StatefulWidget {
   final Map<String, dynamic> usuario;
   const HomeScreen({super.key, required this.usuario});
- 
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
- 
+
 class _HomeScreenState extends State<HomeScreen> {
   bool _cargando = true;
   String? _error;
@@ -25,13 +25,30 @@ class _HomeScreenState extends State<HomeScreen> {
   List _cultivos        = [];
   int _fincaSeleccionada = 0;
   int? _cultivoSeleccionado;
- 
+
+  String? _fotoPerfil;
+
   @override
   void initState() {
     super.initState();
+    _fotoPerfil = widget.usuario['fotoPerfil']?.toString();
     _cargarDatos();
+    AppState.instance.addListener(_onAppStateChanged);
   }
- 
+
+  @override
+  void dispose() {
+    AppState.instance.removeListener(_onAppStateChanged);
+    super.dispose();
+  }
+
+  void _onAppStateChanged() {
+    final foto = AppState.instance.fotoPerfil;
+    if (foto != null && foto != _fotoPerfil) {
+      setState(() => _fotoPerfil = foto);
+    }
+  }
+
   Future<void> _cargarDatos() async {
     setState(() { _cargando = true; _error = null; });
     final token = await AuthService.getToken();
@@ -39,6 +56,19 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final data     = await DashboardService.getDashboard();
       final cultivos = await ApiService.get('/cultivos');
+
+      try {
+        final perfil = await ApiService.get('/mi-perfil');
+        final u = perfil is Map ? (perfil['data'] ?? perfil) : perfil;
+        if (u is Map && u['fotoPerfil'] != null) {
+          final nuevaFoto = u['fotoPerfil'].toString();
+          if (nuevaFoto.isNotEmpty) {
+            AppState.instance.setFotoPerfil(nuevaFoto);
+            setState(() => _fotoPerfil = nuevaFoto);
+          }
+        }
+      } catch (_) {}
+
       setState(() {
         _fincas          = data['fincas']         ?? [];
         _monitoreos      = data['monitoreos']      ?? [];
@@ -56,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() { _error = e.toString(); _cargando = false; });
     }
   }
- 
+
   List get _cultivosFincaActual {
     if (_fincas.isEmpty || _fincaSeleccionada >= _fincas.length) return [];
     final fincaActual = _fincas[_fincaSeleccionada];
@@ -65,14 +95,14 @@ class _HomeScreenState extends State<HomeScreen> {
       (c['idFinca'] ?? c['id_finca']).toString() == idFinca.toString()
     ).toList();
   }
- 
+
   Map<String, dynamic> _getSaludCultivo() {
     if (_fincas.isEmpty || _fincaSeleccionada >= _fincas.length) {
       return {'texto': 'Buena', 'porcentaje': 0.15, 'nivel': 'Bajo'};
     }
     final fincaActual = _fincas[_fincaSeleccionada];
     final idFinca = fincaActual['idFinca'] ?? fincaActual['id_finca'];
- 
+
     List monitoreosFiltrados;
     if (_cultivoSeleccionado != null) {
       monitoreosFiltrados = _monitoreos.where((m) {
@@ -89,101 +119,106 @@ class _HomeScreenState extends State<HomeScreen> {
         return cultivo.isNotEmpty;
       }).toList();
     }
- 
+
     if (monitoreosFiltrados.isEmpty) return {'texto': 'Buena', 'porcentaje': 0.15, 'nivel': 'Bajo'};
- 
+
     final total   = monitoreosFiltrados.length;
     final conRoya = monitoreosFiltrados.where((m) {
       final obs = (m['observaciones'] ?? '').toString().toLowerCase();
       return obs.contains('roya') || obs.contains('alto') ||
              obs.contains('critico') || obs.contains('crítico') || obs.contains('enfermedad');
     }).length;
- 
+
     final porcentaje = total > 0 ? conRoya / total : 0.0;
     if (porcentaje < 0.3)  return {'texto': 'Buena',   'porcentaje': 0.15,       'nivel': 'Bajo'};
     if (porcentaje <= 0.6) return {'texto': 'Regular',  'porcentaje': porcentaje, 'nivel': 'Medio'};
     return                        {'texto': 'Crítica',  'porcentaje': porcentaje, 'nivel': 'Alto'};
   }
- 
-  // Calcula nivel de roya SOLO para un cultivo específico
+
   String _calcularNivelRoyaPara(dynamic idCultivo) {
     final monitoreos = _monitoreos.where((m) {
       final id = m['idCultivo'] ?? m['id_cultivo'];
       return id.toString() == idCultivo.toString();
     }).toList();
- 
+
     if (monitoreos.isEmpty) return 'Sin datos';
- 
+
     final total   = monitoreos.length;
     final conRoya = monitoreos.where((m) {
       final obs = (m['observaciones'] ?? '').toString().toLowerCase();
       return obs.contains('roya') || obs.contains('alto') ||
              obs.contains('critico') || obs.contains('crítico') || obs.contains('enfermedad');
     }).length;
- 
+
     final porcentaje = conRoya / total;
     if (porcentaje < 0.3)  return 'Bajo';
     if (porcentaje <= 0.6) return 'Medio';
     return 'Alto';
   }
- 
- @override
-Widget build(BuildContext context) {
-  final nombreRaw = (widget.usuario['nombre'] ?? '').toString().trim();
-  final nombre = nombreRaw.isNotEmpty ? nombreRaw : 'Caficultor';
 
-  return Scaffold(
-    backgroundColor: const Color(0xFFFFFEFB),
+  @override
+  Widget build(BuildContext context) {
+    final nombreRaw = (widget.usuario['nombre'] ?? '').toString().trim();
+    final nombre = nombreRaw.isNotEmpty ? nombreRaw : 'Caficultor';
 
-    body: _cargando
-        ? const Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-            ),
-          )
-        : _error != null
-            ? _buildError()
-            : RefreshIndicator(
-                onRefresh: _cargarDatos,
-                color: AppColors.primary,
-                child: Column(
-                  children: [
-
-                    // HEADER COMPLETO
-                    SafeArea(
-                      bottom: false,
-                      child: _buildHeader(context, nombre),
-                    ),
-
-                    // CONTENIDO
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildResumenCard(),
-                            const SizedBox(height: 16),
-                            _buildStatsRow(),
-                            const SizedBox(height: 20),
-                            _buildFincasSection(context),
-                            const SizedBox(height: 20),
-                            _buildChart(),
-                            const SizedBox(height: 20),
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFFEFB),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : _error != null
+              ? _buildError()
+              : RefreshIndicator(
+                  onRefresh: _cargarDatos,
+                  color: AppColors.primary,
+                  child: Column(
+                    children: [
+                      // ── HEADER con bordes redondeados inferiores y sombra ──
+                      DecoratedBox(
+                        decoration: const BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x18000000),
+                              blurRadius: 12,
+                              offset: Offset(0, 4),
+                            ),
                           ],
                         ),
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(28),
+                            bottomRight: Radius.circular(28),
+                          ),
+                          child: SafeArea(
+                            bottom: false,
+                            child: _buildHeader(context, nombre),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildResumenCard(),
+                              const SizedBox(height: 16),
+                              _buildStatsRow(),
+                              const SizedBox(height: 20),
+                              _buildFincasSection(context),
+                              const SizedBox(height: 20),
+                              _buildChart(),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-  );
-}
- 
+    );
+  }
+
   Widget _buildError() {
     return Center(
       child: Column(
@@ -194,7 +229,8 @@ Widget build(BuildContext context) {
           Text('No se pudo conectar al servidor',
               style: GoogleFonts.nunito(fontSize: 16, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
-          Text(_error ?? '', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary),
+          Text(_error ?? '',
+              style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary),
               textAlign: TextAlign.center),
           const SizedBox(height: 12),
           ElevatedButton.icon(
@@ -207,134 +243,119 @@ Widget build(BuildContext context) {
       ),
     );
   }
- 
- Widget _buildHeader(BuildContext context, String nombre) {
-  return Container(
-    width: double.infinity,
-    color: const Color(0xFFF4E7D6),
 
-    padding: const EdgeInsets.symmetric(
-      horizontal: 20,
-      vertical: 14,
-    ),
+  Widget _buildHeader(BuildContext context, String nombre) {
+    final tieneFoto = _fotoPerfil != null && _fotoPerfil!.isNotEmpty;
 
-    child: Row(
-      children: [
-
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: AppColors.primary,
-          child: Text(
-            nombre.isNotEmpty
-                ? nombre[0].toUpperCase()
-                : 'C',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-
-        const SizedBox(width: 12),
-
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-
-              Text(
-                'Hola, $nombre',
-                style: GoogleFonts.nunito(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: const Color.fromARGB(255, 26, 26, 26),
-                ),
-              ),
-
-              const SizedBox(height: 2),
-
-              Text(
-                'Bienvenido de nuevo',
-                style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const NotificacionesScreen(),
-            ),
-          ),
-
-          child: Stack(
-            children: [
-
-              Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.textPrimary,
-                  size: 28,
-                ),
-              ),
-
-              if (_recomendaciones.isNotEmpty)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFF4E7D6),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: AppColors.primary,
+            backgroundImage: tieneFoto ? NetworkImage(_fotoPerfil!) : null,
+            onBackgroundImageError: tieneFoto
+                ? (_, __) => setState(() => _fotoPerfil = null)
+                : null,
+            child: tieneFoto
+                ? null
+                : Text(
+                    nombre.isNotEmpty ? nombre[0].toUpperCase() : 'C',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
+                  ),
+          ),
 
-                    child: Center(
-                      child: Text(
-                        '${_recomendaciones.length > 9 ? "9+" : _recomendaciones.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hola, $nombre',
+                  style: GoogleFonts.nunito(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: const Color.fromARGB(255, 26, 26, 26),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Bienvenido de nuevo',
+                  style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificacionesScreen()),
+            ),
+            child: Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.notifications_outlined,
+                      color: AppColors.textPrimary, size: 28),
+                ),
+                if (_recomendaciones.isNotEmpty)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${_recomendaciones.length > 9 ? "9+" : _recomendaciones.length}',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
+
   Widget _buildResumenCard() {
     final salud       = _getSaludCultivo();
     final fincaNombre = _fincas.isNotEmpty && _fincaSeleccionada < _fincas.length
-        ? (_fincas[_fincaSeleccionada]['nombreFinca'] ?? 'Mi Finca') : 'Mi Finca';
+        ? (_fincas[_fincaSeleccionada]['nombreFinca'] ?? 'Mi Finca')
+        : 'Mi Finca';
     final cultivoNombre = _cultivoSeleccionado != null
         ? _cultivos.firstWhere(
             (c) => (c['idCultivo'] ?? c['id_cultivo']).toString() == _cultivoSeleccionado.toString(),
             orElse: () => {})['nombreCultivo'] ?? 'Cultivo seleccionado'
         : null;
- 
+
     Color colorSalud = const Color(0xFF4F8F1F);
     if (salud['texto'] == 'Regular') colorSalud = Colors.orange;
     if (salud['texto'] == 'Crítica') colorSalud = Colors.red;
- 
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Resumen de tu cultivo',
-            style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            style: GoogleFonts.nunito(
+                fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
@@ -357,13 +378,15 @@ Widget build(BuildContext context) {
                             style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
                         const SizedBox(height: 4),
                         Text(salud['texto'],
-                            style: GoogleFonts.nunito(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
+                            style: GoogleFonts.nunito(
+                                fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
                       ],
                     ),
                   ),
                   Container(
                     width: 48, height: 48,
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
                     child: const Icon(Icons.eco_rounded, color: Colors.white, size: 26),
                   ),
                 ],
@@ -372,14 +395,16 @@ Widget build(BuildContext context) {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Índice de riesgo', style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
+                  Text('Índice de riesgo',
+                      style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
                   Text('${((salud['porcentaje'] as double) * 100).round()}%',
                       style: GoogleFonts.nunito(fontSize: 12, color: Colors.white)),
                 ],
               ),
               const SizedBox(height: 4),
               Text(salud['nivel'],
-                  style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                  style: GoogleFonts.nunito(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
@@ -396,7 +421,7 @@ Widget build(BuildContext context) {
       ],
     );
   }
- 
+
   Widget _buildStatsRow() {
     final cultivosFinca = _cultivosFincaActual;
     return Row(
@@ -407,7 +432,8 @@ Widget build(BuildContext context) {
         const SizedBox(width: 10),
         Expanded(
           child: GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificacionesScreen())),
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const NotificacionesScreen())),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
               decoration: BoxDecoration(
@@ -425,7 +451,8 @@ Widget build(BuildContext context) {
                   Row(
                     children: [
                       Text('${_recomendaciones.length}',
-                          style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.red)),
+                          style: GoogleFonts.nunito(
+                              fontSize: 22, fontWeight: FontWeight.w800, color: Colors.red)),
                       const Spacer(),
                       const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.red),
                     ],
@@ -438,7 +465,7 @@ Widget build(BuildContext context) {
       ],
     );
   }
- 
+
   Widget _statCard(String value, String label, Color valueColor) {
     return Expanded(
       child: Container(
@@ -454,13 +481,14 @@ Widget build(BuildContext context) {
             Text(label, style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
             const SizedBox(height: 4),
             Text(value,
-                style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w800, color: valueColor)),
+                style: GoogleFonts.nunito(
+                    fontSize: 22, fontWeight: FontWeight.w800, color: valueColor)),
           ],
         ),
       ),
     );
   }
- 
+
   Widget _buildFincasSection(BuildContext context) {
     if (_fincas.isEmpty) return const SizedBox.shrink();
     return Column(
@@ -470,7 +498,8 @@ Widget build(BuildContext context) {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Mis Fincas',
-                style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                style: GoogleFonts.nunito(
+                    fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             Text('${_fincas.length} registrada${_fincas.length > 1 ? "s" : ""}',
                 style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
           ],
@@ -496,11 +525,13 @@ Widget build(BuildContext context) {
                     decoration: BoxDecoration(
                       color: selected ? AppColors.primary : Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+                      border: Border.all(
+                          color: selected ? AppColors.primary : AppColors.border),
                     ),
                     child: Text(finca['nombreFinca'] ?? 'Finca ${i + 1}',
                         style: GoogleFonts.nunito(
-                            fontSize: 13, fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                             color: selected ? Colors.white : AppColors.textSecondary)),
                   ),
                 );
@@ -513,19 +544,19 @@ Widget build(BuildContext context) {
       ],
     );
   }
- 
+
   Widget _buildFincaCard(Map<String, dynamic> finca) {
     final cultivos  = _cultivosFincaActual;
     final nombre    = finca['nombreFinca']   ?? 'Mi Finca';
     final municipio = finca['municipio']     ?? 'Sin municipio';
     final area      = finca['areaHectareas'] ?? finca['area_hectareas'] ?? '-';
     final altitud   = finca['altitudMsnm']   ?? finca['altitud_msnm']   ?? '-';
- 
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFBF7EF),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
@@ -536,7 +567,8 @@ Widget build(BuildContext context) {
             children: [
               Container(
                 width: 44, height: 44,
-                decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                    color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
                 child: const Icon(Icons.park_outlined, color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
@@ -544,8 +576,14 @@ Widget build(BuildContext context) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(nombre, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                    Text(municipio, style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+                    Text(nombre,
+                        style: GoogleFonts.nunito(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary)),
+                    Text(municipio,
+                        style:
+                            GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
@@ -571,10 +609,14 @@ Widget build(BuildContext context) {
             Row(
               children: [
                 Text('Cultivos registrados',
-                    style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
                 const SizedBox(width: 6),
                 Text('(toca para ver su salud)',
-                    style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+                    style:
+                        GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
             const SizedBox(height: 8),
@@ -582,17 +624,19 @@ Widget build(BuildContext context) {
               final idCultivo = c['idCultivo'] ?? c['id_cultivo'];
               final selected  = _cultivoSeleccionado?.toString() == idCultivo.toString();
               final nivel     = selected ? _calcularNivelRoyaPara(idCultivo) : '';
-              final nivelColor = nivel == 'Alto' ? Colors.red
-                  : nivel == 'Medio' ? Colors.orange
-                  : nivel == 'Bajo'  ? AppColors.primary
-                  : Colors.grey;
- 
+              final nivelColor = nivel == 'Alto'
+                  ? Colors.red
+                  : nivel == 'Medio'
+                      ? Colors.orange
+                      : nivel == 'Bajo'
+                          ? AppColors.primary
+                          : Colors.grey;
+
               return GestureDetector(
                 onTap: () {
                   final nuevoId = selected ? null : idCultivo;
                   setState(() => _cultivoSeleccionado = nuevoId);
- 
-                  // ── Notificar a Clima con el nivel de roya ──
+
                   if (nuevoId != null) {
                     final nivelCalculado = _calcularNivelRoyaPara(idCultivo);
                     AppState.instance.setCultivo(c, nivelCalculado);
@@ -606,23 +650,28 @@ Widget build(BuildContext context) {
                   decoration: BoxDecoration(
                     color: selected ? AppColors.primaryLight : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
-                    border: selected ? Border.all(color: AppColors.primary, width: 1.5) : null,
+                    border: selected
+                        ? Border.all(color: AppColors.primary, width: 1.5)
+                        : null,
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.circle,
-                          color: selected ? AppColors.primary : AppColors.textSecondary, size: 8),
+                          color: selected ? AppColors.primary : AppColors.textSecondary,
+                          size: 8),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo',
                           style: GoogleFonts.nunito(
                               fontSize: 12,
-                              fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
-                              color: selected ? AppColors.primary : AppColors.textSecondary),
+                              fontWeight:
+                                  selected ? FontWeight.w700 : FontWeight.normal,
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary),
                         ),
                       ),
-                      // Badge de roya cuando está seleccionado
                       if (selected) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -633,7 +682,9 @@ Widget build(BuildContext context) {
                           ),
                           child: Text('Roya: $nivel',
                               style: GoogleFonts.nunito(
-                                  fontSize: 10, fontWeight: FontWeight.w700, color: nivelColor)),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: nivelColor)),
                         ),
                         const SizedBox(width: 6),
                         const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
@@ -641,10 +692,13 @@ Widget build(BuildContext context) {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(10)),
                           child: Text(c['tipoCultivo'] ?? c['tipo_cultivo'] ?? 'Café',
                               style: GoogleFonts.nunito(
-                                  fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary)),
                         ),
                       ],
                     ],
@@ -657,34 +711,40 @@ Widget build(BuildContext context) {
       ),
     );
   }
- 
+
   Widget _fincaDato(IconData icon, String valor, String label) {
     return Column(
       children: [
         Icon(icon, color: AppColors.primary, size: 18),
         const SizedBox(height: 4),
-        Text(valor, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-        Text(label, style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+        Text(valor,
+            style: GoogleFonts.nunito(
+                fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        Text(label,
+            style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
       ],
     );
   }
- 
+
   Widget _buildChart() {
     final salud        = _getSaludCultivo();
-    final colorGrafica = salud['nivel'] == 'Bajo' ? AppColors.primary
-        : salud['nivel'] == 'Medio' ? Colors.orange : Colors.red;
- 
+    final colorGrafica = salud['nivel'] == 'Bajo'
+        ? AppColors.primary
+        : salud['nivel'] == 'Medio'
+            ? Colors.orange
+            : Colors.red;
+
     final spots = [
       const FlSpot(0, 1200), const FlSpot(1, 1800), const FlSpot(2, 1600),
       const FlSpot(3, 2200), const FlSpot(4, 2000), const FlSpot(5, 2500),
       const FlSpot(6, 2300), const FlSpot(7, 2800), const FlSpot(8, 3000),
       const FlSpot(9, 3200),
     ];
- 
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFBF7EF),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
@@ -695,9 +755,11 @@ Widget build(BuildContext context) {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Riesgo de roya',
-                  style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  style: GoogleFonts.nunito(
+                      fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               Text(salud['nivel'],
-                  style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: colorGrafica)),
+                  style: GoogleFonts.nunito(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: colorGrafica)),
             ],
           ),
           const SizedBox(height: 16),
@@ -705,30 +767,52 @@ Widget build(BuildContext context) {
             height: 180,
             child: LineChart(LineChartData(
               gridData: FlGridData(
-                show: true, drawVerticalLine: false, horizontalInterval: 1000,
-                getDrawingHorizontalLine: (v) => FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: 1000,
+                getDrawingHorizontalLine: (v) =>
+                    FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
               ),
               titlesData: FlTitlesData(
-                leftTitles: AxisTitles(sideTitles: SideTitles(
-                  showTitles: true, interval: 1000, reservedSize: 40,
-                  getTitlesWidget: (v, m) => Text('${(v / 1000).toStringAsFixed(0)}k',
-                      style: GoogleFonts.nunito(fontSize: 10, color: AppColors.textSecondary)),
-                )),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 1000,
+                    reservedSize: 40,
+                    getTitlesWidget: (v, m) => Text(
+                        '${(v / 1000).toStringAsFixed(0)}k',
+                        style: GoogleFonts.nunito(
+                            fontSize: 10, color: AppColors.textSecondary)),
+                  ),
+                ),
                 bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 rightTitles:  AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 topTitles:    AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
               borderData: FlBorderData(show: false),
               minX: 0, maxX: 9, minY: 0, maxY: 4000,
-              lineBarsData: [LineChartBarData(
-                spots: spots, isCurved: true, curveSmoothness: 0.4,
-                color: colorGrafica, barWidth: 2.5, isStrokeCapRound: true,
-                dotData: const FlDotData(show: false),
-                belowBarData: BarAreaData(show: true, gradient: LinearGradient(
-                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [colorGrafica.withOpacity(0.3), colorGrafica.withOpacity(0.0)],
-                )),
-              )],
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true,
+                  curveSmoothness: 0.4,
+                  color: colorGrafica,
+                  barWidth: 2.5,
+                  isStrokeCapRound: true,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        colorGrafica.withOpacity(0.3),
+                        colorGrafica.withOpacity(0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             )),
           ),
         ],

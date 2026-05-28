@@ -160,24 +160,43 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: switch (_stage) {
-                  'result'    => _esResultadoValido
-                                    ? _buildResultView()
-                                    : _buildInvalidView(),
-                  'analyzing' => _buildAnalyzingView(),
-                  _           => _buildIdleView(),
-                },
+      body: Column(
+        children: [
+          // ── HEADER con bordes redondeados inferiores y sombra ──
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: _buildHeader(context),
               ),
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: switch (_stage) {
+                'result'    => _esResultadoValido
+                                  ? _buildResultView()
+                                  : _buildInvalidView(),
+                'analyzing' => _buildAnalyzingView(),
+                _           => _buildIdleView(),
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

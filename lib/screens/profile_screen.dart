@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,43 +9,45 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/app_state.dart';
 import 'login_screen.dart';
- 
+
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> usuario;
- 
+
   const ProfileScreen({
     super.key,
     required this.usuario,
   });
- 
+
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
- 
+
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _cargando = false;
   Map<String, dynamic> _usuarioData = {};
   Map<String, dynamic>? _finca;
- 
-  File? _imagenSeleccionada;
-  String? _fotoUrl;
- 
+
+  // Web-compatible: usamos XFile + bytes en lugar de File
+  XFile?     _imagenSeleccionada;
+  Uint8List? _imagenBytes;
+  String?    _fotoUrl;
+
   final ImagePicker _picker = ImagePicker();
- 
+
   // Campos usuario
-  final TextEditingController _nombreController     = TextEditingController();
-  final TextEditingController _apellidoController   = TextEditingController();
-  final TextEditingController _correoController     = TextEditingController();
-  final TextEditingController _telefonoController   = TextEditingController();
-  final TextEditingController _cedulaController     = TextEditingController();
- 
+  final TextEditingController _nombreController      = TextEditingController();
+  final TextEditingController _apellidoController    = TextEditingController();
+  final TextEditingController _correoController      = TextEditingController();
+  final TextEditingController _telefonoController    = TextEditingController();
+  final TextEditingController _cedulaController      = TextEditingController();
+
   // Campos finca
-  final TextEditingController _fincaController      = TextEditingController();
-  final TextEditingController _municipioController  = TextEditingController();
+  final TextEditingController _fincaController        = TextEditingController();
+  final TextEditingController _municipioController    = TextEditingController();
   final TextEditingController _departamentoController = TextEditingController();
-  final TextEditingController _hectareasController  = TextEditingController();
-  final TextEditingController _altitudController    = TextEditingController();
- 
+  final TextEditingController _hectareasController    = TextEditingController();
+  final TextEditingController _altitudController      = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _cargarDatos();
     AppState.instance.addListener(_onFincaCambiada);
   }
- 
+
   void _onFincaCambiada() {
     final finca = AppState.instance.fincaSeleccionada;
     if (finca != null) {
@@ -62,15 +65,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
   }
- 
+
   void _actualizarCamposFinca() {
-    _fincaController.text       = _finca?['nombreFinca']?.toString() ?? '';
-    _municipioController.text   = _finca?['municipio']?.toString() ?? '';
+    _fincaController.text        = _finca?['nombreFinca']?.toString() ?? '';
+    _municipioController.text    = _finca?['municipio']?.toString() ?? '';
     _departamentoController.text = _finca?['departamento']?.toString() ?? '';
-    _hectareasController.text   = _finca?['areaHectareas']?.toString() ?? '';
-    _altitudController.text     = _finca?['altitudMsnm']?.toString() ?? '';
+    _hectareasController.text    = _finca?['areaHectareas']?.toString() ?? '';
+    _altitudController.text      = _finca?['altitudMsnm']?.toString() ?? '';
   }
- 
+
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
@@ -86,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _altitudController.dispose();
     super.dispose();
   }
- 
+
   String _leerRol(Map<String, dynamic> u) {
     final rol = u['rol'];
     if (rol == null) return 'Caficultor';
@@ -94,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (rol is Map) return rol['nombreRol'] ?? 'Caficultor';
     return 'Caficultor';
   }
- 
+
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
     try {
@@ -102,28 +105,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ApiService.get('/mi-perfil'),
         ApiService.get('/fincas'),
       ]);
- 
+
       final raw = results[0];
       final u   = raw is Map ? (raw['data'] ?? raw) : raw;
- 
+
       final fincasRaw = results[1];
       final fincas    = fincasRaw is List
           ? fincasRaw
           : (fincasRaw is Map ? (fincasRaw['data'] ?? []) : []);
- 
+
       setState(() {
         _usuarioData = Map<String, dynamic>.from(u is Map ? u : {});
- 
-        // Usar finca del AppState si hay una seleccionada, si no la primera
+
         final fincaState = AppState.instance.fincaSeleccionada;
         if (fincaState != null) {
           _finca = Map<String, dynamic>.from(fincaState);
         } else if (fincas is List && fincas.isNotEmpty) {
           _finca = Map<String, dynamic>.from(fincas[0]);
         }
- 
+
         _fotoUrl = _usuarioData['fotoPerfil'] as String?;
- 
+
         _nombreController.text   = _usuarioData['nombre']?.toString() ?? '';
         _apellidoController.text = _usuarioData['apellido']?.toString() ?? '';
         _correoController.text   = _usuarioData['correo']?.toString() ?? '';
@@ -136,89 +138,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _cargando = false);
     }
   }
- 
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SELECCIONAR FOTO — compatible con web y móvil
+  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _seleccionarFoto() async {
-    final origen = await showModalBottomSheet<ImageSource>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Foto de perfil',
-                style: GoogleFonts.nunito(
-                    fontSize: 18, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined,
-                  color: AppColors.primary),
-              title: Text('Tomar foto', style: GoogleFonts.nunito()),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.primary),
-              title: Text('Elegir de galería', style: GoogleFonts.nunito()),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            const SizedBox(height: 8),
-          ],
+    ImageSource? origen;
+
+    if (kIsWeb) {
+      // En web no hay cámara nativa → directamente galería
+      origen = ImageSource.gallery;
+    } else {
+      origen = await showModalBottomSheet<ImageSource>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-      ),
-    );
- 
+        builder: (_) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Foto de perfil',
+                  style: GoogleFonts.nunito(
+                      fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined,
+                    color: AppColors.primary),
+                title: Text('Tomar foto', style: GoogleFonts.nunito()),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined,
+                    color: AppColors.primary),
+                title: Text('Elegir de galería', style: GoogleFonts.nunito()),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (origen == null) return;
- 
+
     final picked = await _picker.pickImage(
       source: origen,
       imageQuality: 80,
       maxWidth: 800,
     );
- 
+
     if (picked != null) {
-      setState(() => _imagenSeleccionada = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _imagenSeleccionada = picked;
+        _imagenBytes        = bytes;
+      });
       await _subirFoto();
     }
   }
- 
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SUBIR FOTO — usa bytes (compatible con web)
+  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _subirFoto() async {
-    if (_imagenSeleccionada == null) return;
- 
+    if (_imagenSeleccionada == null || _imagenBytes == null) return;
+
     setState(() => _cargando = true);
     try {
       final token   = await AuthService.getToken();
       final baseUrl = ApiService.baseUrl;
- 
+
       final request = http.MultipartRequest(
         'PUT',
         Uri.parse('$baseUrl/mi-perfil'),
       );
- 
+
       request.headers['Authorization'] = 'Bearer $token';
-      request.fields['nombre']       = _nombreController.text;
-      request.fields['apellido']     = _apellidoController.text;
-      request.fields['telefono']     = _telefonoController.text;
-      request.fields['observaciones'] = '';
- 
-      request.files.add(await http.MultipartFile.fromPath(
+      request.fields['nombre']         = _nombreController.text;
+      request.fields['apellido']       = _apellidoController.text;
+      request.fields['telefono']       = _telefonoController.text;
+      request.fields['observaciones']  = '';
+
+      // fromBytes en lugar de fromPath → funciona en web y móvil
+      request.files.add(http.MultipartFile.fromBytes(
         'foto_perfil',
-        _imagenSeleccionada!.path,
+        _imagenBytes!,
+        filename: _imagenSeleccionada!.name,
       ));
- 
+
       final response = await request.send();
       final body     = await response.stream.bytesToString();
- 
+
       if (response.statusCode == 200) {
         await _cargarDatos();
         if (mounted) {
@@ -244,19 +265,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
- 
+
   Future<void> _guardarCambios() async {
     setState(() => _cargando = true);
     try {
-      // 1. Guardar datos del usuario
       await ApiService.put('/mi-perfil', {
         'nombre':        _nombreController.text,
         'apellido':      _apellidoController.text,
         'telefono':      _telefonoController.text,
         'observaciones': '',
       });
- 
-      // 2. Guardar datos de la finca si hay una seleccionada
+
       final idFinca = _finca?['idFinca'] ?? _finca?['id_finca'];
       if (idFinca != null) {
         await ApiService.put('/fincas/$idFinca', {
@@ -267,17 +286,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'altitud_msnm':   double.tryParse(_altitudController.text) ?? 0,
         });
       }
- 
+
       setState(() {
         _usuarioData['nombre']   = _nombreController.text;
         _usuarioData['apellido'] = _apellidoController.text;
         _usuarioData['telefono'] = _telefonoController.text;
-        _imagenSeleccionada = null;
-        _cargando = false;
+        _imagenSeleccionada      = null;
+        _imagenBytes             = null;
+        _cargando                = false;
       });
- 
+
       if (mounted) Navigator.pop(context);
- 
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Perfil actualizado correctamente'),
@@ -287,6 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       setState(() => _cargando = false);
       _imagenSeleccionada = null;
+      _imagenBytes        = null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al guardar: $e'),
@@ -295,7 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
- 
+
   void _mostrarFormularioEditar() {
     showModalBottomSheet(
       context: context,
@@ -373,7 +394,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
- 
+
   Widget _campoTexto(
     TextEditingController controller,
     String label, {
@@ -392,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Future<void> _cerrarSesion() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -416,7 +437,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
- 
+
     if (confirm == true) {
       await AuthService.logout();
       if (mounted) {
@@ -428,7 +449,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
- 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -473,7 +494,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
@@ -498,13 +519,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _buildAvatarSection() {
-    final nombre  = (_usuarioData['nombre'] ?? widget.usuario['nombre'] ?? '').toString();
+    final nombre   = (_usuarioData['nombre']   ?? widget.usuario['nombre']   ?? '').toString();
     final apellido = (_usuarioData['apellido'] ?? widget.usuario['apellido'] ?? '').toString();
-    final correo  = (_usuarioData['correo'] ?? widget.usuario['correo'] ?? '').toString();
-    final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U';
- 
+    final correo   = (_usuarioData['correo']   ?? widget.usuario['correo']   ?? '').toString();
+    final inicial  = nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U';
+
+    // Determinar ImageProvider según plataforma y estado
+    ImageProvider? imageProvider;
+    if (_imagenBytes != null) {
+      imageProvider = MemoryImage(_imagenBytes!);       // preview web/móvil
+    } else if (_fotoUrl != null && _fotoUrl!.isNotEmpty) {
+      imageProvider = NetworkImage(_fotoUrl!);          // foto guardada
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28),
@@ -517,13 +546,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 48,
                 backgroundColor: AppColors.primary,
-                backgroundImage: _imagenSeleccionada != null
-                    ? FileImage(_imagenSeleccionada!) as ImageProvider
-                    : (_fotoUrl != null && _fotoUrl!.isNotEmpty
-                        ? NetworkImage(_fotoUrl!)
-                        : null),
-                child: (_imagenSeleccionada == null &&
-                        (_fotoUrl == null || _fotoUrl!.isEmpty))
+                backgroundImage: imageProvider,
+                child: imageProvider == null
                     ? Text(inicial,
                         style: const TextStyle(
                             fontSize: 40,
@@ -570,7 +594,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _buildInfoSection() {
     return Container(
       color: const Color(0xFFF4E7D6),
@@ -622,7 +646,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _rowItem({
     required String label,
     required String valor,
@@ -653,7 +677,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _divider() {
     return const Divider(height: 1, color: Color.fromARGB(255, 202, 200, 200));
   }

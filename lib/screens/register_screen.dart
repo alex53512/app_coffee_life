@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _correoController          = TextEditingController();
   final _passwordController        = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _cedulaController          = TextEditingController(); // ← NUEVO
 
   bool _verPassword  = false;
   bool _verConfirm   = false;
@@ -34,6 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _correoController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _cedulaController.dispose(); // ← NUEVO
     super.dispose();
   }
 
@@ -55,6 +57,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         correo:   _correoController.text.trim(),
         password: _passwordController.text,
         telefono: _telefonoController.text.trim(),
+        cedula:   _cedulaController.text.trim(),
+        tipoDocumento:  _tipoDocumento!, 
       );
 
       if (!mounted) return;
@@ -80,7 +84,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: const Color(0xFFFFFEFB),
       body: Stack(
         children: [
-          // ── FONDO VERDE COMPLETO CON HOJAS ──
+          // ── FONDO VERDE ──
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -95,7 +99,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ],
               ),
             ),
-            
           ),
 
           // ── CONTENIDO ──
@@ -127,28 +130,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             const SizedBox(height: 20),
                             Image.asset(
-                              'assets/images/logo_CoffeLife_SinFondo.png',
+                              'assets/images/logo_cafe.png',
                               width: 65,
                               height: 65,
                             ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Únete a Coffee Life',
-                              style: GoogleFonts.playfairDisplay(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFFE8F5E0),
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'CREA TU CUENTA',
-                              style: GoogleFonts.lato(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w300,
-                                color: const Color(0xFF9DC49E),
-                                letterSpacing: 3,
+                            Transform.translate(
+                              offset: const Offset(0, -15),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Únete a Coffee Life',
+                                    style: GoogleFonts.playfairDisplay(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFFE8F5E0),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'CREA TU CUENTA',
+                                    style: GoogleFonts.lato(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w300,
+                                      color: const Color(0xFF9DC49E),
+                                      letterSpacing: 3,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -210,6 +219,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ],
                                 onChanged: (v) => setState(() => _tipoDocumento = v),
                                 validator: (v) => v == null ? 'Selecciona el tipo de documento' : null,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // ── NÚMERO DE DOCUMENTO (NUEVO) ──
+                              _fieldLabel('NÚMERO DE DOCUMENTO'),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _cedulaController,
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.next,
+                                decoration: _inputDecoration(
+                                  hint: '1234567890',
+                                  icon: Icons.badge_outlined,
+                                ),
+                                style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF1A3A1E)),
+                                validator: (v) {
+                                  if (v!.trim().isEmpty) return 'Ingresa tu número de documento';
+                                  if (v.trim().length < 6) return 'Número de documento inválido';
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 16),
 
@@ -510,27 +539,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-
-  Widget _buildLeaf(double width, double height, Color color, double angle) {
-    return Transform.rotate(
-      angle: angle,
-      child: CustomPaint(
-        size: Size(width, height),
-        painter: _LeafPainter(color),
-      ),
-    );
-  }
 }
 
-// ── ÓVALO CONVEXO HACIA ARRIBA (en el borde superior de la tarjeta blanca) ──
+// ── ÓVALO CONVEXO HACIA ARRIBA ──
 class _OvalTopClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    // Empieza desde abajo izquierda
     path.moveTo(0, size.height);
     path.lineTo(0, 60);
-    // Curva convexa hacia arriba
     path.quadraticBezierTo(
       size.width / 2,
       -40,
@@ -544,35 +561,4 @@ class _OvalTopClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(_OvalTopClipper old) => false;
-}
-
-// ── PINTOR DE HOJAS ──
-class _LeafPainter extends CustomPainter {
-  final Color color;
-  const _LeafPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path()
-      ..moveTo(size.width * 0.5, 0)
-      ..quadraticBezierTo(size.width, size.height * 0.3, size.width * 0.5, size.height)
-      ..quadraticBezierTo(0, size.height * 0.3, size.width * 0.5, 0)
-      ..close();
-    canvas.drawPath(path, paint);
-
-    final veinPaint = Paint()
-      ..color = color.withOpacity(0.4)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(
-      Path()
-        ..moveTo(size.width * 0.5, size.height * 0.1)
-        ..lineTo(size.width * 0.5, size.height * 0.9),
-      veinPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_LeafPainter old) => old.color != color;
 }
