@@ -27,9 +27,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     AppState.instance.addListener(_onFincaCambiada);
   }
  
-  void _onFincaCambiada() {
-    _cargarMonitoreos();
-  }
+  void _onFincaCambiada() => _cargarMonitoreos();
  
   @override
   void dispose() {
@@ -47,20 +45,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       final data = await ApiService.get('/monitoreos');
       final todos = data is List ? data : (data['data'] ?? []);
  
-      final cultivosFinca = AppState.instance.cultivosFinca;
-      final idsCultivos = cultivosFinca
-          .map((c) => (c['idCultivo'] ?? c['id_cultivo']).toString())
-          .toSet();
- 
       setState(() {
-        _monitoreos = idsCultivos.isEmpty
-            ? todos
-            : todos.where((m) {
-                final idCultivo =
-                    (m['idCultivo'] ?? m['id_cultivo'])?.toString() ?? '';
-                return idsCultivos.contains(idCultivo);
-              }).toList();
-        _cargando = false;
+        _monitoreos = todos is List ? List.from(todos) : [];
+        _cargando   = false;
       });
     } catch (e) {
       setState(() {
@@ -72,16 +59,13 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
  
   Future<void> _eliminarMonitoreo(dynamic m) async {
     final id = m['idMonitoreo'] ?? m['id_monitoreo'];
- 
     try {
       await ApiService.delete('/monitoreos/$id');
- 
       setState(() {
         _monitoreos.removeWhere(
           (item) => (item['idMonitoreo'] ?? item['id_monitoreo']) == id,
         );
       });
- 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -103,13 +87,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Text(
-          'Eliminar monitoreo',
-          style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Eliminar monitoreo',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
         content: Text(
           '¿Seguro que quieres eliminar este monitoreo? Esta acción no se puede deshacer.',
           style: GoogleFonts.nunito(color: AppColors.textSecondary),
@@ -117,10 +97,8 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.nunito(color: AppColors.textSecondary),
-            ),
+            child: Text('Cancelar',
+                style: GoogleFonts.nunito(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -130,10 +108,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         ],
       ),
     );
- 
-    if (confirmado == true) {
-      _eliminarMonitoreo(m);
-    }
+    if (confirmado == true) _eliminarMonitoreo(m);
   }
  
   String _labelNivel(dynamic m) {
@@ -141,8 +116,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         .toString()
         .toLowerCase();
  
-    if (obs.contains('alto') ||
-        obs.contains('roya detectado') ||
+    // ✅ Busca 'roya' en general (detectada, detectado, etc.)
+    if (obs.contains('roya') ||
+        obs.contains('alto') ||
         obs.contains('critico') ||
         obs.contains('enfermedad')) {
       return 'Alto';
@@ -178,18 +154,16 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         m['fecha_monitoreo'] ??
         m['fechaRegistro'] ??
         '';
- 
     if (f.isEmpty) return 'Sin fecha';
- 
     try {
-      final dt = DateTime.parse(f);
+      final dt = DateTime.parse(f.toString());
       const meses = [
         'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
         'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
       ];
       return '${dt.day.toString().padLeft(2, '0')} ${meses[dt.month - 1]} ${dt.year}';
     } catch (_) {
-      return f;
+      return f.toString();
     }
   }
  
@@ -204,7 +178,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   String? _imagenUrl(dynamic m) {
     final imagenes = m['imagenes'];
     if (imagenes == null || imagenes is! List || imagenes.isEmpty) return null;
-    final ruta = imagenes[0]['rutaImagen'] ?? imagenes[0]['ruta_imagen'];
+    final ruta = imagenes[0]['urlImagen'] ??
+        imagenes[0]['rutaImagen'] ??
+        imagenes[0]['ruta_imagen'];
     if (ruta == null || ruta.toString().isEmpty) return null;
     if (ruta.toString().startsWith('http')) return ruta.toString();
     return 'https://coffeelife-api.up.railway.app/$ruta';
@@ -224,8 +200,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
             Expanded(
               child: _cargando
                   ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    )
+                      child: CircularProgressIndicator(color: AppColors.primary))
                   : _error != null
                       ? _buildError()
                       : _tabIndex == 0
@@ -264,41 +239,33 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.textPrimary,
-                  size: 18,
-                ),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.textPrimary, size: 18),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                'Monitoreo',
-                style: GoogleFonts.nunito(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              child: Text('Monitoreo',
+                  style: GoogleFonts.nunito(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary)),
             ),
             GestureDetector(
               onTap: _cargarMonitoreos,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  'Filtrar',
-                  style: GoogleFonts.nunito(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+                child: Text('Filtrar',
+                    style: GoogleFonts.nunito(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
               ),
             ),
           ],
@@ -316,25 +283,19 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
           ],
         ),
-        child: Row(
-          children: [
-            _tabItem('Historial', 0),
-            _tabItem('Mapa', 1),
-          ],
-        ),
+        child: Row(children: [
+          _tabItem('Historial', 0),
+          _tabItem('Mapa', 1),
+        ]),
       ),
     );
   }
  
   Widget _tabItem(String label, int index) {
     final isActive = _tabIndex == index;
- 
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _tabIndex = index),
@@ -345,15 +306,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
             color: isActive ? AppColors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(26),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: isActive ? Colors.white : AppColors.textSecondary,
-            ),
-          ),
+          child: Text(label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isActive ? Colors.white : AppColors.textSecondary)),
         ),
       ),
     );
@@ -364,21 +322,16 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            'Error al cargar monitoreos',
-            style: GoogleFonts.nunito(
-              color: AppColors.textSecondary,
-              fontSize: 15,
-            ),
-          ),
+          Text('Error al cargar monitoreos',
+              style: GoogleFonts.nunito(
+                  color: AppColors.textSecondary, fontSize: 15)),
           const SizedBox(height: 12),
           ElevatedButton(
             onPressed: _cargarMonitoreos,
-            style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
-            child: Text(
-              'Reintentar',
-              style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-            ),
+            style:
+                ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+            child: Text('Reintentar',
+                style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -388,12 +341,29 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   Widget _buildHistorial() {
     if (_monitoreos.isEmpty) {
       return Center(
-        child: Text(
-          'No hay monitoreos registrados',
-          style: GoogleFonts.nunito(
-            color: AppColors.textSecondary,
-            fontSize: 16,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.eco_outlined,
+                  color: AppColors.primary, size: 36),
+            ),
+            const SizedBox(height: 16),
+            Text('No hay monitoreos registrados',
+                style: GoogleFonts.nunito(
+                    color: AppColors.textSecondary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text('Realiza un diagnóstico para crear uno',
+                style: GoogleFonts.nunito(
+                    color: AppColors.textSecondary, fontSize: 13)),
+          ],
         ),
       );
     }
@@ -411,12 +381,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
  
   Widget _monitoreoCard(dynamic m) {
-    final color = _colorNivel(m);
-    final nivel = _labelNivel(m);
-    final titulo = _titulo(m);
-    final fecha = _fecha(m);
+    final color   = _colorNivel(m);
+    final nivel   = _labelNivel(m);
+    final titulo  = _titulo(m);
+    final fecha   = _fecha(m);
     final parcela = _parcela(m);
-    final imgUrl = _imagenUrl(m);
+    final imgUrl  = _imagenUrl(m);
  
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -435,24 +405,19 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-            ),
+                color: Colors.black.withOpacity(0.05), blurRadius: 8),
           ],
         ),
         child: Row(
           children: [
-            // Imagen o color de fondo sin icono
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: imgUrl != null
-                  ? Image.network(
-                      imgUrl,
+                  ? Image.network(imgUrl,
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _colorFallback(color),
-                    )
+                      errorBuilder: (_, __, ___) => _colorFallback(color))
                   : _colorFallback(color),
             ),
             const SizedBox(width: 14),
@@ -460,47 +425,34 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    fecha,
-                    style: GoogleFonts.nunito(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  Text(fecha,
+                      style: GoogleFonts.nunito(
+                          fontSize: 11, color: AppColors.textSecondary)),
                   const SizedBox(height: 2),
-                  Text(
-                    titulo,
-                    style: GoogleFonts.nunito(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    parcela,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  Text(titulo,
+                      style: GoogleFonts.nunito(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                  Text(parcela,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.nunito(
+                          fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                nivel,
-                style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
+              child: Text(nivel,
+                  style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
             ),
           ],
         ),
@@ -526,14 +478,11 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Mapa de riesgo',
-              style: GoogleFonts.nunito(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            Text('Mapa de riesgo',
+                style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
             const SizedBox(height: 14),
             Container(
               height: 320,
@@ -543,10 +492,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4)),
                 ],
               ),
               child: ClipRRect(
@@ -574,9 +522,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                  ),
+                      color: Colors.black.withOpacity(0.04), blurRadius: 8),
                 ],
               ),
               child: Column(
@@ -602,18 +548,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           width: 14,
           height: 14,
           decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-          ),
+              color: color, borderRadius: BorderRadius.circular(3)),
         ),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: GoogleFonts.nunito(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
-        ),
+        Text(label,
+            style: GoogleFonts.nunito(
+                fontSize: 12, color: AppColors.textSecondary)),
       ],
     );
   }
