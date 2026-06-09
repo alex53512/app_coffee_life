@@ -7,8 +7,8 @@ import '../theme/app_theme.dart';
 import '../services/app_state.dart';
  
 class ClimaScreen extends StatefulWidget {
-  final String nombreFinca;
-  const ClimaScreen({super.key, this.nombreFinca = 'Finca El Paraíso'});
+  // Ya no necesita parámetro; todo viene del AppState.
+  const ClimaScreen({super.key});
  
   @override
   State<ClimaScreen> createState() => _ClimaScreenState();
@@ -32,6 +32,8 @@ class _ClimaScreenState extends State<ClimaScreen> {
     super.dispose();
   }
  
+  /// Cuando cambia finca o cultivo solo reconstruimos la UI
+  /// (las recomendaciones se recalculan en _getRecomendaciones()).
   void _onEstadoCambiado() => setState(() {});
  
   Future<void> _cargarClima() async {
@@ -52,8 +54,8 @@ class _ClimaScreenState extends State<ClimaScreen> {
  
       await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
  
-      final ciudad = 'Popayan,Cauca,Colombia';
-      final url = 'https://api.weatherapi.com/v1/forecast.json'
+      const ciudad = 'Popayan,Cauca,Colombia';
+      const url = 'https://api.weatherapi.com/v1/forecast.json'
           '?key=$apiKey&q=$ciudad&days=4&lang=es&aqi=no&alerts=no';
  
       final response = await http.get(Uri.parse(url));
@@ -90,7 +92,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         _usarDatosSimulados();
       }
     } catch (e) {
-      print('ERROR CLIMA: $e');
+      debugPrint('ERROR CLIMA: $e');
       _usarDatosSimulados();
     }
   }
@@ -276,7 +278,8 @@ class _ClimaScreenState extends State<ClimaScreen> {
  
   @override
   Widget build(BuildContext context) {
-    final fincaNombre   = AppState.instance.fincaSeleccionada?['nombreFinca'] ?? widget.nombreFinca;
+    // Siempre desde AppState, nunca desde constructor
+    final fincaNombre   = AppState.instance.fincaSeleccionada?['nombreFinca'] ?? 'Mi Finca';
     final cultivoNombre = AppState.instance.cultivoNombre;
     final nivelRoya     = AppState.instance.nivelRoya;
  
@@ -284,7 +287,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
       backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
-          // ── HEADER con bordes redondeados inferiores y sombra ──
           DecoratedBox(
             decoration: const BoxDecoration(
               boxShadow: [
@@ -392,7 +394,8 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+          color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
       child: Column(
         children: [
           Text(_ciudadActual, style: GoogleFonts.nunito(color: AppColors.textSecondary)),
@@ -434,7 +437,8 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+          color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: pronostico.map<Widget>((p) {

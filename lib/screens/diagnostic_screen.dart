@@ -40,7 +40,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   List _cultivos = [];
   int? _cultivoSeleccionado;
  
- static const String _iaBaseUrl = 'http://localhost:8000';
+ static const String _iaBaseUrl = 'https://backend-coffe-lifee-production.up.railway.app';
  
   String _diagnosisText  = '';
   String _scientificName = '';

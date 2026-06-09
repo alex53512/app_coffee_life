@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
-import '../services/app_state.dart';
 import 'home_screen.dart';
 import 'diagnostic_screen.dart';
 import 'clima_screen.dart';
@@ -20,31 +19,16 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
  
-  @override
-  void initState() {
-    super.initState();
-    // Reconstruir cuando cambie la finca para actualizar ClimaScreen
-    AppState.instance.addListener(_onFincaCambiada);
-  }
- 
-  @override
-  void dispose() {
-    AppState.instance.removeListener(_onFincaCambiada);
-    super.dispose();
-  }
- 
-  void _onFincaCambiada() => setState(() {});
- 
-  String get _nombreFincaActual =>
-      AppState.instance.fincaSeleccionada?['nombreFinca'] ?? 'Mi Finca';
- 
-  List<Widget> get _screens => [
-    HomeScreen(usuario: widget.usuario),          // 0 - Inicio
-    const DiagnosticScreen(),                     // 1 - Diagnóstico
-    ClimaScreen(nombreFinca: _nombreFincaActual), // 2 - Clima ← NUEVO
-    const MontoreosScreen(),                      // 3 - Monitoreos
-    const AprenderScreen(),                       // 4 - Aprender
-    ProfileScreen(usuario: widget.usuario),        // 5 - Perfil
+  // Cada pantalla escucha AppState por su cuenta — MainNavigation
+  // no necesita hacerlo. Las pantallas se crean una sola vez con
+  // IndexedStack, así conservan su estado al cambiar de tab.
+  late final List<Widget> _screens = [
+    HomeScreen(usuario: widget.usuario), // 0 - Inicio
+    const DiagnosticScreen(),            // 1 - Diagnóstico
+    const ClimaScreen(),                 // 2 - Clima  ← sin parámetro
+    const MontoreosScreen(),             // 3 - Monitoreos
+    const AprenderScreen(),              // 4 - Aprender
+    ProfileScreen(usuario: widget.usuario), // 5 - Perfil
   ];
  
   @override
@@ -81,7 +65,7 @@ class _MainNavigationState extends State<MainNavigation> {
               _navItem(1, Icons.document_scanner_rounded,
                   Icons.document_scanner_outlined, 'Diagnóstico'),
               _navItem(2, Icons.wb_cloudy_rounded,
-                  Icons.wb_cloudy_outlined, 'Clima'),        // ← NUEVO
+                  Icons.wb_cloudy_outlined, 'Clima'),
               _navItem(3, Icons.bar_chart_rounded,
                   Icons.bar_chart_outlined, 'Monitoreos'),
               _navItem(4, Icons.menu_book_rounded,
@@ -102,7 +86,7 @@ class _MainNavigationState extends State<MainNavigation> {
       onTap: () => setState(() => _currentIndex = index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 56, // un poco más angosto para caber 6 tabs
+        width: 56,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

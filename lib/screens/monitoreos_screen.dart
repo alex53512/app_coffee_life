@@ -18,22 +18,29 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   int _tabIndex = 0;
   bool _cargando = true;
   String? _error;
-  List _monitoreos = [];
+  List _todosLosMonitoreos = []; // Lista completa desde la API
+  List _monitoreosFiltrados = []; // Lista filtrada por finca/cultivo
  
   @override
   void initState() {
     super.initState();
     _cargarMonitoreos();
-    AppState.instance.addListener(_onFincaCambiada);
+    AppState.instance.addListener(_onEstadoCambiado);
   }
  
-  void _onFincaCambiada() => _cargarMonitoreos();
+  /// Se llama cuando cambia finca o cultivo en el AppState.
+  void _onEstadoCambiado() {
+    // Re-filtrar sin hacer nueva llamada a la API
+    _aplicarFiltro();
+  }
  
   @override
   void dispose() {
-    AppState.instance.removeListener(_onFincaCambiada);
+    AppState.instance.removeListener(_onEstadoCambiado);
     super.dispose();
   }
+ 
+  // ── Carga y filtrado ────────────────────────────────────────────────────
  
   Future<void> _cargarMonitoreos() async {
     setState(() {
@@ -44,11 +51,8 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     try {
       final data = await ApiService.get('/monitoreos');
       final todos = data is List ? data : (data['data'] ?? []);
- 
-      setState(() {
-        _monitoreos = todos is List ? List.from(todos) : [];
-        _cargando   = false;
-      });
+      _todosLosMonitoreos = todos is List ? List.from(todos) : [];
+      _aplicarFiltro();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -57,12 +61,57 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     }
   }
  
+  /// Filtra _todosLosMonitoreos según la finca y cultivo seleccionados en AppState.
+  void _aplicarFiltro() {
+    final idFinca   = AppState.instance.idFincaSeleccionada;
+    final idCultivo = AppState.instance.idCultivoSeleccionado;
+    final idsCultivos = AppState.instance.idsCultivosFinca;
+ 
+    List filtrados;
+ 
+    if (idFinca == null) {
+      // Sin finca seleccionada → mostrar todo
+      filtrados = List.from(_todosLosMonitoreos);
+    } else if (idCultivo != null) {
+      // Cultivo específico seleccionado → solo monitoreos de ese cultivo
+      filtrados = _todosLosMonitoreos.where((m) {
+        final idC = _idCultivoDeMonitoreo(m);
+        return idC != null && idC.toString() == idCultivo.toString();
+      }).toList();
+    } else {
+      // Solo finca seleccionada → todos los cultivos de esa finca
+      final idsStr = idsCultivos.map((id) => id.toString()).toSet();
+      filtrados = _todosLosMonitoreos.where((m) {
+        final idC = _idCultivoDeMonitoreo(m);
+        return idC != null && idsStr.contains(idC.toString());
+      }).toList();
+    }
+ 
+    setState(() {
+      _monitoreosFiltrados = filtrados;
+      _cargando = false;
+    });
+  }
+ 
+  /// Extrae el idCultivo de un monitoreo sin importar la estructura de la API.
+  dynamic _idCultivoDeMonitoreo(dynamic m) {
+    return m['idCultivo'] ??
+        m['id_cultivo'] ??
+        m['cultivo']?['idCultivo'] ??
+        m['cultivo']?['id_cultivo'];
+  }
+ 
+  // ── Eliminar ────────────────────────────────────────────────────────────
+ 
   Future<void> _eliminarMonitoreo(dynamic m) async {
     final id = m['idMonitoreo'] ?? m['id_monitoreo'];
     try {
       await ApiService.delete('/monitoreos/$id');
       setState(() {
-        _monitoreos.removeWhere(
+        _todosLosMonitoreos.removeWhere(
+          (item) => (item['idMonitoreo'] ?? item['id_monitoreo']) == id,
+        );
+        _monitoreosFiltrados.removeWhere(
           (item) => (item['idMonitoreo'] ?? item['id_monitoreo']) == id,
         );
       });
@@ -111,19 +160,19 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     if (confirmado == true) _eliminarMonitoreo(m);
   }
  
+  // ── Helpers de presentación ─────────────────────────────────────────────
+ 
   String _labelNivel(dynamic m) {
     final obs = (m['observaciones'] ?? m['cultivo']?['observaciones'] ?? '')
         .toString()
         .toLowerCase();
  
-    // ✅ Busca 'roya' en general (detectada, detectado, etc.)
     if (obs.contains('roya') ||
         obs.contains('alto') ||
         obs.contains('critico') ||
         obs.contains('enfermedad')) {
       return 'Alto';
     }
- 
     if (obs.contains('medio') ||
         obs.contains('manchas') ||
         obs.contains('sospechosas') ||
@@ -131,7 +180,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         obs.contains('observacion')) {
       return 'Medio';
     }
- 
     return 'Bajo';
   }
  
@@ -186,14 +234,20 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     return 'https://coffeelife-api.up.railway.app/$ruta';
   }
  
+  // ── Build ───────────────────────────────────────────────────────────────
+ 
   @override
   Widget build(BuildContext context) {
+    // Leer info del AppState para el header
+    final fincaNombre   = AppState.instance.fincaSeleccionada?['nombreFinca'];
+    final cultivoNombre = AppState.instance.cultivoNombre;
+ 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            _buildHeader(context, fincaNombre, cultivoNombre),
             const SizedBox(height: 12),
             _buildTabs(),
             const SizedBox(height: 8),
@@ -213,10 +267,24 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     );
   }
  
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, String? fincaNombre, String cultivoNombre) {
+    // Construir subtítulo dinámico según selección
+    String subtitulo;
+    if (cultivoNombre.isNotEmpty) {
+      subtitulo = 'Cultivo: $cultivoNombre';
+    } else if (fincaNombre != null) {
+      subtitulo = fincaNombre;
+    } else {
+      subtitulo = 'Todos los monitoreos';
+    }
+ 
+    // Indicador de cuántos monitoreos se están mostrando
+    final total    = _todosLosMonitoreos.length;
+    final visibles = _monitoreosFiltrados.length;
+    final filtrando = total != visibles;
+ 
     return Container(
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF4E7D6),
         boxShadow: [
@@ -227,49 +295,73 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           ),
         ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: AppColors.textPrimary, size: 18),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Monitoreo',
+                    style: GoogleFonts.nunito(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary)),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 12, color: AppColors.textSecondary),
+                    const SizedBox(width: 3),
+                    Text(subtitulo,
+                        style: GoogleFonts.nunito(
+                            fontSize: 11, color: AppColors.textSecondary)),
+                    if (filtrando) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('$visibles de $total',
+                            style: GoogleFonts.nunito(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary)),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: _cargarMonitoreos,
+            child: Container(
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.textPrimary, size: 18),
-                onPressed: () => Navigator.pop(context),
-              ),
+              child: const Icon(Icons.refresh_rounded,
+                  color: AppColors.textPrimary, size: 20),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text('Monitoreo',
-                  style: GoogleFonts.nunito(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-            ),
-            GestureDetector(
-              onTap: _cargarMonitoreos,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text('Filtrar',
-                    style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -328,8 +420,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           const SizedBox(height: 12),
           ElevatedButton(
             onPressed: _cargarMonitoreos,
-            style:
-                ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
             child: Text('Reintentar',
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
           ),
@@ -339,31 +430,54 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
  
   Widget _buildHistorial() {
-    if (_monitoreos.isEmpty) {
+    if (_monitoreosFiltrados.isEmpty) {
+      final cultivoNombre = AppState.instance.cultivoNombre;
+      final fincaNombre   = AppState.instance.fincaSeleccionada?['nombreFinca'];
+ 
+      String mensajePrincipal;
+      String mensajeSecundario;
+ 
+      if (cultivoNombre.isNotEmpty) {
+        mensajePrincipal  = 'Sin monitoreos para $cultivoNombre';
+        mensajeSecundario = 'Realiza un diagnóstico para registrar el estado de este cultivo.';
+      } else if (fincaNombre != null) {
+        mensajePrincipal  = 'Sin monitoreos para $fincaNombre';
+        mensajeSecundario = 'Esta finca no tiene monitoreos registrados aún.';
+      } else {
+        mensajePrincipal  = 'No hay monitoreos registrados';
+        mensajeSecundario = 'Realiza un diagnóstico para crear uno.';
+      }
+ 
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                shape: BoxShape.circle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.eco_outlined,
+                    color: AppColors.primary, size: 36),
               ),
-              child: const Icon(Icons.eco_outlined,
-                  color: AppColors.primary, size: 36),
-            ),
-            const SizedBox(height: 16),
-            Text('No hay monitoreos registrados',
-                style: GoogleFonts.nunito(
-                    color: AppColors.textSecondary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text('Realiza un diagnóstico para crear uno',
-                style: GoogleFonts.nunito(
-                    color: AppColors.textSecondary, fontSize: 13)),
-          ],
+              const SizedBox(height: 16),
+              Text(mensajePrincipal,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.nunito(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(mensajeSecundario,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.nunito(
+                      color: AppColors.textSecondary, fontSize: 13)),
+            ],
+          ),
         ),
       );
     }
@@ -373,9 +487,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       color: AppColors.primary,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        itemCount: _monitoreos.length,
+        itemCount: _monitoreosFiltrados.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _monitoreoCard(_monitoreos[i]),
+        itemBuilder: (_, i) => _monitoreoCard(_monitoreosFiltrados[i]),
       ),
     );
   }
@@ -404,8 +518,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05), blurRadius: 8),
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
           ],
         ),
         child: Row(
@@ -442,8 +555,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20),
@@ -468,6 +580,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(10),
       ),
+      child: Icon(Icons.eco_outlined, color: color, size: 24),
     );
   }
  

@@ -16,13 +16,10 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   int _tabIndex = 0;
   bool _cargando = true;
  
-  // Monitoreo completo traído del endpoint /monitoreos/{id}
   Map<String, dynamic>? _monitoreoCompleto;
- 
   Map<String, dynamic>? _analisisIa;
   Map<String, dynamic>? _recomendacionExperto;
  
-  // Getter que prioriza el objeto completo y cae al de la lista
   Map<String, dynamic> get _m => _monitoreoCompleto ?? widget.monitoreo;
  
   @override
@@ -38,17 +35,14 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         widget.monitoreo['idMonitoreo'] ?? widget.monitoreo['id_monitoreo'];
  
     try {
-      // ── 1. Monitoreo completo con todas las relaciones ──────────────────
       final rawMonitoreo = await ApiService.get('/monitoreos/$idMonitoreo');
       if (rawMonitoreo is Map) {
-        // El endpoint puede devolver el objeto directo o envuelto en { data: {...} }
         final inner = rawMonitoreo['data'];
         _monitoreoCompleto = Map<String, dynamic>.from(
           (inner is Map) ? inner : rawMonitoreo,
         );
       }
  
-      // ── 2. Análisis IA (filtrado por monitoreo vía imágenes en el backend) ─
       try {
         final dataIa =
             await ApiService.get('/analisis_ia?id_monitoreo=$idMonitoreo');
@@ -57,11 +51,8 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         if ((listaIa as List).isNotEmpty) {
           _analisisIa = Map<String, dynamic>.from(listaIa[0]);
         }
-      } catch (_) {
-        // Tab IA mostrará mensaje amigable
-      }
+      } catch (_) {}
  
-      // ── 3. Recomendación del experto ────────────────────────────────────
       try {
         final dataRec =
             await ApiService.get('/recomendaciones?id_monitoreo=$idMonitoreo');
@@ -71,17 +62,13 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
           _recomendacionExperto =
               Map<String, dynamic>.from(listaRec[0]);
         }
-      } catch (_) {
-        // Tab Experto mostrará mensaje amigable
-      }
-    } catch (_) {
-      // Error general al cargar el monitoreo
-    }
+      } catch (_) {}
+    } catch (_) {}
  
     if (mounted) setState(() => _cargando = false);
   }
  
-  // ── Helpers de datos ────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
  
   String _fecha() {
     final f = (_m['fechaMonitoreo'] ?? _m['fecha_monitoreo'] ?? '').toString();
@@ -163,7 +150,115 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return AppColors.primary;
   }
  
-  // ── Build ────────────────────────────────────────────────────────────────
+  // ── Lógica de recomendaciones basadas en resultado IA ────────────────────
+ 
+  bool _esRoya(String resultado) {
+    final r = resultado.toLowerCase();
+    return r.contains('roya') || r.contains('enfermedad') || r.contains('hemileia');
+  }
+ 
+  bool _esSana(String resultado) {
+    final r = resultado.toLowerCase();
+    return r.contains('sana') || r.contains('normal') || r.contains('sin patóg') || r.contains('sin patog');
+  }
+ 
+  List<_RecIA> _recomendacionesIA(String resultado, double confianzaPct) {
+    if (_esRoya(resultado)) {
+      String severidad;
+      Color colorSev;
+      if (confianzaPct >= 0.75) {
+        severidad = 'Alta';
+        colorSev  = const Color(0xFFD32F2F);
+      } else if (confianzaPct >= 0.45) {
+        severidad = 'Media';
+        colorSev  = const Color(0xFFE65100);
+      } else {
+        severidad = 'Baja';
+        colorSev  = const Color(0xFF388E3C);
+      }
+ 
+      return [
+        _RecIA(
+          icono: Icons.medication_outlined,
+          color: const Color(0xFF1565C0),
+          titulo: 'Aplicar fungicida cúprico',
+          subtitulo: 'Dosis recomendada: 250 g por 200 L de agua',
+          detalle: 'Aplica preventivamente cada 15-21 días. '
+              'Asegura buena cobertura en el envés de las hojas.',
+        ),
+        _RecIA(
+          icono: Icons.content_cut_rounded,
+          color: const Color(0xFF2E7D32),
+          titulo: 'Poda y ventilación',
+          subtitulo: 'Mejorar la aireación entre plantas',
+          detalle: 'Realiza poda de chupones y ramas improductivas '
+              'para reducir la humedad, que favorece el desarrollo de la roya.',
+        ),
+        _RecIA(
+          icono: Icons.delete_outline_rounded,
+          color: const Color(0xFFE65100),
+          titulo: 'Eliminar hojas afectadas',
+          subtitulo: 'Retirar y destruir hojas con síntomas',
+          detalle: 'Recoge las hojas caídas y elimínalas fuera del cultivo. '
+              'No las dejes en el suelo cerca de las plantas.',
+        ),
+        _RecIA(
+          icono: Icons.warning_amber_rounded,
+          color: colorSev,
+          titulo: 'Severidad detectada: $severidad',
+          subtitulo: 'Confianza del modelo: ${(confianzaPct * 100).round()}%',
+          detalle: confianzaPct >= 0.75
+              ? 'Resultado muy confiable. Actúa con prioridad alta.'
+              : confianzaPct >= 0.45
+                  ? 'Resultado moderadamente confiable. Considera confirmación con un agrónomo.'
+                  : 'Confianza baja. Se recomienda tomar otra foto con mejor iluminación.',
+        ),
+      ];
+    }
+ 
+    if (_esSana(resultado)) {
+      return [
+        _RecIA(
+          icono: Icons.check_circle_outline,
+          color: AppColors.primary,
+          titulo: 'Planta en buen estado',
+          subtitulo: 'No se detectaron patógenos',
+          detalle: 'Continúa con el manejo habitual del cultivo. '
+              'Las condiciones actuales son favorables.',
+        ),
+        _RecIA(
+          icono: Icons.water_drop_outlined,
+          color: const Color(0xFF1565C0),
+          titulo: 'Mantén el riego adecuado',
+          subtitulo: 'Riego según condiciones climáticas',
+          detalle: 'Evita el exceso de humedad foliar; riega preferiblemente '
+              'en la mañana para que las hojas sequen durante el día.',
+        ),
+        _RecIA(
+          icono: Icons.search_outlined,
+          color: const Color(0xFF388E3C),
+          titulo: 'Monitorea regularmente',
+          subtitulo: 'Revisión cada 15 días',
+          detalle: 'La detección temprana de roya es clave. '
+              'Revisa el envés de las hojas y reporta cualquier mancha amarilla.',
+        ),
+      ];
+    }
+ 
+    // Resultado desconocido
+    return [
+      _RecIA(
+        icono: Icons.help_outline_rounded,
+        color: AppColors.textSecondary,
+        titulo: 'Resultado no clasificado',
+        subtitulo: resultado,
+        detalle: 'El modelo no pudo clasificar la imagen con certeza. '
+            'Toma una nueva foto de la hoja con buena iluminación y enfoque.',
+      ),
+    ];
+  }
+ 
+  // ── Build ─────────────────────────────────────────────────────────────────
  
   @override
   Widget build(BuildContext context) {
@@ -174,7 +269,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────────────────
             Container(
               color: const Color(0xFFF4E7D6),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -200,7 +294,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
               ),
             ),
  
-            // ── Contenido ───────────────────────────────────────────────────
             Expanded(
               child: _cargando
                   ? const Center(
@@ -215,7 +308,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
  
-                            // ── Fecha + badge nivel ──────────────────
+                            // Fecha + badge nivel
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -260,7 +353,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
                             const SizedBox(height: 20),
  
-                            // ── Cultivo y Finca ──────────────────────
+                            // Cultivo y Finca
                             _seccionTitulo('Cultivo y Finca'),
                             const SizedBox(height: 10),
                             _card(
@@ -284,7 +377,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
                             const SizedBox(height: 16),
  
-                            // ── Experto asignado ─────────────────────
+                            // Experto asignado
                             _seccionTitulo('Experto asignado'),
                             const SizedBox(height: 10),
                             _card(
@@ -328,7 +421,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
                             const SizedBox(height: 20),
  
-                            // ── Tabs ─────────────────────────────────
+                            // Tabs
                             Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
@@ -351,7 +444,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
                             const SizedBox(height: 16),
  
-                            // ── Contenido del tab ─────────────────────
                             _tabIndex == 0
                                 ? _buildTabIa()
                                 : _buildTabExperto(),
@@ -368,7 +460,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     );
   }
  
-  // ── Tab selector ─────────────────────────────────────────────────────────
+  // ── Tab selector ──────────────────────────────────────────────────────────
  
   Widget _tabItem(String label, int index) {
     final isActive = _tabIndex == index;
@@ -396,7 +488,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     );
   }
  
-  // ── Tab IA ───────────────────────────────────────────────────────────────
+  // ── Tab IA ────────────────────────────────────────────────────────────────
  
   Widget _buildTabIa() {
     if (_analisisIa == null) {
@@ -408,27 +500,44 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       );
     }
  
-    final resultado = _analisisIa!['resultado'] ?? 'Sin resultado';
-    final confianza = _analisisIa!['confianza'] ??
+    final resultado   = (_analisisIa!['resultado'] ?? 'Sin resultado').toString();
+    final confianza   = _analisisIa!['confianza'] ??
         _analisisIa!['porcentajeConfianza'] ??
         0;
-    final version = _analisisIa!['versionModelo'] ??
+    final version     = (_analisisIa!['versionModelo'] ??
         _analisisIa!['version_modelo'] ??
-        '1.0';
-    final estado = _analisisIa!['estadoAnalisis']?['nombreEstado'] ??
+        '1.0').toString();
+    final estado      = (_analisisIa!['estadoAnalisis']?['nombreEstado'] ??
         _analisisIa!['estado_analisis']?['nombre_estado'] ??
-        'Completado';
+        'Completado').toString();
  
     final confianzaNum = (confianza is num)
         ? confianza.toDouble()
         : double.tryParse(confianza.toString()) ?? 0.0;
     final confianzaPct = confianzaNum > 1 ? confianzaNum / 100 : confianzaNum;
  
+    // Color del resultado según tipo
+    Color colorResultado = AppColors.primary;
+    IconData iconoResultado = Icons.smart_toy_outlined;
+    if (_esRoya(resultado)) {
+      colorResultado = confianzaPct >= 0.75
+          ? const Color(0xFFD32F2F)
+          : confianzaPct >= 0.45
+              ? const Color(0xFFE65100)
+              : const Color(0xFF388E3C);
+      iconoResultado = Icons.coronavirus_outlined;
+    } else if (_esSana(resultado)) {
+      colorResultado = AppColors.primary;
+      iconoResultado = Icons.eco_outlined;
+    }
+ 
+    final recs = _recomendacionesIA(resultado, confianzaPct);
+ 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
  
-        // Resultado
+        // ── Resultado ──────────────────────────────────────────────────────
         _card(
           child: Row(
             children: [
@@ -436,11 +545,11 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
+                  color: colorResultado.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.smart_toy_outlined,
-                    color: AppColors.primary, size: 26),
+                child: Icon(iconoResultado,
+                    color: colorResultado, size: 26),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -454,7 +563,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                         style: GoogleFonts.nunito(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
+                            color: colorResultado)),
                   ],
                 ),
               ),
@@ -464,7 +573,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
         const SizedBox(height: 14),
  
-        // Barra de confianza
+        // ── Barra de confianza ─────────────────────────────────────────────
         _card(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,7 +591,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                     style: GoogleFonts.nunito(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primary),
+                        color: colorResultado),
                   ),
                 ],
               ),
@@ -493,7 +602,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                   value: confianzaPct,
                   backgroundColor: AppColors.border,
                   valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      AlwaysStoppedAnimation<Color>(colorResultado),
                   minHeight: 10,
                 ),
               ),
@@ -509,7 +618,69 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
         const SizedBox(height: 14),
  
-        // Imágenes del monitoreo
+        // ── Recomendaciones ────────────────────────────────────────────────
+        _seccionTitulo('Recomendaciones'),
+        const SizedBox(height: 10),
+        _card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: recs.asMap().entries.map((e) {
+              final rec    = e.value;
+              final isLast = e.key == recs.length - 1;
+              return Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: rec.color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(rec.icono, color: rec.color, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(rec.titulo,
+                                style: GoogleFonts.nunito(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary)),
+                            Text(rec.subtitulo,
+                                style: GoogleFonts.nunito(
+                                    fontSize: 12,
+                                    color: rec.color,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 3),
+                            Text(rec.detalle,
+                                style: GoogleFonts.nunito(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    height: 1.4)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (!isLast) ...[
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, indent: 52, color: AppColors.border),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+ 
+        const SizedBox(height: 14),
+ 
+        // ── Imágenes ───────────────────────────────────────────────────────
         _seccionTitulo('Imágenes (${_imagenes().length})'),
         const SizedBox(height: 10),
         _buildImagenes(),
@@ -517,7 +688,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     );
   }
  
-  // ── Tab Experto ──────────────────────────────────────────────────────────
+  // ── Tab Experto ───────────────────────────────────────────────────────────
  
   Widget _buildTabExperto() {
     if (_recomendacionExperto == null) {
@@ -535,7 +706,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         _recomendacionExperto!['fecha_limite'] ??
         '';
  
-    // Prioridad — puede venir como objeto o como id
     final prioridadObj = _recomendacionExperto!['prioridad'];
     final prioridad = (prioridadObj is Map)
         ? (prioridadObj['nombrePrioridad'] ??
@@ -552,8 +722,8 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
     String fechaFormateada = fechaLimite;
     try {
-      if (fechaLimite.isNotEmpty) {
-        final dt = DateTime.parse(fechaLimite);
+      if (fechaLimite.toString().isNotEmpty) {
+        final dt = DateTime.parse(fechaLimite.toString());
         const meses = [
           'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
           'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
@@ -563,7 +733,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       }
     } catch (_) {}
  
-    // Experto que hizo la recomendación
     final expertoRec = _recomendacionExperto!['experto'];
     String nombreExperto = '';
     if (expertoRec is Map) {
@@ -575,8 +744,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
- 
-        // Descripción
         _card(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,16 +774,15 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
         const SizedBox(height: 14),
  
-        // Prioridad, fecha límite y experto
         _card(
           child: Column(
             children: [
               _infoFilaColor(
                   Icons.flag_outlined, 'Prioridad', prioridad, colorPrioridad),
-              if (fechaFormateada.isNotEmpty) ...[
+              if (fechaFormateada.toString().isNotEmpty) ...[
                 const Divider(height: 20, color: AppColors.border),
                 _infoFila(Icons.calendar_today_outlined, 'Fecha límite',
-                    fechaFormateada),
+                    fechaFormateada.toString()),
               ],
               if (nombreExperto.isNotEmpty) ...[
                 const Divider(height: 20, color: AppColors.border),
@@ -630,7 +796,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     );
   }
  
-  // ── Imágenes grid ────────────────────────────────────────────────────────
+  // ── Imágenes grid ─────────────────────────────────────────────────────────
  
   Widget _buildImagenes() {
     final imagenes = _imagenes();
@@ -801,4 +967,22 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ),
     );
   }
+}
+ 
+// ── Modelo interno de recomendación IA ───────────────────────────────────────
+ 
+class _RecIA {
+  final IconData icono;
+  final Color    color;
+  final String   titulo;
+  final String   subtitulo;
+  final String   detalle;
+ 
+  const _RecIA({
+    required this.icono,
+    required this.color,
+    required this.titulo,
+    required this.subtitulo,
+    required this.detalle,
+  });
 }
