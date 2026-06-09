@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,19 +90,23 @@ class AuthService {
     required String correo,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/recuperar-password'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'correo': correo}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/recuperar-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'correo': correo}),
+          )
+          .timeout(const Duration(seconds: 20));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Error al procesar solicitud'};
       }
+    } on TimeoutException {
+      return {'success': false, 'message': 'El servidor está tardando mucho. Revisa tu correo en unos segundos o intenta de nuevo.'};
     } catch (e) {
-      return {'success': false, 'message': 'No se pudo conectar al servidor'};
+      return {'success': false, 'message': 'No se pudo conectar al servidor. Verifica tu conexión a internet.'};
     }
   }
 
@@ -112,19 +117,23 @@ class AuthService {
     required String token,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/verificar-token'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'token': token}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/verificar-token'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'token': token}),
+          )
+          .timeout(const Duration(seconds: 15));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Código inválido'};
       }
+    } on TimeoutException {
+      return {'success': false, 'message': 'El servidor no responde. Intenta de nuevo.'};
     } catch (e) {
-      return {'success': false, 'message': 'No se pudo conectar al servidor'};
+      return {'success': false, 'message': 'No se pudo conectar al servidor. Verifica tu conexión a internet.'};
     }
   }
 
@@ -136,19 +145,23 @@ class AuthService {
     required String nuevaPassword,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/restablecer-password'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'token': token, 'nuevaPassword': nuevaPassword}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/restablecer-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'token': token, 'nuevaPassword': nuevaPassword}),
+          )
+          .timeout(const Duration(seconds: 15));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         return {'success': true, 'message': data['message']};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Error al restablecer contraseña'};
       }
+    } on TimeoutException {
+      return {'success': false, 'message': 'El servidor no responde. Intenta de nuevo.'};
     } catch (e) {
-      return {'success': false, 'message': 'No se pudo conectar al servidor'};
+      return {'success': false, 'message': 'No se pudo conectar al servidor. Verifica tu conexión a internet.'};
     }
   }
 }

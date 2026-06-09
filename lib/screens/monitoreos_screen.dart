@@ -48,7 +48,7 @@ class _FincaRiesgo {
   final String nombre;
   final double lat;
   final double lon;
-  final int nivel; // 0=sin datos 1=bajo 2=medio 3=alto
+  final int nivel;
 
   const _FincaRiesgo({
     required this.idFinca,
@@ -74,10 +74,39 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   String? _error;
   List _monitoreos = [];
 
+  // ── Búsqueda ──────────────────────────────────────────────────────────────
+  String _busqueda = '';
+
+  List get _monitoreosFiltrados {
+    if (_busqueda.isEmpty) return _monitoreos;
+    final q = _busqueda.toLowerCase();
+    return _monitoreos.where((m) {
+      final fecha   = _fecha(m).toLowerCase();
+      final parcela = _parcela(m).toLowerCase();
+      final nivel   = _labelNivel(m).toLowerCase();
+      final titulo  = _titulo(m).toLowerCase();
+      return fecha.contains(q) ||
+             parcela.contains(q) ||
+             nivel.contains(q) ||
+             titulo.contains(q);
+    }).toList();
+  }
+
   // ── Mapa ──────────────────────────────────────────────────────────────────
   bool _cargandoMapa = false;
   List<_FincaRiesgo> _fincasRiesgo = [];
   _FincaRiesgo? _fincaSeleccionada;
+
+  // ── Finca activa del AppState ─────────────────────────────────────────────
+  Map<String, dynamic>? get _fincaActiva => AppState.instance.fincaSeleccionada;
+
+  int? get _idFincaActiva =>
+      _toInt(_fincaActiva?['idFinca'] ?? _fincaActiva?['id_finca']);
+
+  String get _nombreFincaActiva =>
+      _fincaActiva?['nombreFinca'] ??
+      _fincaActiva?['nombre_finca'] ??
+      'Finca';
 
   @override
   void initState() {
@@ -86,7 +115,14 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     AppState.instance.addListener(_onFincaCambiada);
   }
 
-  void _onFincaCambiada() => _cargarMonitoreos();
+  /// Cuando cambia la finca en AppState recargamos y limpiamos búsqueda.
+  void _onFincaCambiada() {
+    setState(() {
+      _busqueda = '';
+      _fincasRiesgo = []; // forzar recarga del mapa con la nueva finca
+    });
+    _cargarMonitoreos();
+  }
 
   @override
   void dispose() {
@@ -94,16 +130,47 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     super.dispose();
   }
 
+  // ── Carga monitoreos filtrados por finca ──────────────────────────────────
+
   Future<void> _cargarMonitoreos() async {
     setState(() {
       _cargando = true;
       _error = null;
     });
+
     try {
-      final data = await ApiService.get('/monitoreos');
+      // Si hay finca activa filtramos por idFinca en el endpoint.
+      // La mayoría de APIs REST aceptan ?idFinca=X o ?finca_id=X.
+      // Ajusta el query param al nombre exacto que use tu backend.
+      final idFinca = _idFincaActiva;
+      final endpoint = idFinca != null
+          ? '/monitoreos?idFinca=$idFinca'
+          : '/monitoreos';
+
+      final data = await ApiService.get(endpoint);
       final todos = data is List ? data : (data['data'] ?? []);
+      List lista = todos is List ? List.from(todos) : [];
+
+      // Filtro local como fallback por si el backend no filtra por idFinca.
+      // Comprueba el idFinca dentro de cultivo → finca o en campos directos.
+      if (idFinca != null) {
+        lista = lista.where((m) {
+          final fId = _toInt(
+            m['cultivo']?['finca']?['idFinca'] ??
+            m['cultivo']?['idFinca'] ??
+            m['finca']?['idFinca'] ??
+            m['idFinca'] ??
+            m['id_finca'],
+          );
+          // Si el backend ya filtró correctamente fId puede ser null en items
+          // que sí pertenecen (el campo no viene en la respuesta). En ese caso
+          // dejamos pasar (fId == null) para no esconder registros válidos.
+          return fId == null || fId == idFinca;
+        }).toList();
+      }
+
       setState(() {
-        _monitoreos = todos is List ? List.from(todos) : [];
+        _monitoreos = lista;
         _cargando = false;
       });
     } catch (e) {
@@ -114,10 +181,10 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     }
   }
 
-  // ── Carga datos del mapa cruzando 4 endpoints ─────────────────────────────
+  // ── Carga datos del mapa (solo fincas, o solo la activa) ──────────────────
 
   Future<void> _cargarMapa() async {
-    if (_fincasRiesgo.isNotEmpty) return; // ya cargado
+    if (_fincasRiesgo.isNotEmpty) return;
     setState(() => _cargandoMapa = true);
 
     try {
@@ -136,39 +203,31 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       final monitoreos = _list(results[2]);
       final analisis   = _list(results[3]);
 
-      // cultivoId → fincaId
       final cultivoFinca = <int, int>{};
       for (final c in cultivos) {
-        final id = _toInt(c['idCultivo']);
+        final id  = _toInt(c['idCultivo']);
         final fId = _toInt(c['idFinca'] ?? c['finca']?['idFinca']);
         if (id != null && fId != null) cultivoFinca[id] = fId;
       }
 
-      // monitoreoId → cultivoId
       final monitoreoCultivo = <int, int>{};
       for (final m in monitoreos) {
-        final id = _toInt(m['idMonitoreo']);
+        final id  = _toInt(m['idMonitoreo']);
         final cId = _toInt(m['idCultivo']);
         if (id != null && cId != null) monitoreoCultivo[id] = cId;
       }
 
-      // fincaId → nivel de riesgo más alto
       final fincaNivel = <int, int>{};
       for (final a in analisis) {
-        final nivel = _toInt(
-            a['idNivelRoya'] ?? a['nivelRoya']?['idNivel']);
+        final nivel = _toInt(a['idNivelRoya'] ?? a['nivelRoya']?['idNivel']);
         if (nivel == null) continue;
-
         final idMonitoreo =
             _toInt(a['imagen']?['idMonitoreo'] ?? a['idMonitoreo']);
         if (idMonitoreo == null) continue;
-
         final idCultivo = monitoreoCultivo[idMonitoreo];
         if (idCultivo == null) continue;
-
         final idFinca = cultivoFinca[idCultivo];
         if (idFinca == null) continue;
-
         final actual = fincaNivel[idFinca] ?? 0;
         if (nivel > actual) fincaNivel[idFinca] = nivel;
       }
@@ -249,7 +308,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     if (confirmado == true) _eliminarMonitoreo(m);
   }
 
-  // ─── Helpers de nivel (historial) ────────────────────────────────────────
+  // ─── Helpers de nivel ────────────────────────────────────────────────────
 
   String _labelNivel(dynamic m) {
     final obs = (m['observaciones'] ?? m['cultivo']?['observaciones'] ?? '')
@@ -380,26 +439,40 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text('Monitoreo',
-                  style: GoogleFonts.nunito(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Monitoreo',
+                      style: GoogleFonts.nunito(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                  // Subtítulo con el nombre de la finca activa
+                  if (_fincaActiva != null)
+                    Text(
+                      _nombreFincaActiva,
+                      style: GoogleFonts.nunito(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
             ),
-            GestureDetector(
-              onTap: _cargarMonitoreos,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text('Filtrar',
-                    style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.refresh_rounded,
+                    color: AppColors.textPrimary, size: 20),
+                onPressed: _cargarMonitoreos,
+                tooltip: 'Recargar',
               ),
             ),
           ],
@@ -434,7 +507,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       child: GestureDetector(
         onTap: () {
           setState(() => _tabIndex = index);
-          if (index == 1) _cargarMapa(); // carga el mapa al entrar al tab
+          if (index == 1) _cargarMapa();
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -477,45 +550,104 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   // ─── Historial ────────────────────────────────────────────────────────────
 
   Widget _buildHistorial() {
-    if (_monitoreos.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.eco_outlined,
-                  color: AppColors.primary, size: 36),
-            ),
-            const SizedBox(height: 16),
-            Text('No hay monitoreos registrados',
-                style: GoogleFonts.nunito(
-                    color: AppColors.textSecondary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text('Realiza un diagnóstico para crear uno',
-                style: GoogleFonts.nunito(
-                    color: AppColors.textSecondary, fontSize: 13)),
-          ],
-        ),
-      );
-    }
+    final lista = _monitoreosFiltrados;
 
-    return RefreshIndicator(
-      onRefresh: _cargarMonitoreos,
-      color: AppColors.primary,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        itemCount: _monitoreos.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _monitoreoCard(_monitoreos[i]),
-      ),
+    return Column(
+      children: [
+
+
+        // ── Barra de búsqueda ────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: TextField(
+            onChanged: (v) => setState(() => _busqueda = v),
+            decoration: InputDecoration(
+              hintText: 'Buscar por finca, nivel, fecha...',
+              hintStyle: GoogleFonts.nunito(
+                  fontSize: 13, color: AppColors.textSecondary),
+              prefixIcon: const Icon(Icons.search,
+                  color: AppColors.textSecondary, size: 20),
+              suffixIcon: _busqueda.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () => setState(() => _busqueda = ''),
+                      child: const Icon(Icons.close,
+                          size: 18, color: AppColors.textSecondary),
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide:
+                    BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+            ),
+            style: GoogleFonts.nunito(fontSize: 14),
+          ),
+        ),
+
+        // ── Lista filtrada ───────────────────────────────────────────────
+        Expanded(
+          child: lista.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.eco_outlined,
+                            color: AppColors.primary, size: 36),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _busqueda.isEmpty
+                            ? 'No hay monitoreos para\n$_nombreFincaActiva'
+                            : 'Sin resultados para "$_busqueda"',
+                        style: GoogleFonts.nunito(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _busqueda.isEmpty
+                            ? 'Realiza un diagnóstico para crear uno'
+                            : 'Intenta con otro término de búsqueda',
+                        style: GoogleFonts.nunito(
+                            color: AppColors.textSecondary, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _cargarMonitoreos,
+                  color: AppColors.primary,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 8),
+                    itemCount: lista.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) => _monitoreoCard(lista[i]),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
@@ -612,7 +744,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   // ─── Mapa con hexágonos ───────────────────────────────────────────────────
 
   Widget _buildMapa() {
-    // Centro del mapa: promedio de fincas o punto por defecto
     final center = _fincasRiesgo.isNotEmpty
         ? LatLng(
             _fincasRiesgo.map((f) => f.lat).reduce((a, b) => a + b) /
@@ -647,7 +778,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
             ),
             const SizedBox(height: 14),
 
-            // ── Tarjeta de finca seleccionada ──────────────────────────────
             if (_fincaSeleccionada != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -696,7 +826,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 ),
               ),
 
-            // ── Mapa ───────────────────────────────────────────────────────
             Container(
               height: 320,
               width: double.infinity,
@@ -718,15 +847,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                     initialZoom: _fincasRiesgo.isNotEmpty ? 13.0 : 8.0,
                   ),
                   children: [
-                    // Capa base satelital
                     TileLayer(
                       urlTemplate:
                           'https://server.arcgisonline.com/ArcGIS/rest/services/'
                           'World_Imagery/MapServer/tile/{z}/{y}/{x}',
                       userAgentPackageName: 'com.coffeelife.app',
                     ),
-
-                    // Hexágonos por nivel de riesgo
                     if (_fincasRiesgo.isNotEmpty)
                       PolygonLayer(
                         polygons: _fincasRiesgo.map((f) {
@@ -740,8 +866,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                           );
                         }).toList(),
                       ),
-
-                    // Pines sobre cada finca
                     if (_fincasRiesgo.isNotEmpty)
                       MarkerLayer(
                         markers: _fincasRiesgo.map((f) {
@@ -776,7 +900,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
 
             const SizedBox(height: 18),
 
-            // ── Leyenda ────────────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
