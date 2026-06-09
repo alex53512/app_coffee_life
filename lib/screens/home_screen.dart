@@ -156,6 +156,350 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Alto';
   }
 
+  // ─── Formulario: Nueva Finca ──────────────────────────────────────────────
+
+  void _mostrarFormFinca() {
+    final formKey       = GlobalKey<FormState>();
+    final nombreCtrl    = TextEditingController();
+    final municipioCtrl = TextEditingController();
+    final deptoCtrl     = TextEditingController();
+    final areaCtrl      = TextEditingController();
+    final altitudCtrl   = TextEditingController();
+    final latCtrl       = TextEditingController();
+    final lonCtrl       = TextEditingController();
+    bool guardando      = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFFEFB),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Text('Nueva finca',
+                      style: GoogleFonts.nunito(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text('Ingresa los datos de tu finca',
+                      style: GoogleFonts.nunito(
+                          fontSize: 13, color: AppColors.textSecondary)),
+                  const SizedBox(height: 20),
+
+                  _campo(nombreCtrl,    'Nombre de la finca *', Icons.park_outlined,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
+                  const SizedBox(height: 12),
+                  _campo(municipioCtrl, 'Municipio *', Icons.location_city_outlined,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
+                  const SizedBox(height: 12),
+                  _campo(deptoCtrl,     'Departamento', Icons.map_outlined),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: _campo(areaCtrl,    'Área (ha)',   Icons.straighten_outlined, keyboard: TextInputType.number)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _campo(altitudCtrl, 'Altitud (msnm)', Icons.terrain_outlined, keyboard: TextInputType.number)),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: _campo(latCtrl, 'Latitud',  Icons.my_location_outlined, keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true))),
+                    const SizedBox(width: 10),
+                    Expanded(child: _campo(lonCtrl, 'Longitud', Icons.my_location_outlined, keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true))),
+                  ]),
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: guardando ? null : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setModal(() => guardando = true);
+
+                        final idUsuario = widget.usuario['idUsuario']
+                            ?? widget.usuario['id_usuario']
+                            ?? widget.usuario['id'];
+
+                        try {
+                          await ApiService.post('/fincas', {
+                            'id_usuario':    idUsuario,
+                            'nombre_finca':  nombreCtrl.text.trim(),
+                            'municipio':     municipioCtrl.text.trim(),
+                            'departamento':  deptoCtrl.text.trim(),
+                            if (areaCtrl.text.isNotEmpty)
+                              'area_hectareas': double.tryParse(areaCtrl.text),
+                            if (altitudCtrl.text.isNotEmpty)
+                              'altitud_msnm': double.tryParse(altitudCtrl.text),
+                            if (latCtrl.text.isNotEmpty)
+                              'latitud': double.tryParse(latCtrl.text),
+                            if (lonCtrl.text.isNotEmpty)
+                              'longitud': double.tryParse(lonCtrl.text),
+                          });
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          await _cargarDatos();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Finca creada correctamente',
+                                    style: GoogleFonts.nunito()),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setModal(() => guardando = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'),
+                                  backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: guardando
+                          ? const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2)
+                          : Text('Guardar finca',
+                              style: GoogleFonts.nunito(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Formulario: Nuevo Lote / Cultivo ────────────────────────────────────
+
+  void _mostrarFormLote(dynamic idFinca) {
+    final formKey      = GlobalKey<FormState>();
+    final nombreCtrl   = TextEditingController();
+    String tipoCultivo = 'Café';
+    bool guardando     = false;
+
+    const tipos = ['Café'];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFFEFB),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Text('Nuevo lote',
+                      style: GoogleFonts.nunito(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text('Agrega un lote a esta finca',
+                      style: GoogleFonts.nunito(
+                          fontSize: 13, color: AppColors.textSecondary)),
+                  const SizedBox(height: 20),
+
+                  _campo(nombreCtrl, 'Nombre del lote *', Icons.eco_outlined,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
+                  const SizedBox(height: 16),
+
+                  Text('Tipo de cultivo',
+                      style: GoogleFonts.nunito(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: tipos.map((t) {
+                      final sel = tipoCultivo == t;
+                      return GestureDetector(
+                        onTap: () => setModal(() => tipoCultivo = t),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: sel ? AppColors.primary : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: sel ? AppColors.primary : AppColors.border,
+                            ),
+                          ),
+                          child: Text(t,
+                              style: GoogleFonts.nunito(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: sel
+                                      ? Colors.white
+                                      : AppColors.textSecondary)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: guardando ? null : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setModal(() => guardando = true);
+
+                        try {
+                          await ApiService.post('/cultivos', {
+                            'id_finca':       idFinca,
+                            'nombre_cultivo': nombreCtrl.text.trim(),
+                            'tipo_cultivo':   tipoCultivo,
+                          });
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          await _cargarDatos();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Lote agregado correctamente',
+                                    style: GoogleFonts.nunito()),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setModal(() => guardando = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'),
+                                  backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: guardando
+                          ? const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2)
+                          : Text('Guardar lote',
+                              style: GoogleFonts.nunito(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Campo de texto reutilizable ─────────────────────────────────────────
+
+  Widget _campo(
+    TextEditingController ctrl,
+    String hint,
+    IconData icon, {
+    TextInputType keyboard = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: ctrl,
+      keyboardType: keyboard,
+      validator: validator,
+      style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+      ),
+    );
+  }
+
+  // ─── Build principal ──────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final nombreRaw = (widget.usuario['nombre'] ?? '').toString().trim();
@@ -172,7 +516,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.primary,
                   child: Column(
                     children: [
-                      // ── HEADER con bordes redondeados inferiores y sombra ──
                       DecoratedBox(
                         decoration: const BoxDecoration(
                           boxShadow: [
@@ -197,7 +540,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -227,10 +571,12 @@ class _HomeScreenState extends State<HomeScreen> {
           const Icon(Icons.wifi_off, size: 60, color: AppColors.textSecondary),
           const SizedBox(height: 16),
           Text('No se pudo conectar al servidor',
-              style: GoogleFonts.nunito(fontSize: 16, color: AppColors.textSecondary)),
+              style: GoogleFonts.nunito(
+                  fontSize: 16, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
           Text(_error ?? '',
-              style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary),
+              style: GoogleFonts.nunito(
+                  fontSize: 11, color: AppColors.textSecondary),
               textAlign: TextAlign.center),
           const SizedBox(height: 12),
           ElevatedButton.icon(
@@ -271,34 +617,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
           ),
-
           const SizedBox(width: 12),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Hola, $nombre',
-                  style: GoogleFonts.nunito(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: const Color.fromARGB(255, 26, 26, 26),
-                  ),
-                ),
+                Text('Hola, $nombre',
+                    style: GoogleFonts.nunito(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: const Color.fromARGB(255, 26, 26, 26),
+                    )),
                 const SizedBox(height: 2),
-                Text(
-                  'Bienvenido de nuevo',
-                  style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary),
-                ),
+                Text('Bienvenido de nuevo',
+                    style: GoogleFonts.nunito(
+                        fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
-
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const NotificacionesScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const NotificacionesScreen()),
             ),
             child: Stack(
               children: [
@@ -322,7 +663,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           '${_recomendaciones.length > 9 ? "9+" : _recomendaciones.length}',
                           style: const TextStyle(
-                              color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -342,7 +685,8 @@ class _HomeScreenState extends State<HomeScreen> {
         : 'Mi Finca';
     final cultivoNombre = _cultivoSeleccionado != null
         ? _cultivos.firstWhere(
-            (c) => (c['idCultivo'] ?? c['id_cultivo']).toString() == _cultivoSeleccionado.toString(),
+            (c) => (c['idCultivo'] ?? c['id_cultivo']).toString() ==
+                _cultivoSeleccionado.toString(),
             orElse: () => {})['nombreCultivo'] ?? 'Cultivo seleccionado'
         : null;
 
@@ -355,12 +699,16 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text('Resumen de tu cultivo',
             style: GoogleFonts.nunito(
-                fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary)),
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: colorSalud, borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+              color: colorSalud,
+              borderRadius: BorderRadius.circular(20)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -372,47 +720,72 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(cultivoNombre ?? fincaNombre,
-                            style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white70)),
                         const SizedBox(height: 2),
                         Text('Salud general del cultivo',
-                            style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white70)),
                         const SizedBox(height: 4),
                         Text(salud['texto'],
                             style: GoogleFonts.nunito(
-                                fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                       ],
                     ),
                   ),
                   Container(
                     width: 48, height: 48,
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                    child: const Icon(Icons.eco_rounded, color: Colors.white, size: 26),
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle),
+                    child: const Icon(Icons.eco_rounded,
+                        color: Colors.white, size: 26),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Índice de riesgo',
-                      style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
-                  Text('${((salud['porcentaje'] as double) * 100).round()}%',
-                      style: GoogleFonts.nunito(fontSize: 12, color: Colors.white)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(salud['nivel'],
-                  style: GoogleFonts.nunito(
-                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: salud['porcentaje'] as double,
-                  backgroundColor: Colors.white.withOpacity(0.25),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                  minHeight: 8,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Índice de riesgo',
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white70)),
+                        Text(
+                            '${((salud['porcentaje'] as double) * 100).round()}%',
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: Colors.white)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(salud['nivel'],
+                        style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: salud['porcentaje'] as double,
+                        backgroundColor: Colors.white.withOpacity(0.25),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -432,29 +805,37 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: GestureDetector(
-            onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const NotificacionesScreen())),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const NotificacionesScreen())),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.red.withOpacity(0.3)),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.05), blurRadius: 8)
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Alertas\nactivas',
-                      style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+                      style: GoogleFonts.nunito(
+                          fontSize: 11, color: AppColors.textSecondary)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Text('${_recomendaciones.length}',
                           style: GoogleFonts.nunito(
-                              fontSize: 22, fontWeight: FontWeight.w800, color: Colors.red)),
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.red)),
                       const Spacer(),
-                      const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.red),
+                      const Icon(Icons.arrow_forward_ios,
+                          size: 10, color: Colors.red),
                     ],
                   ),
                 ],
@@ -473,16 +854,22 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+            Text(label,
+                style: GoogleFonts.nunito(
+                    fontSize: 11, color: AppColors.textSecondary)),
             const SizedBox(height: 4),
             Text(value,
                 style: GoogleFonts.nunito(
-                    fontSize: 22, fontWeight: FontWeight.w800, color: valueColor)),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: valueColor)),
           ],
         ),
       ),
@@ -490,7 +877,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFincasSection(BuildContext context) {
-    if (_fincas.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -499,48 +885,125 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text('Mis Fincas',
                 style: GoogleFonts.nunito(
-                    fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            Text('${_fincas.length} registrada${_fincas.length > 1 ? "s" : ""}',
-                style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            // ── Botón + Nueva finca ──────────────────────────────────────
+            GestureDetector(
+              onTap: _mostrarFormFinca,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.add, color: Colors.white, size: 16),
+                    const SizedBox(width: 4),
+                    Text('Nueva finca',
+                        style: GoogleFonts.nunito(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 10),
-        if (_fincas.length > 1) ...[
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _fincas.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final finca    = _fincas[i];
-                final selected = i == _fincaSeleccionada;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() { _fincaSeleccionada = i; _cultivoSeleccionado = null; });
-                    AppState.instance.setFinca(_fincas[i], _cultivosFincaActual);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        if (_fincas.isEmpty)
+          GestureDetector(
+            onTap: _mostrarFormFinca,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.3),
+                    style: BorderStyle.solid),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.04), blurRadius: 8)
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56, height: 56,
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: selected ? AppColors.primary : AppColors.border),
+                      color: AppColors.primaryLight,
+                      shape: BoxShape.circle,
                     ),
-                    child: Text(finca['nombreFinca'] ?? 'Finca ${i + 1}',
-                        style: GoogleFonts.nunito(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: selected ? Colors.white : AppColors.textSecondary)),
+                    child: const Icon(Icons.add_location_alt_outlined,
+                        color: AppColors.primary, size: 28),
                   ),
-                );
-              },
+                  const SizedBox(height: 12),
+                  Text('Agrega tu primera finca',
+                      style: GoogleFonts.nunito(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text('Toca aquí para registrarla',
+                      style: GoogleFonts.nunito(
+                          fontSize: 13, color: AppColors.textSecondary)),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+          )
+        else ...[
+          if (_fincas.length > 1) ...[
+            SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _fincas.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final finca    = _fincas[i];
+                  final selected = i == _fincaSeleccionada;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _fincaSeleccionada   = i;
+                        _cultivoSeleccionado = null;
+                      });
+                      AppState.instance
+                          .setFinca(_fincas[i], _cultivosFincaActual);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.border),
+                      ),
+                      child: Text(finca['nombreFinca'] ?? 'Finca ${i + 1}',
+                          style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: selected
+                                  ? Colors.white
+                                  : AppColors.textSecondary)),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_fincaSeleccionada < _fincas.length)
+            _buildFincaCard(_fincas[_fincaSeleccionada]),
         ],
-        if (_fincaSeleccionada < _fincas.length) _buildFincaCard(_fincas[_fincaSeleccionada]),
       ],
     );
   }
@@ -551,6 +1014,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final municipio = finca['municipio']     ?? 'Sin municipio';
     final area      = finca['areaHectareas'] ?? finca['area_hectareas'] ?? '-';
     final altitud   = finca['altitudMsnm']   ?? finca['altitud_msnm']   ?? '-';
+    final idFinca   = finca['idFinca']       ?? finca['id_finca'];
 
     return Container(
       width: double.infinity,
@@ -558,7 +1022,9 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFBF7EF),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,8 +1034,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                    color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.park_outlined, color: AppColors.primary, size: 22),
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.park_outlined,
+                    color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -582,8 +1050,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary)),
                     Text(municipio,
-                        style:
-                            GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+                        style: GoogleFonts.nunito(
+                            fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
@@ -602,27 +1070,63 @@ class _HomeScreenState extends State<HomeScreen> {
               _fincaDato(Icons.eco_outlined, '${cultivos.length}', 'Cultivos'),
             ],
           ),
-          if (cultivos.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Divider(color: AppColors.border),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Text('Cultivos registrados',
-                    style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-                const SizedBox(width: 6),
-                Text('(toca para ver su salud)',
-                    style:
-                        GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-              ],
+          const SizedBox(height: 14),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 8),
+
+          // ── Encabezado lotes + botón agregar ──────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Lotes registrados',
+                  style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              GestureDetector(
+                onTap: () => _mostrarFormLote(idFinca),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add,
+                          color: AppColors.primary, size: 14),
+                      const SizedBox(width: 3),
+                      Text('Agregar lote',
+                          style: GoogleFonts.nunito(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          if (cultivos.isEmpty) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: Text('Sin lotes registrados aún',
+                  style: GoogleFonts.nunito(
+                      fontSize: 12, color: AppColors.textSecondary)),
             ),
+          ] else ...[
+            const SizedBox(height: 6),
+            Text('(toca para ver su salud)',
+                style:
+                    GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             ...cultivos.map((c) {
               final idCultivo = c['idCultivo'] ?? c['id_cultivo'];
-              final selected  = _cultivoSeleccionado?.toString() == idCultivo.toString();
+              final selected  =
+                  _cultivoSeleccionado?.toString() == idCultivo.toString();
               final nivel     = selected ? _calcularNivelRoyaPara(idCultivo) : '';
               final nivelColor = nivel == 'Alto'
                   ? Colors.red
@@ -636,17 +1140,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   final nuevoId = selected ? null : idCultivo;
                   setState(() => _cultivoSeleccionado = nuevoId);
-
                   if (nuevoId != null) {
                     final nivelCalculado = _calcularNivelRoyaPara(idCultivo);
                     AppState.instance.setCultivo(c, nivelCalculado);
                   } else {
-                    AppState.instance.setCultivo(null, _getSaludCultivo()['nivel']);
+                    AppState.instance
+                        .setCultivo(null, _getSaludCultivo()['nivel']);
                   }
                 },
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: selected ? AppColors.primaryLight : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
@@ -657,16 +1162,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     children: [
                       Icon(Icons.circle,
-                          color: selected ? AppColors.primary : AppColors.textSecondary,
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                           size: 8),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo',
+                          c['nombreCultivo'] ??
+                              c['nombre_cultivo'] ??
+                              'Cultivo',
                           style: GoogleFonts.nunito(
                               fontSize: 12,
-                              fontWeight:
-                                  selected ? FontWeight.w700 : FontWeight.normal,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.normal,
                               color: selected
                                   ? AppColors.primary
                                   : AppColors.textSecondary),
@@ -674,11 +1184,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       if (selected) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: nivelColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: nivelColor.withOpacity(0.4)),
+                            border: Border.all(
+                                color: nivelColor.withOpacity(0.4)),
                           ),
                           child: Text('Roya: $nivel',
                               style: GoogleFonts.nunito(
@@ -687,14 +1199,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: nivelColor)),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+                        const Icon(Icons.check_circle,
+                            color: AppColors.primary, size: 16),
                       ] else ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                               color: AppColors.primaryLight,
                               borderRadius: BorderRadius.circular(10)),
-                          child: Text(c['tipoCultivo'] ?? c['tipo_cultivo'] ?? 'Café',
+                          child: Text(
+                              c['tipoCultivo'] ??
+                                  c['tipo_cultivo'] ??
+                                  'Café',
                               style: GoogleFonts.nunito(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
@@ -719,9 +1236,12 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 4),
         Text(valor,
             style: GoogleFonts.nunito(
-                fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
         Text(label,
-            style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+            style: GoogleFonts.nunito(
+                fontSize: 11, color: AppColors.textSecondary)),
       ],
     );
   }
@@ -746,7 +1266,9 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFBF7EF),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -756,10 +1278,14 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text('Riesgo de roya',
                   style: GoogleFonts.nunito(
-                      fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary)),
               Text(salud['nivel'],
                   style: GoogleFonts.nunito(
-                      fontSize: 14, fontWeight: FontWeight.w700, color: colorGrafica)),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: colorGrafica)),
             ],
           ),
           const SizedBox(height: 16),
@@ -770,8 +1296,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 show: true,
                 drawVerticalLine: false,
                 horizontalInterval: 1000,
-                getDrawingHorizontalLine: (v) =>
-                    FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+                getDrawingHorizontalLine: (v) => FlLine(
+                    color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
               ),
               titlesData: FlTitlesData(
                 leftTitles: AxisTitles(
@@ -785,9 +1311,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontSize: 10, color: AppColors.textSecondary)),
                   ),
                 ),
-                bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles:  AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles:    AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles:
+                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles:
+                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
               borderData: FlBorderData(show: false),
               minX: 0, maxX: 9, minY: 0, maxY: 4000,
