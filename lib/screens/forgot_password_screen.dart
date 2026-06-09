@@ -338,6 +338,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 6),
+        Text(
+          'Si no lo ves en unos segundos, revisa la bandeja de spam o reenvía el código.',
+          style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+        ),
         const SizedBox(height: 28),
         _fieldLabel('CÓDIGO DE VERIFICACIÓN'),
         const SizedBox(height: 8),
