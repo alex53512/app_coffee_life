@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
  
 class ClimaScreen extends StatefulWidget {
   final String nombreFinca;
@@ -32,29 +33,50 @@ class _ClimaScreenState extends State<ClimaScreen> {
     super.dispose();
   }
  
-  void _onEstadoCambiado() => setState(() {});
+  String? _lastFincaId;
+
+  void _onEstadoCambiado() {
+    final nueva = AppState.instance.fincaSeleccionada?['idFinca']?.toString();
+    if (nueva != null && nueva != _lastFincaId) {
+      _lastFincaId = nueva;
+      _cargarClima();
+    }
+  }
  
   Future<void> _cargarClima() async {
     setState(() => _cargando = true);
     try {
       const apiKey = '27cc92d850e34ed4923194316261905';
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) { _usarDatosSimulados(); return; }
- 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+
+      String query = 'Popayan,Cauca,Colombia';
+
+      // 1. Intentar con coordenadas de la finca seleccionada
+      final finca = AppState.instance.fincaSeleccionada;
+      final lat = finca?['latitud'] ?? finca?['lat'] ?? finca?['coordenadas']?['lat'];
+      final lon = finca?['longitud'] ?? finca?['lon'] ?? finca?['coordenadas']?['lon'];
+      if (lat != null && lon != null) {
+        query = '$lat,$lon';
+      } else {
+        // 2. Fallback: GPS del dispositivo
+        try {
+          bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+          if (serviceEnabled) {
+            LocationPermission permission = await Geolocator.checkPermission();
+            if (permission == LocationPermission.denied) {
+              permission = await Geolocator.requestPermission();
+            }
+            if (permission != LocationPermission.denied &&
+                permission != LocationPermission.deniedForever) {
+              final pos = await Geolocator.getCurrentPosition(
+                  desiredAccuracy: LocationAccuracy.high);
+              query = '${pos.latitude},${pos.longitude}';
+            }
+          }
+        } catch (_) {}
       }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        _usarDatosSimulados(); return;
-      }
- 
-      await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
- 
-      final ciudad = 'Popayan,Cauca,Colombia';
+
       final url = 'https://api.weatherapi.com/v1/forecast.json'
-          '?key=$apiKey&q=$ciudad&days=4&lang=es&aqi=no&alerts=no';
+          '?key=$apiKey&q=$query&days=4&lang=es&aqi=no&alerts=no';
  
       final response = await http.get(Uri.parse(url));
       final data     = jsonDecode(response.body);
@@ -96,8 +118,10 @@ class _ClimaScreenState extends State<ClimaScreen> {
   }
  
   void _usarDatosSimulados() {
+    final finca = AppState.instance.fincaSeleccionada;
+    final nombre = finca?['nombreFinca'] ?? finca?['nombre_finca'] ?? 'Popayán, Colombia';
     setState(() {
-      _ciudadActual = 'Popayán, Colombia';
+      _ciudadActual = nombre is String && nombre.contains(',') ? nombre : '$nombre (aprox)';
       _clima = {
         'temp': 23, 'descripcion': 'Parcialmente nublado',
         'humedad': 60, 'viento': 9, 'lluvia': false, 'icono': '⛅',
@@ -392,7 +416,11 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBF7EF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border, width: 1.2),
+      ),
       child: Column(
         children: [
           Text(_ciudadActual, style: GoogleFonts.nunito(color: AppColors.textSecondary)),
@@ -434,7 +462,11 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: const Color(0xFFFBF7EF), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBF7EF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border, width: 1.2),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: pronostico.map<Widget>((p) {
@@ -490,7 +522,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFFFBF7EF),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: (rec['color'] as Color).withOpacity(0.2)),
+            border: Border.all(color: (rec['color'] as Color).withOpacity(0.45), width: 1.2),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

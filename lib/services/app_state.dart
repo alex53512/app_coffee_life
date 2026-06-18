@@ -54,4 +54,13 @@ class AppState extends ChangeNotifier {
   void notifyMonitoreoGuardado() {
     notifyListeners();
   }
+  /// Limpiar todo al cerrar sesión o cambiar de usuario.
+void reset() {
+  _fincaSeleccionada   = null;
+  _cultivosFinca       = [];
+  _cultivoSeleccionado = null;
+  _nivelRoya           = 'Sin datos';
+  _fotoPerfil          = null;
+  notifyListeners();
+}
 }

@@ -163,10 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final nombreCtrl    = TextEditingController();
     final municipioCtrl = TextEditingController();
     final deptoCtrl     = TextEditingController();
-    final areaCtrl      = TextEditingController();
-    final altitudCtrl   = TextEditingController();
-    final latCtrl       = TextEditingController();
-    final lonCtrl       = TextEditingController();
     bool guardando      = false;
 
     showModalBottomSheet(
@@ -219,18 +215,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
                   const SizedBox(height: 12),
                   _campo(deptoCtrl,     'Departamento', Icons.map_outlined),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(child: _campo(areaCtrl,    'Área (ha)',   Icons.straighten_outlined, keyboard: TextInputType.number)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _campo(altitudCtrl, 'Altitud (msnm)', Icons.terrain_outlined, keyboard: TextInputType.number)),
-                  ]),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(child: _campo(latCtrl, 'Latitud',  Icons.my_location_outlined, keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true))),
-                    const SizedBox(width: 10),
-                    Expanded(child: _campo(lonCtrl, 'Longitud', Icons.my_location_outlined, keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true))),
-                  ]),
                   const SizedBox(height: 24),
 
                   SizedBox(
@@ -247,18 +231,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         try {
                           await ApiService.post('/fincas', {
-                            'id_usuario':    idUsuario,
-                            'nombre_finca':  nombreCtrl.text.trim(),
-                            'municipio':     municipioCtrl.text.trim(),
-                            'departamento':  deptoCtrl.text.trim(),
-                            if (areaCtrl.text.isNotEmpty)
-                              'area_hectareas': double.tryParse(areaCtrl.text),
-                            if (altitudCtrl.text.isNotEmpty)
-                              'altitud_msnm': double.tryParse(altitudCtrl.text),
-                            if (latCtrl.text.isNotEmpty)
-                              'latitud': double.tryParse(latCtrl.text),
-                            if (lonCtrl.text.isNotEmpty)
-                              'longitud': double.tryParse(lonCtrl.text),
+                            'id_usuario':   idUsuario,
+                            'nombre_finca': nombreCtrl.text.trim(),
+                            'municipio':    municipioCtrl.text.trim(),
+                            'departamento': deptoCtrl.text.trim(),
                           });
                           if (ctx.mounted) Navigator.pop(ctx);
                           await _cargarDatos();
@@ -308,12 +284,14 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─── Formulario: Nuevo Lote / Cultivo ────────────────────────────────────
 
   void _mostrarFormLote(dynamic idFinca) {
-    final formKey      = GlobalKey<FormState>();
-    final nombreCtrl   = TextEditingController();
-    String tipoCultivo = 'Café';
-    bool guardando     = false;
+    final formKey        = GlobalKey<FormState>();
+    final nombreCtrl     = TextEditingController();
+    final variedadCtrl   = TextEditingController();
+    final arbolesCtrl    = TextEditingController();
+    String? variedadSel  = null; // variedad seleccionada como chip
+    bool guardando       = false;
 
-    const tipos = ['Café'];
+    const variedades = ['Castillo', 'Caturra', 'Colombia', 'Bourbon', 'Typica', 'Tabi', 'Cenicafé 1', 'Gesha'];
 
     showModalBottomSheet(
       context: context,
@@ -362,39 +340,100 @@ class _HomeScreenState extends State<HomeScreen> {
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
                   const SizedBox(height: 16),
 
-                  Text('Tipo de cultivo',
+                  // ── Variedad de café ──────────────────────────────────
+                  Text('Variedad de café',
                       style: GoogleFonts.nunito(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: tipos.map((t) {
-                      final sel = tipoCultivo == t;
-                      return GestureDetector(
-                        onTap: () => setModal(() => tipoCultivo = t),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: sel ? AppColors.primary : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: sel ? AppColors.primary : AppColors.border,
-                            ),
-                          ),
-                          child: Text(t,
-                              style: GoogleFonts.nunito(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: sel
-                                      ? Colors.white
-                                      : AppColors.textSecondary)),
-                        ),
-                      );
-                    }).toList(),
+                  DropdownButtonFormField<String>(
+                    value: variedadSel,
+                    hint: Text('Selecciona una variedad',
+                        style: GoogleFonts.nunito(
+                            fontSize: 13, color: AppColors.textSecondary)),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.primary),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.local_florist_outlined,
+                          color: AppColors.primary, size: 20),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: AppColors.primary, width: 1.5),
+                      ),
+                    ),
+                    style: GoogleFonts.nunito(
+                        fontSize: 14, color: AppColors.textPrimary),
+                    items: [
+                      ...variedades.map((v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(v, style: GoogleFonts.nunito(fontSize: 14)),
+                          )),
+                      DropdownMenuItem(
+                        value: '__otra__',
+                        child: Text('Otra variedad...',
+                            style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic)),
+                      ),
+                    ],
+                    onChanged: (v) => setModal(() {
+                      variedadSel = v;
+                      variedadCtrl.clear();
+                    }),
                   ),
+                  // Campo libre solo si elige "Otra variedad..." o no selecciona nada
+                  if (variedadSel == '__otra__' || variedadSel == null) ...[
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: variedadCtrl,
+                      style: GoogleFonts.nunito(
+                          fontSize: 14, color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Escribe la variedad',
+                        hintStyle: GoogleFonts.nunito(
+                            fontSize: 13, color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.edit_outlined,
+                            color: AppColors.primary, size: 20),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: AppColors.primary, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+
+                  // ── Número de árboles ─────────────────────────────────
+                  _campo(arbolesCtrl, 'Número de árboles de café', Icons.forest_outlined,
+                      keyboard: TextInputType.number),
                   const SizedBox(height: 24),
 
                   SizedBox(
@@ -405,11 +444,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (!formKey.currentState!.validate()) return;
                         setModal(() => guardando = true);
 
+                        // Variedad: dropdown seleccionado (excepto __otra__) o texto libre
+                        final variedad = (variedadSel != null && variedadSel != '__otra__')
+                            ? variedadSel!
+                            : variedadCtrl.text.trim();
+
                         try {
                           await ApiService.post('/cultivos', {
-                            'id_finca':       idFinca,
-                            'nombre_cultivo': nombreCtrl.text.trim(),
-                            'tipo_cultivo':   tipoCultivo,
+                            'id_finca':        idFinca,
+                            'nombre_cultivo':  nombreCtrl.text.trim(),
+                            'tipo_cultivo':    'Café',
+                            if (variedad.isNotEmpty)
+                              'variedad': variedad,
+                            if (arbolesCtrl.text.isNotEmpty)
+                              'numero_arboles': int.tryParse(arbolesCtrl.text),
                           });
                           if (ctx.mounted) Navigator.pop(ctx);
                           await _cargarDatos();
@@ -546,8 +594,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildResumenCard(),
-                              const SizedBox(height: 16),
-                              _buildStatsRow(),
                               const SizedBox(height: 20),
                               _buildFincasSection(context),
                               const SizedBox(height: 20),
@@ -1010,20 +1056,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFincaCard(Map<String, dynamic> finca) {
     final cultivos  = _cultivosFincaActual;
-    final nombre    = finca['nombreFinca']   ?? 'Mi Finca';
-    final municipio = finca['municipio']     ?? 'Sin municipio';
-    final area      = finca['areaHectareas'] ?? finca['area_hectareas'] ?? '-';
-    final altitud   = finca['altitudMsnm']   ?? finca['altitud_msnm']   ?? '-';
-    final idFinca   = finca['idFinca']       ?? finca['id_finca'];
+    final nombre    = finca['nombreFinca'] ?? 'Mi Finca';
+    final municipio = finca['municipio']   ?? 'Sin municipio';
+    final idFinca   = finca['idFinca']     ?? finca['id_finca'];
+
+    // Total de plantas de café sumando todos los lotes de esta finca
+    final totalArboles = cultivos.fold<int>(0, (sum, c) {
+      final n = (c as Map<String, dynamic>)['numeroArboles']
+              ?? c['numero_arboles'];
+      return sum + (int.tryParse(n?.toString() ?? '0') ?? 0);
+    });
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF7EF),
+        // Antes usaba un crema (0xFFFBF7EF) casi idéntico al fondo de la
+        // pantalla (0xFFFFFEFB), por eso se perdía. Ahora va en blanco puro,
+        // con borde y una sombra más marcada para que "flote" sobre el fondo.
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withOpacity(0.7)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -1063,11 +1122,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _fincaDato(Icons.straighten_outlined, '$area ha', 'Área'),
+              _fincaDato(Icons.eco_outlined, '${cultivos.length}', 'Lotes registrados'),
               Container(width: 1, height: 36, color: AppColors.border),
-              _fincaDato(Icons.terrain_outlined, '$altitud msnm', 'Altitud'),
-              Container(width: 1, height: 36, color: AppColors.border),
-              _fincaDato(Icons.eco_outlined, '${cultivos.length}', 'Cultivos'),
+              _fincaDato(Icons.forest_outlined, '$totalArboles', 'Plantas de café'),
             ],
           ),
           const SizedBox(height: 14),
@@ -1246,6 +1303,76 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Filtra monitoreos según finca/lote activo, ordena por fecha y devuelve
+  /// spots en escala 0–4000 (sin roya ≈ 0, crítico ≈ 4000).
+  /// Siempre garantiza 10 puntos para que la curva tenga forma.
+  List<FlSpot> _buildChartSpots() {
+    // 1. Filtrar por lote seleccionado o por todos los lotes de la finca activa
+    List monitoreosFiltrados;
+    if (_cultivoSeleccionado != null) {
+      monitoreosFiltrados = _monitoreos.where((m) {
+        final id = m['idCultivo'] ?? m['id_cultivo'];
+        return id?.toString() == _cultivoSeleccionado.toString();
+      }).toList();
+    } else if (_fincas.isNotEmpty && _fincaSeleccionada < _fincas.length) {
+      final idsCultivos = _cultivosFincaActual
+          .map((c) => (c['idCultivo'] ?? c['id_cultivo']).toString())
+          .toSet();
+      monitoreosFiltrados = _monitoreos.where((m) {
+        final id = m['idCultivo'] ?? m['id_cultivo'];
+        return idsCultivos.contains(id?.toString());
+      }).toList();
+    } else {
+      monitoreosFiltrados = _monitoreos;
+    }
+
+    // 2. Ordenar por fecha si está disponible
+    monitoreosFiltrados.sort((a, b) {
+      final ra = a['createdAt'] ?? a['created_at'] ?? a['fecha'] ?? '';
+      final rb = b['createdAt'] ?? b['created_at'] ?? b['fecha'] ?? '';
+      return ra.toString().compareTo(rb.toString());
+    });
+
+    // 3. Valor de riesgo por monitoreo (0–4000)
+    double _valorRiesgo(Map m) {
+      final obs = (m['observaciones'] ?? '').toString().toLowerCase();
+      if (obs.contains('critico') || obs.contains('crítico')) return 4000;
+      if (obs.contains('alto')    || obs.contains('enfermedad'))  return 3200;
+      if (obs.contains('roya')    || obs.contains('medio'))       return 2000;
+      if (obs.contains('bajo'))                                    return 800;
+      return 400; // sin síntomas
+    }
+
+    // 4. Tomar últimos 10 monitoreos como puntos base
+    final base = monitoreosFiltrados.length > 10
+        ? monitoreosFiltrados.sublist(monitoreosFiltrados.length - 10)
+        : monitoreosFiltrados;
+
+    List<FlSpot> spots = List.generate(
+      base.length,
+      (i) => FlSpot(i.toDouble(), _valorRiesgo(base[i] as Map)),
+    );
+
+    // 5. Si hay menos de 10 puntos, completar con el valor actual para que
+    //    la curva siempre ocupe todo el ancho
+    if (spots.isEmpty) {
+      // Sin monitoreos: línea base baja con leve ondulación decorativa
+      spots = [
+        const FlSpot(0, 400), const FlSpot(1, 600), const FlSpot(2, 500),
+        const FlSpot(3, 700), const FlSpot(4, 550), const FlSpot(5, 650),
+        const FlSpot(6, 500), const FlSpot(7, 600), const FlSpot(8, 550),
+        const FlSpot(9, 400),
+      ];
+    } else if (spots.length < 10) {
+      final ultimo = spots.last.y;
+      for (int i = spots.length; i < 10; i++) {
+        spots.add(FlSpot(i.toDouble(), ultimo));
+      }
+    }
+
+    return spots;
+  }
+
   Widget _buildChart() {
     final salud        = _getSaludCultivo();
     final colorGrafica = salud['nivel'] == 'Bajo'
@@ -1254,20 +1381,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ? Colors.orange
             : Colors.red;
 
-    final spots = [
-      const FlSpot(0, 1200), const FlSpot(1, 1800), const FlSpot(2, 1600),
-      const FlSpot(3, 2200), const FlSpot(4, 2000), const FlSpot(5, 2500),
-      const FlSpot(6, 2300), const FlSpot(7, 2800), const FlSpot(8, 3000),
-      const FlSpot(9, 3200),
-    ];
+    final spots = _buildChartSpots();
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF7EF),
+        // Mismo cambio que en la tarjeta de lotes: blanco puro + borde +
+        // sombra más fuerte para que se distinga del fondo de la pantalla.
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withOpacity(0.7)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
@@ -1306,7 +1435,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     interval: 1000,
                     reservedSize: 40,
                     getTitlesWidget: (v, m) => Text(
-                        '${(v / 1000).toStringAsFixed(0)}k',
+                        '${(v / 40).round()}%',
                         style: GoogleFonts.nunito(
                             fontSize: 10, color: AppColors.textSecondary)),
                   ),

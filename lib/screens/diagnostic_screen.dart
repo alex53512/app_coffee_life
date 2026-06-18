@@ -40,8 +40,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   List _cultivos = [];
   int? _cultivoSeleccionado;
  
-static const String baseUrl = 'http://127.0.0.1:8000/docs';
- static const String _iaBaseUrl = '';
+static const String _iaBaseUrl = 'http://127.0.0.1:8080';
  
   String _diagnosisText  = '';
   String _scientificName = '';
@@ -204,14 +203,22 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
  
   Widget _buildHeader(BuildContext context) {
     return Container(
-      color: const Color(0xFFF4E7D6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFFF4E7D6),
+            const Color(0xFFF4E7D6).withOpacity(0.88),
+          ],
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: AppColors.textPrimary, size: 20),
-            onPressed: () {
+          _headerIconButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: () {
               if (_stage != 'idle') {
                 setState(() {
                   _stage       = 'idle';
@@ -240,12 +247,33 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.info_outline_rounded,
-                color: AppColors.textSecondary, size: 22),
-            onPressed: () => _showModelInfoDialog(context),
+          _headerIconButton(
+            icon: Icons.info_outline_rounded,
+            onTap: () => _showModelInfoDialog(context),
           ),
         ],
+      ),
+    );
+  }
+ 
+  Widget _headerIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+        ],
+      ),
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        icon: Icon(icon, color: AppColors.textPrimary, size: 20),
+        onPressed: onTap,
       ),
     );
   }
@@ -284,6 +312,24 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
   Widget _buildIntro() {
     return Column(
       children: [
+        const SizedBox(height: 14),
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary.withOpacity(0.20),
+                AppColors.primary.withOpacity(0.05),
+              ],
+            ),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.biotech_outlined,
+              color: AppColors.primary, size: 26),
+        ),
         const SizedBox(height: 14),
         Text('Diagnostica la roya\nde tu planta',
             textAlign: TextAlign.center,
@@ -328,41 +374,66 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
                 color: AppColors.textPrimary)),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3))
             ],
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              isExpanded: true,
-              value: _cultivoSeleccionado,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.primary),
-              style: GoogleFonts.dmSans(
-                  fontSize: 14, color: AppColors.textPrimary),
-              items: _cultivos.map<DropdownMenuItem<int>>((c) {
-                final id =
-                    (c['idCultivo'] ?? c['id_cultivo']) as int;
-                final nombre = c['nombreCultivo'] ??
-                    c['nombre_cultivo'] ??
-                    'Cultivo $id';
-                return DropdownMenuItem<int>(
-                  value: id,
-                  child: Text(nombre,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
-                );
-              }).toList(),
-              onChanged: (val) =>
-                  setState(() => _cultivoSeleccionado = val),
-            ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.18),
+                      AppColors.primary.withOpacity(0.05),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.eco_outlined,
+                    color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    isExpanded: true,
+                    value: _cultivoSeleccionado,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.primary),
+                    style: GoogleFonts.dmSans(
+                        fontSize: 14, color: AppColors.textPrimary),
+                    items: _cultivos.map<DropdownMenuItem<int>>((c) {
+                      final id =
+                          (c['idCultivo'] ?? c['id_cultivo']) as int;
+                      final nombre = c['nombreCultivo'] ??
+                          c['nombre_cultivo'] ??
+                          'Cultivo $id';
+                      return DropdownMenuItem<int>(
+                        value: id,
+                        child: Text(nombre,
+                            style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary)),
+                      );
+                    }).toList(),
+                    onChanged: (val) =>
+                        setState(() => _cultivoSeleccionado = val),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -376,8 +447,18 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
         width: double.infinity,
         height: 210,
         decoration: BoxDecoration(
-          color: const Color(0xFF1A2E19),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF234A21), Color(0xFF12260F)],
+          ),
           borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.primary.withOpacity(0.25),
+                blurRadius: 22,
+                offset: const Offset(0, 10)),
+          ],
         ),
         child: Stack(
           children: [
@@ -390,10 +471,20 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 68, height: 68,
+                    width: 68,
+                    height: 68,
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        shape: BoxShape.circle),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.22),
+                          Colors.white.withOpacity(0.06),
+                        ],
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.25),
+                          width: 1.2),
+                    ),
                     child: const Icon(Icons.camera_alt_outlined,
                         color: Colors.white, size: 32),
                   ),
@@ -410,6 +501,8 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.12)),
                     ),
                     child: Text(
                         'Fotografía solo la hoja del cafeto',
@@ -448,14 +541,29 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 100, height: 100,
-              decoration: const BoxDecoration(
-                  color: AppColors.primaryLight,
-                  shape: BoxShape.circle),
-              child: const Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(
-                    color: AppColors.primary, strokeWidth: 3),
+              width: 116,
+              height: 116,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: AppColors.primary.withOpacity(0.18),
+                      blurRadius: 30,
+                      spreadRadius: 2),
+                ],
+              ),
+              child: Container(
+                width: 100,
+                height: 100,
+                margin: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                    color: AppColors.primaryLight,
+                    shape: BoxShape.circle),
+                child: const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(
+                      color: AppColors.primary, strokeWidth: 3),
+                ),
               ),
             ),
             const SizedBox(height: 28),
@@ -545,23 +653,27 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               border:
                   Border.all(color: const Color(0xFFFFB74D), width: 1.2),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.orange.withOpacity(0.07),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4))
+                    color: Colors.orange.withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6))
               ],
             ),
             child: Column(
               children: [
                 Container(
-                  width: 64, height: 64,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFF3E0),
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                        color: const Color(0xFFFFB74D).withOpacity(0.5),
+                        width: 1.5),
                   ),
                   child: const Icon(Icons.photo_camera_outlined,
                       color: Color(0xFFE65100), size: 30),
@@ -591,12 +703,26 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
               color: const Color(0xFFF1F8E9),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFFA5D6A7)),
+              boxShadow: [
+                BoxShadow(
+                    color: const Color(0xFF388E3C).withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4)),
+              ],
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.tips_and_updates_outlined,
-                    color: Color(0xFF388E3C), size: 22),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF388E3C).withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.tips_and_updates_outlined,
+                      color: Color(0xFF388E3C), size: 20),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -674,11 +800,23 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: bgColor, borderRadius: BorderRadius.circular(14)),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 6),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.6),
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withOpacity(0.35), width: 1.2),
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(height: 8),
           Text(title,
               style: GoogleFonts.dmSans(
                   fontSize: 13,
@@ -712,17 +850,42 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
         Positioned(
           top: 12, right: 12,
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-                color: _severityColor,
-                borderRadius: BorderRadius.circular(20)),
-            child: Text(
-              esRoya ? 'Riesgo $_severity' : 'Planta sana',
-              style: GoogleFonts.dmSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white),
+              gradient: LinearGradient(
+                colors: [
+                  _severityColor,
+                  _severityColor.withOpacity(0.82),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                    color: _severityColor.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4)),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  esRoya
+                      ? Icons.warning_amber_rounded
+                      : Icons.check_circle_outline,
+                  color: Colors.white,
+                  size: 14,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  esRoya ? 'Riesgo $_severity' : 'Planta sana',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
+                ),
+              ],
             ),
           ),
         ),
@@ -750,16 +913,27 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
           Row(
             children: [
               Container(
-                width: 44, height: 44,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                    color: _severityColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12)),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _severityColor.withOpacity(0.20),
+                      _severityColor.withOpacity(0.05),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border:
+                      Border.all(color: _severityColor.withOpacity(0.25)),
+                ),
                 child: Icon(
                   esRoya
                       ? Icons.coronavirus_outlined
                       : Icons.eco_outlined,
                   color: _severityColor,
-                  size: 22,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 14),
@@ -826,13 +1000,28 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
           ),
           const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: _confidence,
-              backgroundColor: AppColors.border,
-              valueColor:
-                  AlwaysStoppedAnimation<Color>(_severityColor),
-              minHeight: 10,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 12,
+              width: double.infinity,
+              color: AppColors.border,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: _confidence.clamp(0.0, 1.0),
+                  heightFactor: 1.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          _severityColor.withOpacity(0.75),
+                          _severityColor,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -889,10 +1078,19 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 38, height: 38,
+                      width: 38,
+                      height: 38,
                       decoration: BoxDecoration(
-                          color: rec.color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10)),
+                        gradient: LinearGradient(
+                          colors: [
+                            rec.color.withOpacity(0.18),
+                            rec.color.withOpacity(0.05),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                        border:
+                            Border.all(color: rec.color.withOpacity(0.25)),
+                      ),
                       child:
                           Icon(rec.icon, color: rec.color, size: 19),
                     ),
@@ -937,12 +1135,13 @@ static const String baseUrl = 'http://127.0.0.1:8000/docs';
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withOpacity(0.6)),
         boxShadow: [
           BoxShadow(
-              color: AppColors.primary.withOpacity(0.07),
-              blurRadius: 12,
-              offset: const Offset(0, 4))
+              color: AppColors.primary.withOpacity(0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 6))
         ],
       ),
       child: child,

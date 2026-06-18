@@ -226,7 +226,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         duration: const Duration(milliseconds: 250),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFFBF7EF),
           borderRadius: BorderRadius.circular(14),
           border: leida ? null : Border.all(color: color.withOpacity(0.3), width: 1.2),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(leida ? 0.04 : 0.08), blurRadius: 10, offset: const Offset(0, 2))],

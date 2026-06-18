@@ -74,6 +74,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _altitudController.text      = _finca?['altitudMsnm']?.toString() ?? '';
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helper: busca la cédula del usuario probando varios nombres de campo
+  // posibles, porque distintos endpoints del backend no siempre usan la
+  // misma convención (camelCase vs snake_case, u otro nombre distinto).
+  // ─────────────────────────────────────────────────────────────────────────
+  String _leerCedula(Map<String, dynamic> u) {
+    final valor = u['cedula'] ??
+        u['numero_documento'] ??
+        u['numeroDocumento'] ??
+        u['identificacion'] ??
+        u['documento'] ??
+        u['cedula_usuario'];
+    return valor?.toString() ?? '';
+  }
+
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
@@ -130,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _apellidoController.text = _usuarioData['apellido']?.toString() ?? '';
         _correoController.text   = _usuarioData['correo']?.toString() ?? '';
         _telefonoController.text = _usuarioData['telefono']?.toString() ?? '';
-        _cedulaController.text   = _usuarioData['cedula']?.toString() ?? '';
+        _cedulaController.text   = _leerCedula(_usuarioData);
         _actualizarCamposFinca();
         _cargando = false;
       });
@@ -273,6 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'nombre':        _nombreController.text,
         'apellido':      _apellidoController.text,
         'telefono':      _telefonoController.text,
+        'cedula':        _cedulaController.text,
         'observaciones': '',
       });
 
@@ -291,6 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _usuarioData['nombre']   = _nombreController.text;
         _usuarioData['apellido'] = _apellidoController.text;
         _usuarioData['telefono'] = _telefonoController.text;
+        _usuarioData['cedula']   = _cedulaController.text;
         _imagenSeleccionada      = null;
         _imagenBytes             = null;
         _cargando                = false;
@@ -639,7 +656,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _divider(),
           _rowItem(
             label: 'Cédula',
-            valor: _usuarioData['cedula']?.toString() ?? 'No registrada',
+            valor: () {
+              final cedula = _leerCedula(_usuarioData);
+              return cedula.isNotEmpty ? cedula : 'No registrada';
+            }(),
             icono: Icons.badge_outlined,
           ),
         ],
