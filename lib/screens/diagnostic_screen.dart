@@ -32,7 +32,7 @@ class DiagnosticScreen extends StatefulWidget {
 }
  
 class _DiagnosticScreenState extends State<DiagnosticScreen> {
-  String _stage = 'idle'; // idle | analyzing | result | invalid
+  String _stage = 'idle';
   final _picker = ImagePicker();
   XFile?    _imagenFile;
   Uint8List? _imagenBytes;
@@ -40,7 +40,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   List _cultivos = [];
   int? _cultivoSeleccionado;
  
-static const String _iaBaseUrl = 'http://127.0.0.1:8080';
+  static const String _iaBaseUrl = 'http://127.0.0.1:8080';
  
   String _diagnosisText  = '';
   String _scientificName = '';
@@ -49,6 +49,9 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
   Color  _severityColor  = AppColors.primary;
   List<Map<String, dynamic>> _detections = [];
   _IaClase _claseDetectada = _IaClase.desconocida;
+
+  // ✅ Flag para evitar doble guardado
+  bool _guardando = false;
  
   String _invalidTitle      = '';
   String _invalidMessage    = '';
@@ -79,6 +82,7 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
       _stage      = 'idle';
       _imagenFile  = null;
       _imagenBytes = null;
+      _guardando   = false; // ✅
     });
   }
  
@@ -162,7 +166,6 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
       backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
-          // ── HEADER con bordes redondeados inferiores y sombra ──
           DecoratedBox(
             decoration: const BoxDecoration(
               boxShadow: [
@@ -622,6 +625,7 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
               _stage       = 'idle';
               _imagenFile  = null;
               _imagenBytes = null;
+              _guardando   = false; // ✅
             }),
             icon: const Icon(Icons.add_a_photo_outlined, size: 20),
             label: Text('Nuevo diagnóstico',
@@ -1179,6 +1183,7 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
       setState(() {
         _imagenFile  = foto;
         _imagenBytes = bytes;
+        _guardando   = false; // ✅ reset al tomar nueva foto
       });
       _startAnalysis(foto, bytes);
     }
@@ -1195,6 +1200,7 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
       setState(() {
         _imagenFile  = foto;
         _imagenBytes = bytes;
+        _guardando   = false; // ✅ reset al seleccionar nueva foto
       });
       _startAnalysis(foto, bytes);
     }
@@ -1226,19 +1232,18 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
       _procesarDetecciones([]);
     }
  
-    // ── 2. Guardar en backend (cadena completa) ───────────────
-    if (_esResultadoValido) {
+    // ── 2. Guardar en backend — solo UNA vez ✅ ───────────────
+    if (_esResultadoValido && !_guardando) {
+      _guardando = true;
       try {
         final hoy      = DateTime.now();
         final fechaStr =
             '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
  
-        // 2a. Debug — verificar cultivo y finca
         debugPrint('CULTIVO ID: $_cultivoSeleccionado');
         debugPrint('FINCA: ${AppState.instance.fincaSeleccionada?["nombreFinca"]}');
         debugPrint('CULTIVOS EN ESTADO: ${AppState.instance.cultivosFinca.length}');
  
-        // 2a. Crear monitoreo y capturar idMonitoreo
         final resMonitoreo = await ApiService.post('/monitoreos', {
           'id_cultivo':      _cultivoSeleccionado,
           'fecha_monitoreo': fechaStr,
@@ -1249,7 +1254,6 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
             resMonitoreo['data']?['idMonitoreo'] as int?;
         debugPrint('✅ Monitoreo creado: $idMonitoreo');
  
-        // 2b. Subir imagen vinculada al monitoreo → captura idImagen
         int? idImagen;
         if (idMonitoreo != null) {
           idImagen = await ApiService.uploadImagen(
@@ -1260,7 +1264,6 @@ static const String _iaBaseUrl = 'http://127.0.0.1:8080';
           debugPrint('✅ Imagen subida: $idImagen');
         }
  
-        // 2c. Guardar análisis IA vinculado a la imagen
         await ApiService.post('/analisis_ia', {
           'resultado':          _diagnosisText,
           'confianza':          '${(_confidence * 100).round()}',

@@ -64,7 +64,9 @@ class _MainNavigationState extends State<MainNavigation>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => const AsistenteScreen(),
+      builder: (_) => AsistenteScreen(
+        genero: widget.usuario['genero']?.toString() ?? 'femenino',
+      ),
     );
   }
 
@@ -124,7 +126,7 @@ class _MainNavigationState extends State<MainNavigation>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(0, Icons.home_rounded,            Icons.home_outlined,            'Inicio'),
+              _navItem(0, Icons.home_rounded,             Icons.home_outlined,             'Inicio'),
               _navItem(1, Icons.document_scanner_rounded, Icons.document_scanner_outlined, 'Diagnóstico'),
               _navItem(2, Icons.wb_cloudy_rounded,        Icons.wb_cloudy_outlined,        'Clima'),
               _navItem(3, Icons.bar_chart_rounded,        Icons.bar_chart_outlined,        'Monitoreos'),

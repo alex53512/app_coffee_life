@@ -9,7 +9,9 @@ import 'package:audioplayers/audioplayers.dart';
 import '../theme/app_theme.dart';
 
 class AsistenteScreen extends StatefulWidget {
-  const AsistenteScreen({super.key});
+  final String genero;
+
+  const AsistenteScreen({super.key, this.genero = 'femenino'});
 
   @override
   State<AsistenteScreen> createState() => _AsistenteScreenState();
@@ -32,6 +34,15 @@ class _AsistenteScreenState extends State<AsistenteScreen>
   late Animation<double>   _pulsoAnim;
   late AnimationController _ondaCtrl;
 
+  bool get _esMasculino => widget.genero.toLowerCase() == 'masculino';
+  String get _nombreAsistente => _esMasculino ? 'Yimmi' : 'Valentina';
+  String get _imagenAsistente => _esMasculino
+      ? 'assets/images/asistente_yimmi.png'
+      : 'assets/images/modelo_personaje_valentina.png';
+  String get _saludoBienvenida => _esMasculino
+      ? 'Hola, soy Yimmi, tu asistente de CoffeeLife. ¿En qué puedo ayudarte?'
+      : 'Hola, soy Valentina, tu asistente de CoffeeLife. ¿En qué puedo ayudarte?';
+
   @override
   void initState() {
     super.initState();
@@ -49,7 +60,6 @@ class _AsistenteScreenState extends State<AsistenteScreen>
       duration: const Duration(milliseconds: 700),
     );
 
-    // Saludo de bienvenida al abrir
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await Future.delayed(const Duration(milliseconds: 500));
       await _hablarBienvenida();
@@ -65,18 +75,16 @@ class _AsistenteScreenState extends State<AsistenteScreen>
     super.dispose();
   }
 
-  // ── Saludo de bienvenida en audio ─────────────────────────────────────────
-
   Future<void> _hablarBienvenida() async {
+    if (!mounted) return;
     setState(() => _procesando = true);
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/chatbot/tts'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'text': 'Hola, soy Valentina, tu asistente de CoffeeLife. ¿En qué puedo ayudarte?',
-        }),
+        body: jsonEncode({'text': _saludoBienvenida}),
       );
+      if (!mounted) return;
       if (response.statusCode == 200) {
         setState(() { _procesando = false; _hablando = true; });
         await _reproducirAudio(response.bodyBytes);
@@ -84,11 +92,10 @@ class _AsistenteScreenState extends State<AsistenteScreen>
         setState(() => _procesando = false);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _procesando = false);
     }
   }
-
-  // ── Grabar ────────────────────────────────────────────────────────────────
 
   Future<void> _iniciarGrabacion() async {
     final permiso = await _recorder.hasPermission();
@@ -104,6 +111,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
       path: _rutaAudio!,
     );
 
+    if (!mounted) return;
     setState(() => _grabando = true);
     _ondaCtrl.repeat(reverse: true);
   }
@@ -111,22 +119,20 @@ class _AsistenteScreenState extends State<AsistenteScreen>
   Future<void> _detenerGrabacion() async {
     final path = await _recorder.stop();
     _ondaCtrl.stop();
+    if (!mounted) return;
     setState(() { _grabando = false; _procesando = true; });
     if (path != null) await _enviarAudio(path);
   }
 
-  // ── Enviar audio al servidor ──────────────────────────────────────────────
-
   Future<void> _enviarAudio(String path) async {
     try {
-      final request = http.MultipartRequest(
-        'POST', Uri.parse('$_baseUrl/chatbot/audio'),
-      );
+      final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/chatbot/audio'));
       request.files.add(await http.MultipartFile.fromPath('file', path));
 
       final streamed = await request.send().timeout(const Duration(seconds: 30));
       final response = await http.Response.fromStream(streamed);
 
+      if (!mounted) return;
       if (response.statusCode == 200) {
         final audioBytes = response.bodyBytes;
         setState(() { _procesando = false; _hablando = true; });
@@ -136,15 +142,15 @@ class _AsistenteScreenState extends State<AsistenteScreen>
         setState(() => _procesando = false);
       }
     } on TimeoutException {
+      if (!mounted) return;
       _mostrarError('El servidor tardó demasiado.');
       setState(() => _procesando = false);
     } catch (e) {
+      if (!mounted) return;
       _mostrarError('Error de conexión: $e');
       setState(() => _procesando = false);
     }
   }
-
-  // ── Reproducir audio ──────────────────────────────────────────────────────
 
   Future<void> _reproducirAudio(Uint8List bytes) async {
     await _audioPlayer.play(BytesSource(bytes));
@@ -160,8 +166,6 @@ class _AsistenteScreenState extends State<AsistenteScreen>
     );
   }
 
-  // ── Estado ────────────────────────────────────────────────────────────────
-
   String get _textoEstado {
     if (_grabando)              return 'Escuchando...';
     if (_procesando)            return 'Procesando...';
@@ -175,8 +179,6 @@ class _AsistenteScreenState extends State<AsistenteScreen>
     return AppColors.textSecondary;
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -188,7 +190,6 @@ class _AsistenteScreenState extends State<AsistenteScreen>
       child: Column(
         children: [
           const SizedBox(height: 12),
-          // Handle
           Container(
             width: 40, height: 4,
             decoration: BoxDecoration(
@@ -197,8 +198,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
             ),
           ),
           const SizedBox(height: 16),
-          // Nombre
-          Text('Valentina',
+          Text(_nombreAsistente,
               style: GoogleFonts.nunito(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -207,12 +207,10 @@ class _AsistenteScreenState extends State<AsistenteScreen>
               style: GoogleFonts.nunito(
                   fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 20),
-          // Foto con animación
           ScaleTransition(
             scale: _pulsoAnim,
             child: Container(
-              width: 130,
-              height: 130,
+              width: 130, height: 130,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
@@ -229,14 +227,13 @@ class _AsistenteScreenState extends State<AsistenteScreen>
               ),
               child: ClipOval(
                 child: Image.asset(
-                  'assets/images/modelo_personaje_valentina.png',
+                  _imagenAsistente,
                   fit: BoxFit.cover,
                 ),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          // Estado con ondas
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -260,8 +257,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
               if (_procesando)
                 const SizedBox(
                   width: 14, height: 14,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.primary),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                 ),
               if (_grabando || _procesando) const SizedBox(width: 8),
               Text(_textoEstado,
@@ -272,7 +268,6 @@ class _AsistenteScreenState extends State<AsistenteScreen>
             ],
           ),
           const Spacer(),
-          // Botón micrófono
           GestureDetector(
             onTapDown: (_) async {
               if (!_procesando && !_hablando) await _iniciarGrabacion();

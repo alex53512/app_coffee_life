@@ -32,6 +32,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
 
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
+    print('ANALISIS IA: $_analisisIa');
 
     final idMonitoreo =
         widget.monitoreo['idMonitoreo'] ?? widget.monitoreo['id_monitoreo'];
