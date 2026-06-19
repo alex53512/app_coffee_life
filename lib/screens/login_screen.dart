@@ -4,54 +4,67 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'main_navigation.dart';
+import 'main_navigation_experto.dart';
 import 'forgot_password_screen.dart';
-
+ 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
+ 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
-
+ 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _correoController = TextEditingController();
   final _passwordController = TextEditingController();
-
+ 
   bool _verPassword = false;
   bool _cargando = false;
   String? _errorGeneral;
-
+ 
   @override
   void dispose() {
     _correoController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-
+ 
   Future<void> _iniciarSesion() async {
     if (!_formKey.currentState!.validate()) return;
-
+ 
     setState(() {
       _cargando = true;
       _errorGeneral = null;
     });
-
+ 
     try {
       final result = await AuthService.login(
         correo: _correoController.text.trim(),
         password: _passwordController.text,
       );
-
+ 
       if (!mounted) return;
-
+ 
       if (result['success'] == true) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MainNavigation(usuario: result['data']),
-          ),
-        );
+        final rolData = result['data']['rol'];
+final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowerCase() ?? 'cafetero';
+ 
+        if (rol == 'experto' || rol == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MainNavigationExperto(usuario: result['data']),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MainNavigation(usuario: result['data']),
+            ),
+          );
+        }
       } else {
         setState(() => _errorGeneral = result['message']);
       }
@@ -61,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _cargando = false);
     }
   }
-
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-
+ 
           // ── SECCIÓN INFERIOR ──
           Expanded(
             child: SingleChildScrollView(
@@ -145,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
+ 
                     // EMAIL
                     _fieldLabel('CORREO ELECTRÓNICO'),
                     const SizedBox(height: 8),
@@ -167,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-
+ 
                     // PASSWORD
                     _fieldLabel('CONTRASEÑA'),
                     const SizedBox(height: 8),
@@ -199,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-
+ 
                     // ERROR
                     if (_errorGeneral != null) ...[
                       const SizedBox(height: 16),
@@ -220,8 +233,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ],
-
-                    // ── OLVIDASTE CONTRASEÑA ← ahora navega a la pantalla ──
+ 
+                    // ── OLVIDASTE CONTRASEÑA ──
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -244,7 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-
+ 
                     // BOTÓN LOGIN
                     SizedBox(
                       width: double.infinity,
@@ -279,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
+ 
                     // REGISTER
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -320,7 +333,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
+ 
   Widget _fieldLabel(String text) {
     return Text(
       text,
@@ -332,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
+ 
   InputDecoration _inputDecoration({
     required String hint,
     required IconData icon,
@@ -369,21 +382,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  Widget _socialButton(IconData icon, Color color) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFDDE8DE), width: 1.5),
-        color: const Color(0xFFF6FAF6),
-      ),
-      child: Icon(icon, color: color, size: 24),
-    );
-  }
 }
-
+ 
 // ── CURVA OVAL HACIA ABAJO ──
 class _OvalBottomClipper extends CustomClipper<Path> {
   @override
@@ -400,16 +400,15 @@ class _OvalBottomClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
-
+ 
   @override
   bool shouldReclip(_OvalBottomClipper old) => false;
 }
-
-// ── PINTOR DE HOJAS ──
+ 
 class _LeafPainter extends CustomPainter {
   final Color color;
   const _LeafPainter(this.color);
-
+ 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color;
@@ -420,7 +419,7 @@ class _LeafPainter extends CustomPainter {
       ..quadraticBezierTo(0, size.height * 0.3, size.width * 0.5, 0)
       ..close();
     canvas.drawPath(path, paint);
-
+ 
     final veinPaint = Paint()
       ..color = color.withOpacity(0.4)
       ..strokeWidth = 1
@@ -432,7 +431,7 @@ class _LeafPainter extends CustomPainter {
       veinPaint,
     );
   }
-
+ 
   @override
   bool shouldRepaint(_LeafPainter old) => old.color != color;
 }
