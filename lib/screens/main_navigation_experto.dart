@@ -4,7 +4,6 @@ import '../theme/app_theme.dart';
 import 'home_experto_screen.dart';
 import 'diagnostico_experto_screen.dart';
 import 'clima_screen.dart';
-import 'monitoreos_screen.dart';
 import 'perfil_experto_screen.dart';
  
 class MainNavigationExperto extends StatefulWidget {
@@ -40,11 +39,16 @@ class _MainNavigationExpertoState extends State<MainNavigationExperto>
     super.dispose();
   }
  
+  // Se quita "Monitoreos" (MontoreosScreen) de esta lista: esa pantalla es
+  // del lado del caficultor (su propio historial de monitoreos/lotes).
+  // El equivalente para el experto ya existe en DiagnosticoExpertoScreen
+  // (pestañas "Diagnósticos IA" / "Mis visitas"), así que tenerla
+  // duplicada aquí solo mostraba un historial plano sin el contexto de
+  // fincas/cultivos asignados al experto.
   List<Widget> get _screens => [
         HomeExpertoScreen(usuario: widget.usuario),
         DiagnosticoExpertoScreen(usuario: widget.usuario),
         const ClimaScreen(),
-        const MontoreosScreen(),
         PerfilExpertoScreen(usuario: widget.usuario),
       ];
  
@@ -167,9 +171,7 @@ class _MainNavigationExpertoState extends State<MainNavigationExperto>
                   Icons.assignment_outlined, 'Diagnóstico'),
               _navItem(2, Icons.wb_cloudy_rounded,
                   Icons.wb_cloudy_outlined, 'Clima'),
-              _navItem(3, Icons.bar_chart_rounded,
-                  Icons.bar_chart_outlined, 'Monitoreos'),
-              _navItem(4, Icons.person_rounded,
+              _navItem(3, Icons.person_rounded,
                   Icons.person_outline_rounded, 'Perfil'),
             ],
           ),

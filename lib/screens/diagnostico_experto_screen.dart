@@ -990,7 +990,13 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
  
   Widget _cardDiagnosticoIA(dynamic d) {
     final resultado = d['resultado'] ?? 'Sin resultado';
-    final confianza = d['confianza'] ?? '0';
+    // El backend devuelve 'porcentajeConfianza' (no 'confianza'), como
+    // string tipo "88.00". Se redondea para mostrar un entero limpio.
+    final confianzaRaw = d['porcentajeConfianza'] ?? d['confianza'];
+    final confianzaNum = confianzaRaw != null
+        ? double.tryParse(confianzaRaw.toString()) ?? 0.0
+        : 0.0;
+    final confianza = confianzaNum.round();
     final fecha     = _formatFecha(d['fechaRegistro'] ?? d['fecha_registro']);
     final esRoya    = resultado.toString().toLowerCase().contains('roya');
     final color     = esRoya ? Colors.red : AppColors.primary;

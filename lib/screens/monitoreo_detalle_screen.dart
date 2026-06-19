@@ -3,39 +3,42 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
-
+ 
 class MonitoreoDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> monitoreo;
-
+ 
   const MonitoreoDetalleScreen({super.key, required this.monitoreo});
-
+ 
   @override
   State<MonitoreoDetalleScreen> createState() => _MonitoreoDetalleScreenState();
 }
-
+ 
 class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   int _tabIndex = 0;
   bool _cargando = true;
-
+ 
   Map<String, dynamic>? _monitoreoCompleto;
   Map<String, dynamic>? _analisisIa;
-  Map<String, dynamic>? _recomendacionExperto;
-  Map<String, dynamic>? _tratamiento;
-
+ 
+  // Diagnóstico del experto, resuelto por id_cultivo (no por idMonitoreo,
+  // porque el experto guarda su diagnóstico como un monitoreo NUEVO y
+  // separado -- ver _cargarDiagnosticoExperto más abajo).
+  Map<String, dynamic>? _diagnosticoExperto;
+ 
   Map<String, dynamic> get _m => _monitoreoCompleto ?? widget.monitoreo;
-
+ 
   @override
   void initState() {
     super.initState();
     _cargarDatos();
   }
-
+ 
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
-
+ 
     final idMonitoreo =
         widget.monitoreo['idMonitoreo'] ?? widget.monitoreo['id_monitoreo'];
-
+ 
     try {
       final rawMonitoreo = await ApiService.get('/monitoreos/$idMonitoreo');
       if (rawMonitoreo is Map) {
@@ -45,49 +48,30 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         );
       }
       print('IMAGENES: ${_monitoreoCompleto?['imagenes']}');
-
+ 
       _analisisIa = await _cargarAnalisisIa(idMonitoreo);
-
-      try {
-        dynamic dataRec;
-        try {
-          dataRec = await ApiService.get('/recomendaciones?idMonitoreo=$idMonitoreo');
-        } catch (_) {
-          dataRec = await ApiService.get('/recomendaciones?id_monitoreo=$idMonitoreo');
-        }
-        final listaRec = dataRec is List ? dataRec : (dataRec['data'] ?? []);
-        if ((listaRec as List).isNotEmpty) {
-          _recomendacionExperto = Map<String, dynamic>.from(listaRec[0]);
-        }
-      } catch (_) {}
-
-      try {
-        final dataTrat = await ApiService.get('/tratamientos');
-        final listaTrat = dataTrat is List ? dataTrat : (dataTrat['data'] ?? []);
-        if ((listaTrat as List).isNotEmpty) {
-          _tratamiento = Map<String, dynamic>.from(listaTrat[0]);
-        }
-      } catch (_) {}
+ 
+      await _cargarDiagnosticoExperto(idMonitoreoPropio: idMonitoreo);
     } catch (_) {
       _analisisIa ??= _parsearObservaciones(widget.monitoreo);
     }
-
+ 
     if (mounted) setState(() => _cargando = false);
   }
-
+ 
   Future<Map<String, dynamic>?> _cargarAnalisisIa(dynamic idMonitoreo) async {
     try {
       final data = await ApiService.get('/analisis_ia?idMonitoreo=$idMonitoreo');
       final lista = data is List ? data : (data['data'] ?? []);
       if ((lista as List).isNotEmpty) return Map<String, dynamic>.from(lista[0]);
     } catch (_) {}
-
+ 
     try {
       final data = await ApiService.get('/analisis_ia?id_monitoreo=$idMonitoreo');
       final lista = data is List ? data : (data['data'] ?? []);
       if ((lista as List).isNotEmpty) return Map<String, dynamic>.from(lista[0]);
     } catch (_) {}
-
+ 
     try {
       final data = await ApiService.get('/analisis_ia/$idMonitoreo');
       if (data != null) {
@@ -95,15 +79,117 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         if (inner is Map && inner.isNotEmpty) return Map<String, dynamic>.from(inner);
       }
     } catch (_) {}
-
+ 
     final fuente = _monitoreoCompleto ?? widget.monitoreo;
     return _parsearObservaciones(fuente);
   }
-
+ 
+  // ── Diagnóstico del experto ─────────────────────────────────────────────
+  //
+  // El experto NO actualiza este monitoreo: crea uno nuevo (mismo
+  // id_cultivo) con observaciones que empiezan en "[EXPERTO]". Así que en
+  // vez de buscar por idMonitoreo propio, hay que:
+  //   1. Pedir todos los monitoreos del mismo cultivo.
+  //   2. Quedarnos con el más reciente que tenga el tag "[EXPERTO]".
+  //   3. Parsear su texto igual que hace la pantalla del experto.
+  //   4. Buscar las recomendaciones usando el idMonitoreo DE ESE registro
+  //      (no el nuestro), porque ahí es donde el experto las vinculó.
+ 
+  Future<void> _cargarDiagnosticoExperto({required dynamic idMonitoreoPropio}) async {
+    final idCultivo = _m['idCultivo'] ??
+        _m['id_cultivo'] ??
+        _m['cultivo']?['idCultivo'] ??
+        _m['cultivo']?['id_cultivo'];
+    if (idCultivo == null) return;
+ 
+    try {
+      final data = await ApiService.get('/monitoreos?id_cultivo=$idCultivo&limit=200');
+      final lista = data is List ? data : (data['data'] ?? []);
+ 
+      final candidatos = (lista as List).where((m) {
+        final obs = (m['observaciones'] ?? '').toString();
+        final esElMismo =
+            (m['idMonitoreo'] ?? m['id_monitoreo'])?.toString() ==
+                idMonitoreoPropio?.toString();
+        return obs.contains('[EXPERTO]') && !esElMismo;
+      }).toList();
+ 
+      if (candidatos.isEmpty) return;
+ 
+      // El más reciente primero (mayor idMonitoreo = más nuevo).
+      candidatos.sort((a, b) {
+        final idA = int.tryParse(
+                (a['idMonitoreo'] ?? a['id_monitoreo']).toString()) ??
+            0;
+        final idB = int.tryParse(
+                (b['idMonitoreo'] ?? b['id_monitoreo']).toString()) ??
+            0;
+        return idB.compareTo(idA);
+      });
+ 
+      final monitoreoExperto = Map<String, dynamic>.from(candidatos.first);
+      _diagnosticoExperto = await _construirDiagnosticoExperto(monitoreoExperto);
+    } catch (_) {}
+  }
+ 
+  Future<Map<String, dynamic>> _construirDiagnosticoExperto(
+      Map<String, dynamic> monitoreoExperto) async {
+    // Parsear "[EXPERTO] Resultado - Severidad X - texto libre"
+    final obs = (monitoreoExperto['observaciones'] ?? '').toString();
+    String resultado = 'Ver detalle';
+    String severidad = '';
+    String observaciones = obs;
+    if (obs.startsWith('[EXPERTO]')) {
+      final partes = obs.replaceFirst('[EXPERTO] ', '').split(' - ');
+      if (partes.length >= 3) {
+        resultado = partes[0];
+        severidad = partes[1].replaceFirst('Severidad ', '');
+        observaciones = partes.sublist(2).join(' - ');
+      }
+    }
+ 
+    String nombreExperto = '';
+    final usuario = monitoreoExperto['usuario'];
+    if (usuario is Map) {
+      nombreExperto =
+          '${usuario['nombre'] ?? ''} ${usuario['apellido'] ?? ''}'.trim();
+    }
+ 
+    final idMonitoreoExperto =
+        monitoreoExperto['idMonitoreo'] ?? monitoreoExperto['id_monitoreo'];
+ 
+    // Recomendaciones vinculadas AL MONITOREO DEL EXPERTO (no al nuestro).
+    List<Map<String, dynamic>> recomendaciones = [];
+    try {
+      dynamic dataRec;
+      try {
+        dataRec =
+            await ApiService.get('/recomendaciones?idMonitoreo=$idMonitoreoExperto');
+      } catch (_) {
+        dataRec = await ApiService
+            .get('/recomendaciones?id_monitoreo=$idMonitoreoExperto');
+      }
+      final listaRec = dataRec is List ? dataRec : (dataRec['data'] ?? []);
+      recomendaciones = (listaRec as List)
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } catch (_) {}
+ 
+    return {
+      'resultado': resultado,
+      'severidad': severidad,
+      'observaciones': observaciones,
+      'nombreExperto': nombreExperto,
+      'fecha': monitoreoExperto['fechaMonitoreo'] ??
+          monitoreoExperto['fecha_monitoreo'],
+      'recomendaciones': recomendaciones,
+    };
+  }
+ 
   Map<String, dynamic>? _parsearObservaciones(Map<String, dynamic> m) {
     final obs = (m['observaciones'] ?? '').toString().trim();
     if (obs.isEmpty) return null;
-
+ 
     if (obs.contains('—')) {
       final partes = obs.split('—').map((p) => p.trim()).toList();
       final resultado = partes.isNotEmpty ? partes[0] : 'Sin resultado';
@@ -126,7 +212,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         '_fuenteObservaciones': true,
       };
     }
-
+ 
     return {
       'resultado': obs,
       'confianza': 0.0,
@@ -135,7 +221,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       '_fuenteObservaciones': true,
     };
   }
-
+ 
   String _fecha() {
     final f = (_m['fechaMonitoreo'] ?? _m['fecha_monitoreo'] ?? '').toString();
     if (f.isEmpty) return 'Sin fecha';
@@ -148,7 +234,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       return '${dt.day.toString().padLeft(2,'0')} de ${meses[dt.month-1]} de ${dt.year}';
     } catch (_) { return f; }
   }
-
+ 
   String _cultivo() {
     final cultivo = _m['cultivo'];
     if (cultivo is Map) {
@@ -156,10 +242,10 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return 'Sin cultivo';
   }
-
+ 
   String _finca() {
     final cultivo = _m['cultivo'];
-
+ 
     // Nivel 1: cultivo.finca con nombre
     if (cultivo is Map) {
       final finca = cultivo['finca'];
@@ -171,14 +257,14 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       final nombreFinca = cultivo['nombreFinca'] ?? cultivo['nombre_finca'];
       if (nombreFinca != null && nombreFinca.toString().isNotEmpty) return nombreFinca.toString();
     }
-
+ 
     // Nivel 3: finca directo en el monitoreo
     final fincaRaiz = _m['finca'];
     if (fincaRaiz is Map) {
       final nombre = fincaRaiz['nombreFinca'] ?? fincaRaiz['nombre_finca'] ?? fincaRaiz['nombre'];
       if (nombre != null && nombre.toString().isNotEmpty) return nombre.toString();
     }
-
+ 
     // Nivel 4: buscar en AppState por idFinca
     if (cultivo is Map) {
       final idFinca = cultivo['idFinca'] ?? cultivo['id_finca'];
@@ -193,17 +279,17 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         }
       }
     }
-
+ 
     // Nivel 5: buscar en widget.monitoreo original
     final fincaOriginal = widget.monitoreo['finca'];
     if (fincaOriginal is Map) {
       final nombre = fincaOriginal['nombreFinca'] ?? fincaOriginal['nombre_finca'] ?? fincaOriginal['nombre'];
       if (nombre != null && nombre.toString().isNotEmpty) return nombre.toString();
     }
-
+ 
     return 'Sin finca';
   }
-
+ 
   String _municipio() {
     final cultivo = _m['cultivo'];
     if (cultivo is Map) {
@@ -217,8 +303,15 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return '';
   }
-
+ 
+  // Antes esto leía _m['experto'], que nunca se llena porque no existe
+  // ningún campo real de "experto asignado" en el monitoreo: ahora usa el
+  // nombre que sacamos del monitoreo [EXPERTO] encontrado por id_cultivo.
   String _experto() {
+    final nombreDelDiagnostico =
+        (_diagnosticoExperto?['nombreExperto'] ?? '').toString();
+    if (nombreDelDiagnostico.isNotEmpty) return nombreDelDiagnostico;
+ 
     final exp = _m['experto'];
     if (exp is Map) {
       final nombre   = exp['nombre'] ?? '';
@@ -228,15 +321,15 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return 'Sin experto asignado';
   }
-
+ 
   String _nivelRoya() {
     final obj = _m['nivelRoya'];
     if (obj is Map) return (obj['nombreNivel'] ?? obj['nombre_nivel'] ?? '').toString();
     if (obj != null && obj.toString().isNotEmpty) return obj.toString();
-
+ 
     final obj2 = _m['nivel_roya'];
     if (obj2 != null && obj2.toString().isNotEmpty) return obj2.toString();
-
+ 
     if (_analisisIa != null) {
       final resultado = (_analisisIa!['resultado'] ?? '').toString().toLowerCase();
       if (resultado.contains('alto') || resultado.contains('roya')) return 'Alto';
@@ -245,13 +338,13 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return 'Sin análisis';
   }
-
+ 
   List _imagenes() {
     final imgs = _m['imagenes'];
     if (imgs is List) return imgs;
     return [];
   }
-
+ 
   Color _colorNivel() {
     final nivel = _nivelRoya().toLowerCase();
     if (nivel.contains('alt')) return Colors.red;
@@ -259,11 +352,86 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     if (nivel.contains('sin')) return Colors.grey;
     return AppColors.primary;
   }
-
+ 
+  // ── Recomendaciones de IA (mismo criterio que diagnostic_screen.dart) ─────
+ 
+  List<_RecomendacionIA> _recomendacionesIa() {
+    final resultado = (_analisisIa?['resultado'] ?? '').toString().toLowerCase();
+    final esRoya = resultado.contains('roya');
+ 
+    return esRoya
+        ? [
+            _RecomendacionIA(Icons.medication_outlined, const Color(0xFF1565C0),
+                'Aplicar fungicida recomendado', 'Fungicida Cúprico 250g/200L agua'),
+            _RecomendacionIA(Icons.air_outlined, const Color(0xFF2E7D32),
+                'Mejorar ventilación del cultivo', 'Poda para mayor aireación'),
+            _RecomendacionIA(Icons.delete_outline_rounded, const Color(0xFFE65100),
+                'Eliminar hojas afectadas', 'Retirar y destruir hojas con síntomas'),
+          ]
+        : [
+            _RecomendacionIA(Icons.check_circle_outline, AppColors.primary,
+                'Planta en buen estado', 'Continúa con el manejo habitual'),
+            _RecomendacionIA(Icons.water_drop_outlined, const Color(0xFF1565C0),
+                'Mantén el riego adecuado', 'Riega según las condiciones del clima'),
+            _RecomendacionIA(Icons.search_outlined, const Color(0xFF388E3C),
+                'Monitorea regularmente', 'Revisa las hojas cada 15 días'),
+          ];
+  }
+ 
+  Widget _buildRecomendacionesIa() {
+    final recs = _recomendacionesIa();
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: recs.asMap().entries.map((e) {
+          final rec = e.value;
+          final isLast = e.key == recs.length - 1;
+          return Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                        color: rec.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10)),
+                    child: Icon(rec.icon, color: rec.color, size: 19),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(rec.titulo,
+                            style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary)),
+                        Text(rec.subtitulo,
+                            style: GoogleFonts.nunito(
+                                fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (!isLast) ...[
+                const SizedBox(height: 10),
+                const Divider(height: 1, indent: 50, color: AppColors.border),
+                const SizedBox(height: 10),
+              ],
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+ 
   @override
   Widget build(BuildContext context) {
     final municipio = _municipio();
-
+ 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
@@ -414,7 +582,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ),
     );
   }
-
+ 
   Widget _tabItem(String label, int index) {
     final isActive = _tabIndex == index;
     return Expanded(
@@ -437,7 +605,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ),
     );
   }
-
+ 
   Widget _buildTabIa() {
     if (_analisisIa == null) {
       return _sinDatos(
@@ -446,7 +614,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         mensaje: 'Este monitoreo no tiene un análisis de inteligencia artificial registrado.',
       );
     }
-
+ 
     final resultado   = _analisisIa!['resultado'] ?? 'Sin resultado';
     final confianza   = _analisisIa!['confianza'] ?? _analisisIa!['porcentajeConfianza'] ?? 0;
     final version     = _analisisIa!['versionModelo'] ?? _analisisIa!['version_modelo'] ?? '1.0';
@@ -454,10 +622,10 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                         _analisisIa!['estado_analisis']?['nombre_estado'] ?? 'Completado';
     final nombreCient = _analisisIa!['nombreCientifico'] ?? '';
     final desdObs     = _analisisIa!['_fuenteObservaciones'] == true;
-
+ 
     final confianzaNum = (confianza is num) ? confianza.toDouble() : double.tryParse(confianza.toString()) ?? 0.0;
     final confianzaPct = confianzaNum > 1 ? confianzaNum / 100 : confianzaNum;
-
+ 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -539,128 +707,193 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
           ),
         ),
         const SizedBox(height: 14),
-        if (_tratamiento != null) ...[
-          _seccionTitulo('Tratamiento recomendado'),
-          const SizedBox(height: 10),
-          _card(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 42, height: 42,
-                      decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.medication_outlined, color: Color(0xFF1565C0), size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Producto', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-                          Text(_tratamiento!['nombre'] ?? 'Fungicida Cúprico',
-                              style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20, color: AppColors.border),
-                _infoFila(Icons.scale_outlined, 'Dosis',
-                    _tratamiento!['dosisRecomendada'] ?? _tratamiento!['dosis_recomendada'] ?? '250 g / 200 L de agua'),
-                const Divider(height: 20, color: AppColors.border),
-                _infoFila(Icons.repeat_outlined, 'Frecuencia', _tratamiento!['frecuencia'] ?? 'Cada 15 días'),
-                const Divider(height: 20, color: AppColors.border),
-                _infoFila(Icons.science_outlined, 'Ingrediente activo',
-                    _tratamiento!['ingredienteActivo'] ?? _tratamiento!['ingrediente_activo'] ?? 'Hidróxido de cobre'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-        ],
+        _seccionTitulo('Recomendaciones'),
+        const SizedBox(height: 10),
+        _buildRecomendacionesIa(),
+        const SizedBox(height: 14),
         _seccionTitulo('Imágenes (${_imagenes().length})'),
         const SizedBox(height: 10),
         _buildImagenes(),
       ],
     );
   }
-
+ 
   Widget _buildTabExperto() {
-    if (_recomendacionExperto == null) {
+    if (_diagnosticoExperto == null) {
       return _sinDatos(
         icono: Icons.person_outline_rounded,
         titulo: 'Sin recomendación del experto',
         mensaje: 'El experto aún no ha registrado una recomendación para este monitoreo.',
       );
     }
-
-    final descripcion  = _recomendacionExperto!['descripcion'] ?? 'Sin descripción';
-    final fechaLimite  = _recomendacionExperto!['fechaLimite'] ?? _recomendacionExperto!['fecha_limite'] ?? '';
-    final prioridadObj = _recomendacionExperto!['prioridad'];
-    final prioridad    = (prioridadObj is Map)
-        ? (prioridadObj['nombrePrioridad'] ?? prioridadObj['nombre_prioridad'] ?? 'Normal')
-        : prioridadObj?.toString() ?? 'Normal';
-
-    Color colorPrioridad = AppColors.primary;
-    if (prioridad.toString().toLowerCase().contains('alt')) colorPrioridad = Colors.red;
-    else if (prioridad.toString().toLowerCase().contains('med')) colorPrioridad = Colors.orange;
-
-    String fechaFormateada = fechaLimite.toString();
-    try {
-      if (fechaLimite.toString().isNotEmpty) {
-        final dt = DateTime.parse(fechaLimite.toString());
+ 
+    final d = _diagnosticoExperto!;
+    final resultado = (d['resultado'] ?? 'Ver detalle').toString();
+    final severidad = (d['severidad'] ?? '').toString();
+    final observaciones = (d['observaciones'] ?? '').toString();
+    final nombreExperto = (d['nombreExperto'] ?? '').toString();
+    final fecha = d['fecha'];
+    final recomendaciones = (d['recomendaciones'] as List<Map<String, dynamic>>?) ?? [];
+ 
+    String fechaFormateada = '';
+    if (fecha != null && fecha.toString().isNotEmpty) {
+      try {
+        final dt = DateTime.parse(fecha.toString());
         const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
         fechaFormateada = '${dt.day.toString().padLeft(2,'0')} ${meses[dt.month-1]} ${dt.year}';
-      }
-    } catch (_) {}
-
-    final expertoRec = _recomendacionExperto!['experto'];
-    String nombreExperto = '';
-    if (expertoRec is Map) {
-      nombreExperto = '${expertoRec['nombre'] ?? ''} ${expertoRec['apellido'] ?? ''}'.trim();
+      } catch (_) { fechaFormateada = fecha.toString(); }
     }
-
+ 
+    Color colorSeveridad = AppColors.primary;
+    if (severidad.toLowerCase().contains('alt')) colorSeveridad = Colors.red;
+    else if (severidad.toLowerCase().contains('med')) colorSeveridad = Colors.orange;
+ 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _card(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.notes_rounded, color: AppColors.primary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(descripcion,
-                    style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textPrimary, height: 1.5)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
+        // ── Diagnóstico principal del experto ───────────────────────────
         _card(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _infoFilaColor(Icons.flag_outlined, 'Prioridad', prioridad.toString(), colorPrioridad),
-              if (fechaFormateada.isNotEmpty) ...[
-                const Divider(height: 20, color: AppColors.border),
-                _infoFila(Icons.calendar_today_outlined, 'Fecha límite', fechaFormateada),
-              ],
-              if (nombreExperto.isNotEmpty) ...[
-                const Divider(height: 20, color: AppColors.border),
-                _infoFila(Icons.person_outline_rounded, 'Registrado por', nombreExperto),
+              Row(
+                children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.person_outline_rounded,
+                        color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Diagnóstico del experto',
+                            style: GoogleFonts.nunito(
+                                fontSize: 11, color: AppColors.textSecondary)),
+                        Text(resultado,
+                            style: GoogleFonts.nunito(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Divider(color: AppColors.border),
+              const SizedBox(height: 10),
+              if (nombreExperto.isNotEmpty)
+                _infoFila(Icons.badge_outlined, 'Registrado por', nombreExperto),
+              if (nombreExperto.isNotEmpty && fechaFormateada.isNotEmpty)
+                const SizedBox(height: 10),
+              if (fechaFormateada.isNotEmpty)
+                _infoFila(Icons.calendar_today_outlined, 'Fecha de visita', fechaFormateada),
+              if (severidad.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _infoFilaColor(Icons.flag_outlined, 'Severidad', severidad, colorSeveridad),
               ],
             ],
           ),
         ),
+ 
+        // ── Observaciones del experto ───────────────────────────────────
+        if (observaciones.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Observaciones',
+                    style: GoogleFonts.nunito(
+                        fontSize: 13, fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(observaciones,
+                      style: GoogleFonts.nunito(
+                          fontSize: 13, color: AppColors.textPrimary, height: 1.5)),
+                ),
+              ],
+            ),
+          ),
+        ],
+ 
+        // ── Recomendaciones y tratamientos del experto ──────────────────
+        if (recomendaciones.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _seccionTitulo('Recomendaciones del experto'),
+          const SizedBox(height: 10),
+          ...recomendaciones.map((rec) {
+            final descripcion = (rec['descripcion'] ?? '').toString();
+            final tratamientos = (rec['tratamientos'] as List?) ?? [];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.notes_rounded,
+                            color: AppColors.primary, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            descripcion.isNotEmpty ? descripcion : 'Sin descripción',
+                            style: GoogleFonts.nunito(
+                                fontSize: 14, color: AppColors.textPrimary, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (tratamientos.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 8),
+                      ...tratamientos.map((t) {
+                        final nombreTrat = (t is Map)
+                            ? (t['nombre'] ?? t['nombreTratamiento'] ?? '').toString()
+                            : '';
+                        if (nombreTrat.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.healing_outlined,
+                                  size: 14, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(nombreTrat,
+                                    style: GoogleFonts.nunito(
+                                        fontSize: 12, color: AppColors.textSecondary)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
       ],
     );
   }
-
+ 
   Widget _buildImagenes() {
     final imagenes = _imagenes();
     if (imagenes.isEmpty) {
@@ -693,7 +926,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       },
     );
   }
-
+ 
   Widget _sinDatos({required IconData icono, required String titulo, required String mensaje}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 40),
@@ -714,12 +947,12 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ),
     );
   }
-
+ 
   Widget _seccionTitulo(String titulo) {
     return Text(titulo,
         style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary));
   }
-
+ 
   Widget _card({required Widget child}) {
     return Container(
       width: double.infinity,
@@ -732,7 +965,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       child: child,
     );
   }
-
+ 
   Widget _infoFila(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,7 +984,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ],
     );
   }
-
+ 
   Widget _infoFilaColor(IconData icon, String label, String value, Color color) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -770,11 +1003,19 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ],
     );
   }
-
+ 
   Widget _imagenPlaceholder() {
     return Container(
       color: const Color(0xFFE8F5E9),
       child: const Center(child: Icon(Icons.eco_outlined, color: Colors.green, size: 40)),
     );
   }
+}
+ 
+class _RecomendacionIA {
+  final IconData icon;
+  final Color color;
+  final String titulo;
+  final String subtitulo;
+  const _RecomendacionIA(this.icon, this.color, this.titulo, this.subtitulo);
 }

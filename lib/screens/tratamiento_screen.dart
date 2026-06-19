@@ -172,27 +172,24 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
+  /// El monitoreo ya se creó automáticamente en DiagnosticScreen cuando se
+  /// analizó la foto (junto con la imagen y el análisis IA). Esta función
+  /// ya NO vuelve a crear otro registro — solo confirma visualmente y
+  /// notifica a AppState para refrescar otras pantallas.
   Future<void> _guardarMonitoreo() async {
     if (_guardado || _guardando) return;
     setState(() => _guardando = true);
     try {
-      final hoy = DateTime.now();
-      final fechaStr = '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
-      await ApiService.post('/monitoreos', {
-        'id_cultivo': widget.cultivoId,
-        'fecha_monitoreo': fechaStr,
-        'observaciones': '${widget.diagnosisText} — Confianza: ${(widget.confidence * 100).round()}% — ${widget.scientificName}',
-      });
       AppState.instance.notifyMonitoreoGuardado();
       if (mounted) {
         setState(() { _guardando = false; _guardado = true; });
-        _mostrarExito('Monitoreo guardado correctamente');
+        _mostrarExito('Tratamiento confirmado');
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _guardando = false);
-        _mostrarError('Error al guardar: $e');
+        _mostrarError('Error: $e');
       }
     }
   }
@@ -294,7 +291,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
                                 icon: _guardando
                                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                     : const Icon(Icons.check_circle_outline, size: 20),
-                                label: Text(_guardando ? 'Guardando...' : _guardado ? 'Guardado' : 'Guardar tratamiento'),
+                                label: Text(_guardando ? 'Confirmando...' : _guardado ? 'Confirmado' : 'Confirmar tratamiento'),
                               ),
                               const SizedBox(height: 20),
                             ],
