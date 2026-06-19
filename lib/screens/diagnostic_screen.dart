@@ -40,7 +40,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   List _cultivos = [];
   int? _cultivoSeleccionado;
  
-static const String _iaBaseUrl = 'http://127.0.0.1:8080';
+static const String _iaBaseUrl = 'http://127.0.0.1:8000';
  
   String _diagnosisText  = '';
   String _scientificName = '';

@@ -30,7 +30,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   bool _guardando = false;
   bool _guardado = false;
  
-  // Controladores para crear/editar
   final _nombreCtrl = TextEditingController();
   final _descripcionCtrl = TextEditingController();
  
@@ -47,14 +46,49 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     super.dispose();
   }
  
-  // ─── GET /tratamientos ───────────────────────────────────────────────────
+  // ─── Clasificación de tratamientos por severidad (lista fija en código) ──
+  static const Map<String, String> _severidadPorNombre = {
+    'Fungicida triazol': 'Alta',
+    'Fungicida a base de azoxistrobina': 'Alta',
+    'Poda selectiva de ramas afectadas': 'Alta',
+    'Aplicación de tebuconazol': 'Alta',
+    'Fungicida cobre': 'Media',
+    'Fungicida foliar': 'Media',
+    'Aplicación de mancozeb': 'Media',
+    'Fertilización balanceada': 'Baja',
+    'Mejora de sombrío': 'Baja',
+  };
+ 
+  String get _severidadActual {
+    final pct = (widget.confidence * 100);
+    if (pct >= 70) return 'Alta';
+    if (pct >= 40) return 'Media';
+    return 'Baja';
+  }
+ 
+  List<dynamic> _filtrarPorSeveridad(List<dynamic> tratamientos) {
+    final severidad = _severidadActual;
+    final exactos = tratamientos.where((t) {
+      final nombre = (t['nombre'] ?? '').toString();
+      return _severidadPorNombre[nombre] == severidad;
+    }).toList();
+ 
+    if (exactos.length >= 2) return exactos.take(3).toList();
+ 
+    final sinClasificar = tratamientos.where((t) {
+      final nombre = (t['nombre'] ?? '').toString();
+      return !_severidadPorNombre.containsKey(nombre);
+    }).toList();
+ 
+    return [...exactos, ...sinClasificar].take(3).toList();
+  }
+ 
   Future<void> _cargarTratamientos() async {
     setState(() => _cargando = true);
     try {
       final data = await ApiService.get('/tratamientos');
-      final lista = data is List
-          ? data
-          : (data['data'] ?? data['tratamientos'] ?? []);
+      final listaCompleta = data is List ? data : (data['data'] ?? data['tratamientos'] ?? []);
+      final lista = _filtrarPorSeveridad(listaCompleta);
       setState(() {
         _tratamientos = lista;
         _seleccionado = lista.isNotEmpty ? lista[0] : null;
@@ -66,7 +100,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
-  // ─── GET /tratamientos/:id ───────────────────────────────────────────────
   Future<void> _verDetalle(int id) async {
     try {
       final data = await ApiService.get('/tratamientos/$id');
@@ -76,7 +109,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
-  // ─── POST /tratamientos ──────────────────────────────────────────────────
   Future<void> _crearTratamiento() async {
     if (_nombreCtrl.text.trim().isEmpty) {
       _mostrarError('El nombre es obligatorio');
@@ -89,7 +121,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
       });
       _nombreCtrl.clear();
       _descripcionCtrl.clear();
-      Navigator.pop(context); // cierra el modal
+      Navigator.pop(context);
       await _cargarTratamientos();
       _mostrarExito('Tratamiento creado correctamente');
     } catch (e) {
@@ -97,7 +129,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
-  // ─── PUT /tratamientos/:id ───────────────────────────────────────────────
   Future<void> _editarTratamiento(Map<String, dynamic> tratamiento) async {
     final id = tratamiento['idTratamiento'] ?? tratamiento['id_tratamiento'];
     if (_nombreCtrl.text.trim().isEmpty) {
@@ -111,7 +142,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
       });
       _nombreCtrl.clear();
       _descripcionCtrl.clear();
-      Navigator.pop(context); // cierra el modal
+      Navigator.pop(context);
       await _cargarTratamientos();
       _mostrarExito('Tratamiento actualizado correctamente');
     } catch (e) {
@@ -119,29 +150,19 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
-  // ─── DELETE /tratamientos/:id ────────────────────────────────────────────
   Future<void> _eliminarTratamiento(int id) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Eliminar tratamiento',
-            style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-        content: Text('¿Estás seguro de que deseas eliminar este tratamiento?',
-            style: GoogleFonts.nunito()),
+        title: Text('Eliminar tratamiento', style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+        content: Text('¿Estás seguro de que deseas eliminar este tratamiento?', style: GoogleFonts.nunito()),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child:
-                  const Text('Eliminar', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
- 
     if (confirmar != true) return;
- 
     try {
       await ApiService.delete('/tratamientos/$id');
       await _cargarTratamientos();
@@ -151,30 +172,20 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
-  // ─── Guardar monitoreo ───────────────────────────────────────────────────
   Future<void> _guardarMonitoreo() async {
     if (_guardado || _guardando) return;
     setState(() => _guardando = true);
- 
     try {
       final hoy = DateTime.now();
-      final fechaStr =
-          '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
- 
+      final fechaStr = '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
       await ApiService.post('/monitoreos', {
         'id_cultivo': widget.cultivoId,
         'fecha_monitoreo': fechaStr,
-        'observaciones':
-            '${widget.diagnosisText} — Confianza: ${(widget.confidence * 100).round()}% — ${widget.scientificName}',
+        'observaciones': '${widget.diagnosisText} — Confianza: ${(widget.confidence * 100).round()}% — ${widget.scientificName}',
       });
- 
       AppState.instance.notifyMonitoreoGuardado();
- 
       if (mounted) {
-        setState(() {
-          _guardando = false;
-          _guardado = true;
-        });
+        setState(() { _guardando = false; _guardado = true; });
         _mostrarExito('Monitoreo guardado correctamente');
         Navigator.pop(context);
       }
@@ -186,7 +197,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
-  // ─── Modales crear / editar ──────────────────────────────────────────────
   void _abrirModalCrear() {
     _nombreCtrl.clear();
     _descripcionCtrl.clear();
@@ -196,62 +206,43 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   void _abrirModalEditar(Map<String, dynamic> t) {
     _nombreCtrl.text = t['nombre'] ?? '';
     _descripcionCtrl.text = t['descripcion'] ?? '';
-    _mostrarFormulario(
-        titulo: 'Editar tratamiento', onGuardar: () => _editarTratamiento(t));
+    _mostrarFormulario(titulo: 'Editar tratamiento', onGuardar: () => _editarTratamiento(t));
   }
  
-  void _mostrarFormulario(
-      {required String titulo, required VoidCallback onGuardar}) {
+  void _mostrarFormulario({required String titulo, required VoidCallback onGuardar}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
-        padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+        padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(titulo,
-                style: GoogleFonts.nunito(
-                    fontSize: 18, fontWeight: FontWeight.w800)),
+            Text(titulo, style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 16),
             TextField(
               controller: _nombreCtrl,
-              decoration: InputDecoration(
-                labelText: 'Nombre *',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
+              decoration: InputDecoration(labelText: 'Nombre *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _descripcionCtrl,
               maxLines: 3,
-              decoration: InputDecoration(
-                labelText: 'Descripción',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
+              decoration: InputDecoration(labelText: 'Descripción', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
             ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
                 onPressed: onGuardar,
-                child: Text('Guardar',
-                    style: GoogleFonts.nunito(
-                        fontWeight: FontWeight.w700, color: Colors.white)),
+                child: Text('Guardar', style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ],
@@ -260,20 +251,16 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     );
   }
  
-  // ─── Helpers UI ──────────────────────────────────────────────────────────
   void _mostrarExito(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.green));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
   }
  
   void _mostrarError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
  
-  // ─── BUILD ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -282,20 +269,18 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
         child: Column(
           children: [
             _buildHeader(context),
+            _buildBannerSeveridad(),
             Expanded(
               child: _cargando
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary))
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                   : _tratamientos.isEmpty
                       ? _buildVacio()
                       : SingleChildScrollView(
                           padding: const EdgeInsets.all(20),
                           child: Column(
                             children: [
-                              // Lista de tratamientos del backend
                               _buildListaTratamientos(),
                               const SizedBox(height: 16),
-                              // Detalle del seleccionado
                               if (_seleccionado != null) ...[
                                 _buildProductoCard(),
                                 const SizedBox(height: 16),
@@ -305,23 +290,11 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
                                 const SizedBox(height: 20),
                               ],
                               ElevatedButton.icon(
-                                onPressed:
-                                    (_guardado || _guardando) ? null : _guardarMonitoreo,
+                                onPressed: (_guardado || _guardando) ? null : _guardarMonitoreo,
                                 icon: _guardando
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white),
-                                      )
-                                    : const Icon(Icons.check_circle_outline,
-                                        size: 20),
-                                label: Text(_guardando
-                                    ? 'Guardando...'
-                                    : _guardado
-                                        ? 'Guardado'
-                                        : 'Guardar tratamiento'),
+                                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : const Icon(Icons.check_circle_outline, size: 20),
+                                label: Text(_guardando ? 'Guardando...' : _guardado ? 'Guardado' : 'Guardar tratamiento'),
                               ),
                               const SizedBox(height: 20),
                             ],
@@ -345,20 +318,39 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
       color: const Color(0xFFF4E7D6),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios,
-                color: AppColors.textPrimary, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
+          IconButton(icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20), onPressed: () => Navigator.pop(context)),
           Expanded(
-            child: Text('Tratamientos',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
+            child: Text('Tratamientos', textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
           ),
           const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+ 
+  Widget _buildBannerSeveridad() {
+    final severidad = _severidadActual;
+    final color = severidad == 'Alta' ? Colors.red : severidad == 'Media' ? Colors.orange : AppColors.primary;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Severidad $severidad (${(widget.confidence * 100).round()}% de confianza) — tratamientos sugeridos para este nivel',
+              style: GoogleFonts.nunito(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
@@ -371,20 +363,14 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
         children: [
           const Icon(Icons.healing_outlined, size: 64, color: Colors.grey),
           const SizedBox(height: 12),
-          Text('No hay tratamientos registrados',
-              style: GoogleFonts.nunito(color: Colors.grey)),
+          Text('No hay tratamientos disponibles para este nivel de severidad', style: GoogleFonts.nunito(color: Colors.grey), textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _abrirModalCrear,
-            icon: const Icon(Icons.add),
-            label: const Text('Agregar tratamiento'),
-          ),
+          ElevatedButton.icon(onPressed: _abrirModalCrear, icon: const Icon(Icons.add), label: const Text('Agregar tratamiento')),
         ],
       ),
     );
   }
  
-  // Lista horizontal de tratamientos para seleccionar
   Widget _buildListaTratamientos() {
     return SizedBox(
       height: 44,
@@ -396,9 +382,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
           final t = _tratamientos[i];
           final id = t['idTratamiento'] ?? t['id_tratamiento'];
           final nombre = t['nombre'] ?? 'Tratamiento';
-          final seleccionado =
-              (_seleccionado?['idTratamiento'] ?? _seleccionado?['id_tratamiento']) == id;
- 
+          final seleccionado = (_seleccionado?['idTratamiento'] ?? _seleccionado?['id_tratamiento']) == id;
           return GestureDetector(
             onTap: () => _verDetalle(id),
             onLongPress: () => _mostrarOpciones(t),
@@ -407,14 +391,9 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
               decoration: BoxDecoration(
                 color: seleccionado ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                    color: seleccionado ? AppColors.primary : Colors.grey.shade300),
+                border: Border.all(color: seleccionado ? AppColors.primary : Colors.grey.shade300),
               ),
-              child: Text(nombre,
-                  style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: seleccionado ? Colors.white : AppColors.textPrimary)),
+              child: Text(nombre, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: seleccionado ? Colors.white : AppColors.textPrimary)),
             ),
           );
         },
@@ -422,31 +401,23 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     );
   }
  
-  // Menú contextual al mantener presionado
   void _mostrarOpciones(Map<String, dynamic> t) {
     final id = t['idTratamiento'] ?? t['id_tratamiento'];
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
             leading: const Icon(Icons.edit_outlined, color: AppColors.primary),
             title: Text('Editar', style: GoogleFonts.nunito()),
-            onTap: () {
-              Navigator.pop(context);
-              _abrirModalEditar(t);
-            },
+            onTap: () { Navigator.pop(context); _abrirModalEditar(t); },
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: Colors.red),
             title: Text('Eliminar', style: GoogleFonts.nunito(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context);
-              _eliminarTratamiento(id);
-            },
+            onTap: () { Navigator.pop(context); _eliminarTratamiento(id); },
           ),
         ],
       ),
@@ -456,36 +427,17 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   Widget _buildProductoCard() {
     final nombre = _seleccionado?['nombre'] ?? 'Sin nombre';
     final descripcion = _seleccionado?['descripcion'] ?? 'Sin descripción';
- 
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tratamiento seleccionado',
-              style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600)),
+          Text('Tratamiento seleccionado', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text(nombre,
-              style: GoogleFonts.nunito(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
+          Text(nombre, style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          Text(descripcion,
-              style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  height: 1.5)),
+          Text(descripcion, style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
         ],
       ),
     );
@@ -493,22 +445,18 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
  
   Widget _buildDetallesCard() {
     final tipo = _seleccionado?['tipoTratamiento']?['nombre'] ?? 'General';
- 
+    final dosis = _seleccionado?['dosis'];
+    final frecuencia = _seleccionado?['frecuencia'];
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         children: [
           _rowItem(Icons.category_outlined, 'Tipo', tipo),
+          if (dosis != null) ...[const Divider(height: 20), _rowItem(Icons.scale_outlined, 'Dosis', dosis.toString())],
+          if (frecuencia != null) ...[const Divider(height: 20), _rowItem(Icons.repeat_outlined, 'Frecuencia', frecuencia.toString())],
           const Divider(height: 20),
-          _rowItem(Icons.calendar_today_outlined, 'Fecha de registro',
-              _formatFecha(_seleccionado?['fechaRegistro'])),
+          _rowItem(Icons.calendar_today_outlined, 'Fecha de registro', _formatFecha(_seleccionado?['fechaRegistro'])),
         ],
       ),
     );
@@ -517,28 +465,15 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   Widget _buildNotasCard() {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Notas',
-              style: GoogleFonts.nunito(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
+          Text('Notas', style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
           Text(
-            'Diagnóstico: ${widget.diagnosisText}\n'
-            'Confianza: ${(widget.confidence * 100).round()}%\n'
-            'Nombre científico: ${widget.scientificName}',
-            style: GoogleFonts.nunito(
-                fontSize: 13, color: AppColors.textSecondary, height: 1.6),
+            'Diagnóstico: ${widget.diagnosisText}\nConfianza: ${(widget.confidence * 100).round()}%\nNombre científico: ${widget.scientificName}',
+            style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary, height: 1.6),
           ),
         ],
       ),
@@ -550,15 +485,8 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
       children: [
         Icon(icon, color: AppColors.primary, size: 20),
         const SizedBox(width: 12),
-        Expanded(
-            child: Text(label,
-                style: GoogleFonts.nunito(
-                    fontSize: 13, color: AppColors.textSecondary))),
-        Text(valor,
-            style: GoogleFonts.nunito(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+        Expanded(child: Text(label, style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary))),
+        Text(valor, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
       ],
     );
   }
