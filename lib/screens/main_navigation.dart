@@ -8,6 +8,7 @@ import 'clima_screen.dart';
 import 'monitoreos_screen.dart';
 import 'aprender_screen.dart';
 import 'profile_screen.dart';
+import 'asistente_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   final Map<String, dynamic> usuario;
@@ -21,7 +22,6 @@ class _MainNavigationState extends State<MainNavigation>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
 
-  // Animación del botón asistente
   late AnimationController _fabController;
   late Animation<double> _fabScale;
 
@@ -29,7 +29,6 @@ class _MainNavigationState extends State<MainNavigation>
   void initState() {
     super.initState();
     AppState.instance.addListener(_onFincaCambiada);
-
     _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -61,58 +60,11 @@ class _MainNavigationState extends State<MainNavigation>
       ];
 
   void _abrirAsistente() {
-    // TODO: cuando tengas el personaje 3D, reemplaza este bottom sheet
-    // con la pantalla del asistente: Navigator.push(context, ...)
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.45,
-          decoration: const BoxDecoration(
-            color: Color(0xFFFFFEFB),
-            borderRadius: BorderRadius.all(Radius.circular(28)),
-          ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              width: 100, height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.smart_toy_outlined,
-                  color: AppColors.primary, size: 52),
-            ),
-            const SizedBox(height: 20),
-            Text('Asistente CoffeeLife',
-                style: GoogleFonts.nunito(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('',
-                style: GoogleFonts.nunito(
-                    fontSize: 14, color: AppColors.textSecondary)),
-            const SizedBox(height: 8),
-            Text('Tu asistente inteligente está en camino ',
-                style: GoogleFonts.nunito(
-                    fontSize: 13, color: AppColors.textSecondary)),
-          ],
-        ),
-      ),
-      ),
+      builder: (_) => const AsistenteScreen(),
     );
   }
 
@@ -123,8 +75,6 @@ class _MainNavigationState extends State<MainNavigation>
         index: _currentIndex,
         children: _screens,
       ),
-
-      // ── Botón flotante del asistente ─────────────────────────────────
       floatingActionButton: GestureDetector(
         onTapDown: (_) => _fabController.forward(),
         onTapUp: (_) {
@@ -135,8 +85,7 @@ class _MainNavigationState extends State<MainNavigation>
         child: ScaleTransition(
           scale: _fabScale,
           child: Container(
-            width: 60,
-            height: 60,
+            width: 60, height: 60,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF6DBF67), AppColors.primary],
@@ -152,13 +101,11 @@ class _MainNavigationState extends State<MainNavigation>
                 ),
               ],
             ),
-            child: const Icon(Icons.smart_toy_outlined,
-                color: Colors.white, size: 28),
+            child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 28),
           ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -168,11 +115,7 @@ class _MainNavigationState extends State<MainNavigation>
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, -2)),
         ],
       ),
       child: SafeArea(
@@ -181,17 +124,12 @@ class _MainNavigationState extends State<MainNavigation>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(0, Icons.home_rounded, Icons.home_outlined, 'Inicio'),
-              _navItem(1, Icons.document_scanner_rounded,
-                  Icons.document_scanner_outlined, 'Diagnóstico'),
-              _navItem(2, Icons.wb_cloudy_rounded,
-                  Icons.wb_cloudy_outlined, 'Clima'),
-              _navItem(3, Icons.bar_chart_rounded,
-                  Icons.bar_chart_outlined, 'Monitoreos'),
-              _navItem(4, Icons.menu_book_rounded,
-                  Icons.menu_book_outlined, 'Aprender'),
-              _navItem(5, Icons.person_rounded,
-                  Icons.person_outline_rounded, 'Perfil'),
+              _navItem(0, Icons.home_rounded,            Icons.home_outlined,            'Inicio'),
+              _navItem(1, Icons.document_scanner_rounded, Icons.document_scanner_outlined, 'Diagnóstico'),
+              _navItem(2, Icons.wb_cloudy_rounded,        Icons.wb_cloudy_outlined,        'Clima'),
+              _navItem(3, Icons.bar_chart_rounded,        Icons.bar_chart_outlined,        'Monitoreos'),
+              _navItem(4, Icons.menu_book_rounded,        Icons.menu_book_outlined,        'Aprender'),
+              _navItem(5, Icons.person_rounded,           Icons.person_outline_rounded,    'Perfil'),
             ],
           ),
         ),
@@ -199,8 +137,7 @@ class _MainNavigationState extends State<MainNavigation>
     );
   }
 
-  Widget _navItem(int index, IconData activeIcon,
-      IconData inactiveIcon, String label) {
+  Widget _navItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isActive = _currentIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
@@ -210,23 +147,14 @@ class _MainNavigationState extends State<MainNavigation>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isActive ? activeIcon : inactiveIcon,
-              color: isActive ? AppColors.primary : AppColors.textSecondary,
-              size: 24,
-            ),
+            Icon(isActive ? activeIcon : inactiveIcon,
+                color: isActive ? AppColors.primary : AppColors.textSecondary, size: 24),
             const SizedBox(height: 2),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 9,
-                fontWeight:
-                    isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
-              ),
-            ),
+            Text(label,
+                style: GoogleFonts.nunito(
+                    fontSize: 9,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    color: isActive ? AppColors.primary : AppColors.textSecondary)),
           ],
         ),
       ),

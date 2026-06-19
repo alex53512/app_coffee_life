@@ -27,21 +27,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic> _usuarioData = {};
   Map<String, dynamic>? _finca;
 
-  // Web-compatible: usamos XFile + bytes en lugar de File
   XFile?     _imagenSeleccionada;
   Uint8List? _imagenBytes;
   String?    _fotoUrl;
 
   final ImagePicker _picker = ImagePicker();
 
-  // Campos usuario
   final TextEditingController _nombreController      = TextEditingController();
   final TextEditingController _apellidoController    = TextEditingController();
   final TextEditingController _correoController      = TextEditingController();
   final TextEditingController _telefonoController    = TextEditingController();
   final TextEditingController _cedulaController      = TextEditingController();
 
-  // Campos finca
   final TextEditingController _fincaController        = TextEditingController();
   final TextEditingController _municipioController    = TextEditingController();
   final TextEditingController _departamentoController = TextEditingController();
@@ -74,11 +71,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _altitudController.text      = _finca?['altitudMsnm']?.toString() ?? '';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Helper: busca la cédula del usuario probando varios nombres de campo
-  // posibles, porque distintos endpoints del backend no siempre usan la
-  // misma convención (camelCase vs snake_case, u otro nombre distinto).
-  // ─────────────────────────────────────────────────────────────────────────
   String _leerCedula(Map<String, dynamic> u) {
     final valor = u['cedula'] ??
         u['numero_documento'] ??
@@ -154,14 +146,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SELECCIONAR FOTO — compatible con web y móvil
-  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _seleccionarFoto() async {
     ImageSource? origen;
 
     if (kIsWeb) {
-      // En web no hay cámara nativa → directamente galería
       origen = ImageSource.gallery;
     } else {
       origen = await showModalBottomSheet<ImageSource>(
@@ -223,9 +211,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SUBIR FOTO — usa bytes (compatible con web)
-  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _subirFoto() async {
     if (_imagenSeleccionada == null || _imagenBytes == null) return;
 
@@ -245,7 +230,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       request.fields['telefono']       = _telefonoController.text;
       request.fields['observaciones']  = '';
 
-      // fromBytes en lugar de fromPath → funciona en web y móvil
       request.files.add(http.MultipartFile.fromBytes(
         'foto_perfil',
         _imagenBytes!,
@@ -383,12 +367,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _campoTexto(_municipioController, 'Municipio'),
                 const SizedBox(height: 14),
                 _campoTexto(_departamentoController, 'Departamento'),
-                const SizedBox(height: 14),
-                _campoTexto(_hectareasController, 'Área en hectáreas',
-                    tipo: TextInputType.number),
-                const SizedBox(height: 14),
-                _campoTexto(_altitudController, 'Altitud msnm',
-                    tipo: TextInputType.number),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -543,12 +521,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final correo   = (_usuarioData['correo']   ?? widget.usuario['correo']   ?? '').toString();
     final inicial  = nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U';
 
-    // Determinar ImageProvider según plataforma y estado
     ImageProvider? imageProvider;
     if (_imagenBytes != null) {
-      imageProvider = MemoryImage(_imagenBytes!);       // preview web/móvil
+      imageProvider = MemoryImage(_imagenBytes!);
     } else if (_fotoUrl != null && _fotoUrl!.isNotEmpty) {
-      imageProvider = NetworkImage(_fotoUrl!);          // foto guardada
+      imageProvider = NetworkImage(_fotoUrl!);
     }
 
     return Container(
@@ -634,18 +611,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             label: 'Departamento',
             valor: _finca?['departamento']?.toString() ?? 'No registrado',
             icono: Icons.location_city_outlined,
-          ),
-          _divider(),
-          _rowItem(
-            label: 'Área total',
-            valor: '${_finca?['areaHectareas'] ?? '0'} hectáreas',
-            icono: Icons.straighten_outlined,
-          ),
-          _divider(),
-          _rowItem(
-            label: 'Altitud',
-            valor: '${_finca?['altitudMsnm'] ?? '0'} msnm',
-            icono: Icons.terrain_outlined,
           ),
           _divider(),
           _rowItem(
