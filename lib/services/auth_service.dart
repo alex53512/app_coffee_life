@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_state.dart';
 
 class AuthService {
   static const String baseUrl = 'https://backend-coffe-lifee-production.up.railway.app';
@@ -12,19 +13,28 @@ class AuthService {
     required String correo,
     required String password,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'correo': correo, 'password': password}),
-    );
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, data['token']);
-      await prefs.setString(_userKey, jsonEncode(data['usuario'] ?? data['data']));
-      return {'success': true, 'data': data['usuario'] ?? data['data']};
-    } else {
-      return {'success': false, 'message': data['message'] ?? 'Error al iniciar sesión'};
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'correo': correo, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 15));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        AppState.instance.reset();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_tokenKey, data['token']);
+        await prefs.setString(_userKey, jsonEncode(data['usuario'] ?? data['data']));
+        return {'success': true, 'data': data['usuario'] ?? data['data']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Correo o contraseña incorrectos'};
+      }
+    } on TimeoutException {
+      return {'success': false, 'message': 'El servidor no responde. Intenta de nuevo.'};
+    } catch (e) {
+      return {'success': false, 'message': 'No se pudo conectar al servidor. Verifica tu conexión a internet.'};
     }
   }
 
@@ -37,25 +47,34 @@ class AuthService {
     required String cedula,
     required String tipoDocumento,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'nombre':         nombre,
-        'apellido':       apellido,
-        'correo':         correo,
-        'password':       password,
-        'telefono':       telefono,
-        'cedula':         cedula,
-        'tipoDocumento':  tipoDocumento,
-        'idRol':          3,
-      }),
-    );
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 201) {
-      return {'success': true, 'data': data['data']};
-    } else {
-      return {'success': false, 'message': data['message'] ?? 'Error al registrarse'};
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/register'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'nombre':        nombre,
+              'apellido':      apellido,
+              'correo':        correo,
+              'password':      password,
+              'telefono':      telefono,
+              'cedula':        cedula,
+              'tipoDocumento': tipoDocumento,
+              'idRol':         3,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        AppState.instance.reset();
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Error al registrarse'};
+      }
+    } on TimeoutException {
+      return {'success': false, 'message': 'El servidor no responde. Intenta de nuevo.'};
+    } catch (e) {
+      return {'success': false, 'message': 'No se pudo conectar al servidor. Verifica tu conexión a internet.'};
     }
   }
 
@@ -81,6 +100,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
+    AppState.instance.reset(); // limpiar fincas, cultivos y foto del usuario anterior
   }
 
   // ─────────────────────────────────────────────────────────────────────────

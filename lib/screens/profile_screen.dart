@@ -9,77 +9,81 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/app_state.dart';
 import 'login_screen.dart';
- 
+
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> usuario;
- 
+
   const ProfileScreen({
     super.key,
     required this.usuario,
   });
- 
+
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
- 
+
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _cargando = false;
   Map<String, dynamic> _usuarioData = {};
- 
-  // La finca que se muestra en el perfil siempre viene del AppState.
-  // Solo se usa para mostrar info y para editar (PUT /fincas/:id).
-  Map<String, dynamic>? get _finca => AppState.instance.fincaSeleccionada;
- 
+  Map<String, dynamic>? _finca;
+
   XFile?     _imagenSeleccionada;
   Uint8List? _imagenBytes;
   String?    _fotoUrl;
- 
+
   final ImagePicker _picker = ImagePicker();
- 
-  // Campos usuario
+
   final TextEditingController _nombreController      = TextEditingController();
   final TextEditingController _apellidoController    = TextEditingController();
   final TextEditingController _correoController      = TextEditingController();
   final TextEditingController _telefonoController    = TextEditingController();
   final TextEditingController _cedulaController      = TextEditingController();
- 
-  // Campos finca
+
   final TextEditingController _fincaController        = TextEditingController();
   final TextEditingController _municipioController    = TextEditingController();
   final TextEditingController _departamentoController = TextEditingController();
   final TextEditingController _hectareasController    = TextEditingController();
   final TextEditingController _altitudController      = TextEditingController();
- 
+
   @override
   void initState() {
     super.initState();
     _usuarioData = Map.from(widget.usuario);
     _cargarDatos();
-    // Escucha cambios de finca/cultivo para reconstruir la UI
-    AppState.instance.addListener(_onEstadoCambiado);
+    AppState.instance.addListener(_onFincaCambiada);
   }
- 
-  void _onEstadoCambiado() {
-    // Actualizar campos de finca cuando cambia en el AppState
-    if (mounted) {
+
+  void _onFincaCambiada() {
+    final finca = AppState.instance.fincaSeleccionada;
+    if (finca != null) {
       setState(() {
+        _finca = Map<String, dynamic>.from(finca);
         _actualizarCamposFinca();
       });
     }
   }
- 
+
   void _actualizarCamposFinca() {
-    final f = _finca;
-    _fincaController.text        = f?['nombreFinca']?.toString() ?? '';
-    _municipioController.text    = f?['municipio']?.toString() ?? '';
-    _departamentoController.text = f?['departamento']?.toString() ?? '';
-    _hectareasController.text    = (f?['areaHectareas'] ?? f?['area_hectareas'])?.toString() ?? '';
-    _altitudController.text      = (f?['altitudMsnm'] ?? f?['altitud_msnm'])?.toString() ?? '';
+    _fincaController.text        = _finca?['nombreFinca']?.toString() ?? '';
+    _municipioController.text    = _finca?['municipio']?.toString() ?? '';
+    _departamentoController.text = _finca?['departamento']?.toString() ?? '';
+    _hectareasController.text    = _finca?['areaHectareas']?.toString() ?? '';
+    _altitudController.text      = _finca?['altitudMsnm']?.toString() ?? '';
   }
- 
+
+  String _leerCedula(Map<String, dynamic> u) {
+    final valor = u['cedula'] ??
+        u['numero_documento'] ??
+        u['numeroDocumento'] ??
+        u['identificacion'] ??
+        u['documento'] ??
+        u['cedula_usuario'];
+    return valor?.toString() ?? '';
+  }
+
   @override
   void dispose() {
-    AppState.instance.removeListener(_onEstadoCambiado);
+    AppState.instance.removeListener(_onFincaCambiada);
     _nombreController.dispose();
     _apellidoController.dispose();
     _correoController.dispose();
@@ -92,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _altitudController.dispose();
     super.dispose();
   }
- 
+
   String _leerRol(Map<String, dynamic> u) {
     final rol = u['rol'];
     if (rol == null) return 'Caficultor';
@@ -100,24 +104,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (rol is Map) return rol['nombreRol'] ?? 'Caficultor';
     return 'Caficultor';
   }
- 
+
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
     try {
-      final raw = await ApiService.get('/mi-perfil');
+      final results = await Future.wait([
+        ApiService.get('/mi-perfil'),
+        ApiService.get('/fincas'),
+      ]);
+
+      final raw = results[0];
       final u   = raw is Map ? (raw['data'] ?? raw) : raw;
- 
+
+      final fincasRaw = results[1];
+      final fincas    = fincasRaw is List
+          ? fincasRaw
+          : (fincasRaw is Map ? (fincasRaw['data'] ?? []) : []);
+
       setState(() {
         _usuarioData = Map<String, dynamic>.from(u is Map ? u : {});
-        _fotoUrl     = _usuarioData['fotoPerfil'] as String?;
- 
+
+        final fincaState = AppState.instance.fincaSeleccionada;
+        if (fincaState != null) {
+          _finca = Map<String, dynamic>.from(fincaState);
+        } else if (fincas is List && fincas.isNotEmpty) {
+          _finca = Map<String, dynamic>.from(fincas[0]);
+        }
+
+        _fotoUrl = _usuarioData['fotoPerfil'] as String?;
+
         _nombreController.text   = _usuarioData['nombre']?.toString() ?? '';
         _apellidoController.text = _usuarioData['apellido']?.toString() ?? '';
         _correoController.text   = _usuarioData['correo']?.toString() ?? '';
         _telefonoController.text = _usuarioData['telefono']?.toString() ?? '';
-        _cedulaController.text   = _usuarioData['cedula']?.toString() ?? '';
- 
-        // Campos de finca desde AppState (siempre)
+        _cedulaController.text   = _leerCedula(_usuarioData);
         _actualizarCamposFinca();
         _cargando = false;
       });
@@ -125,12 +145,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _cargando = false);
     }
   }
- 
-  // ── SELECCIONAR FOTO ──────────────────────────────────────────────────────
- 
+
   Future<void> _seleccionarFoto() async {
     ImageSource? origen;
- 
+
     if (kIsWeb) {
       origen = ImageSource.gallery;
     } else {
@@ -174,15 +192,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
- 
+
     if (origen == null) return;
- 
+
     final picked = await _picker.pickImage(
       source: origen,
       imageQuality: 80,
       maxWidth: 800,
     );
- 
+
     if (picked != null) {
       final bytes = await picked.readAsBytes();
       setState(() {
@@ -192,37 +210,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _subirFoto();
     }
   }
- 
-  // ── SUBIR FOTO ────────────────────────────────────────────────────────────
- 
+
   Future<void> _subirFoto() async {
     if (_imagenSeleccionada == null || _imagenBytes == null) return;
- 
+
     setState(() => _cargando = true);
     try {
       final token   = await AuthService.getToken();
       final baseUrl = ApiService.baseUrl;
- 
+
       final request = http.MultipartRequest(
         'PUT',
         Uri.parse('$baseUrl/mi-perfil'),
       );
- 
+
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['nombre']         = _nombreController.text;
       request.fields['apellido']       = _apellidoController.text;
       request.fields['telefono']       = _telefonoController.text;
       request.fields['observaciones']  = '';
- 
+
       request.files.add(http.MultipartFile.fromBytes(
         'foto_perfil',
         _imagenBytes!,
         filename: _imagenSeleccionada!.name,
       ));
- 
+
       final response = await request.send();
       final body     = await response.stream.bytesToString();
- 
+
       if (response.statusCode == 200) {
         await _cargarDatos();
         if (mounted) {
@@ -248,9 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
- 
-  // ── GUARDAR CAMBIOS ───────────────────────────────────────────────────────
- 
+
   Future<void> _guardarCambios() async {
     setState(() => _cargando = true);
     try {
@@ -258,9 +272,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'nombre':        _nombreController.text,
         'apellido':      _apellidoController.text,
         'telefono':      _telefonoController.text,
+        'cedula':        _cedulaController.text,
         'observaciones': '',
       });
- 
+
       final idFinca = _finca?['idFinca'] ?? _finca?['id_finca'];
       if (idFinca != null) {
         await ApiService.put('/fincas/$idFinca', {
@@ -271,18 +286,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'altitud_msnm':   double.tryParse(_altitudController.text) ?? 0,
         });
       }
- 
+
       setState(() {
         _usuarioData['nombre']   = _nombreController.text;
         _usuarioData['apellido'] = _apellidoController.text;
         _usuarioData['telefono'] = _telefonoController.text;
+        _usuarioData['cedula']   = _cedulaController.text;
         _imagenSeleccionada      = null;
         _imagenBytes             = null;
         _cargando                = false;
       });
- 
+
       if (mounted) Navigator.pop(context);
- 
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Perfil actualizado correctamente'),
@@ -301,9 +317,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
- 
-  // ── FORMULARIO EDITAR ─────────────────────────────────────────────────────
- 
+
   void _mostrarFormularioEditar() {
     showModalBottomSheet(
       context: context,
@@ -342,46 +356,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 14),
                 _campoTexto(_cedulaController, 'Cédula'),
                 const SizedBox(height: 20),
-                // Editar la finca actualmente seleccionada en AppState
-                if (_finca != null) ...[
-                  Row(
-                    children: [
-                      Text('Finca seleccionada',
-                          style: GoogleFonts.nunito(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary)),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _finca?['nombreFinca'] ?? '',
-                          style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _campoTexto(_fincaController, 'Nombre de la finca'),
-                  const SizedBox(height: 14),
-                  _campoTexto(_municipioController, 'Municipio'),
-                  const SizedBox(height: 14),
-                  _campoTexto(_departamentoController, 'Departamento'),
-                  const SizedBox(height: 14),
-                  _campoTexto(_hectareasController, 'Área en hectáreas',
-                      tipo: TextInputType.number),
-                  const SizedBox(height: 14),
-                  _campoTexto(_altitudController, 'Altitud msnm',
-                      tipo: TextInputType.number),
-                ],
+                Text('Datos de la finca',
+                    style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary)),
+                const SizedBox(height: 14),
+                _campoTexto(_fincaController, 'Nombre de la finca'),
+                const SizedBox(height: 14),
+                _campoTexto(_municipioController, 'Municipio'),
+                const SizedBox(height: 14),
+                _campoTexto(_departamentoController, 'Departamento'),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -404,7 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
- 
+
   Widget _campoTexto(
     TextEditingController controller,
     String label, {
@@ -423,9 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
-  // ── CERRAR SESIÓN ─────────────────────────────────────────────────────────
- 
+
   Future<void> _cerrarSesion() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -449,7 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
- 
+
     if (confirm == true) {
       await AuthService.logout();
       if (mounted) {
@@ -461,9 +444,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
- 
-  // ── BUILD ─────────────────────────────────────────────────────────────────
- 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -481,14 +462,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           _buildAvatarSection(),
                           const SizedBox(height: 8),
-                          // Banner de finca/cultivo activo
-                          _buildFincaCultivoBanner(),
-                          const SizedBox(height: 8),
                           _buildInfoSection(),
                           const SizedBox(height: 24),
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: OutlinedButton.icon(
                               onPressed: _cerrarSesion,
                               icon: const Icon(Icons.logout, color: Colors.red),
@@ -512,7 +489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
@@ -537,94 +514,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
-  /// Banner compacto que muestra la finca y cultivo activo del AppState.
-  Widget _buildFincaCultivoBanner() {
-    final fincaNombre   = _finca?['nombreFinca']?.toString();
-    final cultivoNombre = AppState.instance.cultivoNombre;
-    final nivelRoya     = AppState.instance.nivelRoya;
- 
-    if (fincaNombre == null) return const SizedBox.shrink();
- 
-    final royaColor = nivelRoya == 'Alto'  ? Colors.red
-                    : nivelRoya == 'Medio' ? Colors.orange
-                    : nivelRoya == 'Bajo'  ? AppColors.primary
-                    : Colors.grey;
- 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.park_outlined,
-                color: AppColors.primary, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Contexto activo',
-                    style: GoogleFonts.nunito(
-                        fontSize: 10, color: AppColors.textSecondary)),
-                Text(fincaNombre,
-                    style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary)),
-                if (cultivoNombre.isNotEmpty)
-                  Text('Cultivo: $cultivoNombre',
-                      style: GoogleFonts.nunito(
-                          fontSize: 12, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-          if (cultivoNombre.isNotEmpty && nivelRoya != 'Sin datos')
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: royaColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: royaColor.withOpacity(0.3)),
-              ),
-              child: Text('Roya: $nivelRoya',
-                  style: GoogleFonts.nunito(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: royaColor)),
-            ),
-        ],
-      ),
-    );
-  }
- 
+
   Widget _buildAvatarSection() {
     final nombre   = (_usuarioData['nombre']   ?? widget.usuario['nombre']   ?? '').toString();
     final apellido = (_usuarioData['apellido'] ?? widget.usuario['apellido'] ?? '').toString();
     final correo   = (_usuarioData['correo']   ?? widget.usuario['correo']   ?? '').toString();
     final inicial  = nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U';
- 
+
     ImageProvider? imageProvider;
     if (_imagenBytes != null) {
       imageProvider = MemoryImage(_imagenBytes!);
     } else if (_fotoUrl != null && _fotoUrl!.isNotEmpty) {
       imageProvider = NetworkImage(_fotoUrl!);
     }
- 
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28),
@@ -655,8 +558,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: const Icon(Icons.camera_alt,
-                      color: Colors.white, size: 16),
+                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
                 ),
               ),
             ],
@@ -686,11 +588,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _buildInfoSection() {
-    // Muestra siempre la finca activa del AppState
-    final finca = _finca;
- 
     return Container(
       color: const Color(0xFFF4E7D6),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -698,32 +597,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _rowItem(
             label: 'Mi finca',
-            valor: finca?['nombreFinca']?.toString() ?? 'Sin finca registrada',
+            valor: _finca?['nombreFinca']?.toString() ?? 'Sin finca registrada',
             icono: Icons.park_outlined,
           ),
           _divider(),
           _rowItem(
             label: 'Municipio',
-            valor: finca?['municipio']?.toString() ?? 'No registrado',
+            valor: _finca?['municipio']?.toString() ?? 'No registrado',
             icono: Icons.location_on_outlined,
           ),
           _divider(),
           _rowItem(
             label: 'Departamento',
-            valor: finca?['departamento']?.toString() ?? 'No registrado',
+            valor: _finca?['departamento']?.toString() ?? 'No registrado',
             icono: Icons.location_city_outlined,
-          ),
-          _divider(),
-          _rowItem(
-            label: 'Área total',
-            valor: '${finca?['areaHectareas'] ?? finca?['area_hectareas'] ?? '0'} hectáreas',
-            icono: Icons.straighten_outlined,
-          ),
-          _divider(),
-          _rowItem(
-            label: 'Altitud',
-            valor: '${finca?['altitudMsnm'] ?? finca?['altitud_msnm'] ?? '0'} msnm',
-            icono: Icons.terrain_outlined,
           ),
           _divider(),
           _rowItem(
@@ -734,14 +621,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _divider(),
           _rowItem(
             label: 'Cédula',
-            valor: _usuarioData['cedula']?.toString() ?? 'No registrada',
+            valor: () {
+              final cedula = _leerCedula(_usuarioData);
+              return cedula.isNotEmpty ? cedula : 'No registrada';
+            }(),
             icono: Icons.badge_outlined,
           ),
         ],
       ),
     );
   }
- 
+
   Widget _rowItem({
     required String label,
     required String valor,
@@ -772,9 +662,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
+
   Widget _divider() {
-    return const Divider(
-        height: 1, color: Color.fromARGB(255, 202, 200, 200));
+    return const Divider(height: 1, color: Color.fromARGB(255, 202, 200, 200));
   }
 }
