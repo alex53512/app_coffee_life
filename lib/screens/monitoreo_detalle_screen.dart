@@ -32,7 +32,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
 
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
-    print('ANALISIS IA: $_analisisIa');
 
     final idMonitoreo =
         widget.monitoreo['idMonitoreo'] ?? widget.monitoreo['id_monitoreo'];
@@ -45,7 +44,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
           (inner is Map) ? inner : rawMonitoreo,
         );
       }
-      print('IMAGENES: ${_monitoreoCompleto?['imagenes']}');
 
       _analisisIa = await _cargarAnalisisIa(idMonitoreo);
 
@@ -161,26 +159,22 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   String _finca() {
     final cultivo = _m['cultivo'];
 
-    // Nivel 1: cultivo.finca con nombre
     if (cultivo is Map) {
       final finca = cultivo['finca'];
       if (finca is Map) {
         final nombre = finca['nombreFinca'] ?? finca['nombre_finca'] ?? finca['nombre'];
         if (nombre != null && nombre.toString().isNotEmpty) return nombre.toString();
       }
-      // Nivel 2: nombreFinca directo en cultivo
       final nombreFinca = cultivo['nombreFinca'] ?? cultivo['nombre_finca'];
       if (nombreFinca != null && nombreFinca.toString().isNotEmpty) return nombreFinca.toString();
     }
 
-    // Nivel 3: finca directo en el monitoreo
     final fincaRaiz = _m['finca'];
     if (fincaRaiz is Map) {
       final nombre = fincaRaiz['nombreFinca'] ?? fincaRaiz['nombre_finca'] ?? fincaRaiz['nombre'];
       if (nombre != null && nombre.toString().isNotEmpty) return nombre.toString();
     }
 
-    // Nivel 4: buscar en AppState por idFinca
     if (cultivo is Map) {
       final idFinca = cultivo['idFinca'] ?? cultivo['id_finca'];
       if (idFinca != null) {
@@ -195,7 +189,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       }
     }
 
-    // Nivel 5: buscar en widget.monitoreo original
     final fincaOriginal = widget.monitoreo['finca'];
     if (fincaOriginal is Map) {
       final nombre = fincaOriginal['nombreFinca'] ?? fincaOriginal['nombre_finca'] ?? fincaOriginal['nombre'];
@@ -462,6 +455,13 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+
+        // ✅ Imagen primero
+        _seccionTitulo('Imágenes (${_imagenes().length})'),
+        const SizedBox(height: 10),
+        _buildImagenes(),
+        const SizedBox(height: 14),
+
         if (desdObs)
           Container(
             margin: const EdgeInsets.only(bottom: 12),
@@ -580,9 +580,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
           ),
           const SizedBox(height: 14),
         ],
-        _seccionTitulo('Imágenes (${_imagenes().length})'),
-        const SizedBox(height: 10),
-        _buildImagenes(),
       ],
     );
   }
