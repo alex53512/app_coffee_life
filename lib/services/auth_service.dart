@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state.dart';
+import 'websocket_service.dart';
 
 class AuthService {
  static const String baseUrl = 'https://backend-coffe-lifee-production-191b.up.railway.app';
@@ -28,6 +29,7 @@ class AuthService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_tokenKey, data['token']);
         await prefs.setString(_userKey, jsonEncode(data['usuario'] ?? data['data']));
+        WebSocketService.instance.connect();
         return {'success': true, 'data': data['usuario'] ?? data['data']};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Correo o contraseña incorrectos'};
@@ -98,10 +100,11 @@ class AuthService {
   }
 
   static Future<void> logout() async {
+    WebSocketService.instance.disconnect();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
-    AppState.instance.reset(); // limpiar fincas, cultivos y foto del usuario anterior
+    AppState.instance.reset();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
