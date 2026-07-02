@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
+import '../services/websocket_service.dart';
 import 'home_screen.dart';
 import 'diagnostic_screen.dart';
 import 'clima_screen.dart';
@@ -29,6 +30,7 @@ class _MainNavigationState extends State<MainNavigation>
   void initState() {
     super.initState();
     AppState.instance.addListener(_onFincaCambiada);
+    WebSocketService.instance.on('*', _onNotificacion);
     _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -41,11 +43,36 @@ class _MainNavigationState extends State<MainNavigation>
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
+    WebSocketService.instance.off('*', _onNotificacion);
     _fabController.dispose();
     super.dispose();
   }
 
   void _onFincaCambiada() => setState(() {});
+
+  void _onNotificacion(Map<String, dynamic> data) {
+    AppState.instance.agregarNotificacion(data);
+    final titulo = data['titulo'] ?? data['title'] ?? 'Novedad';
+    final mensaje = data['mensaje'] ?? data['message'] ?? '';
+    final idMonitoreo = data['idMonitoreo'] ?? data['id_monitoreo'];
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$titulo${mensaje.isNotEmpty ? ': $mensaje' : ''}'),
+        behavior: SnackBarBehavior.floating,
+        action: idMonitoreo != null
+            ? SnackBarAction(
+                label: 'Ver',
+                onPressed: () {
+                  AppState.instance.marcarNotificacionesLeidas();
+                  setState(() => _currentIndex = 3);
+                },
+              )
+            : null,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
 
   String get _nombreFincaActual =>
       AppState.instance.fincaSeleccionada?['nombreFinca'] ?? 'Mi Finca';
@@ -141,16 +168,43 @@ class _MainNavigationState extends State<MainNavigation>
 
   Widget _navItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isActive = _currentIndex == index;
+    final badge = index == 3 ? AppState.instance.notificacionesNoLeidas : 0;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        if (index == 3) AppState.instance.marcarNotificacionesLeidas();
+        setState(() => _currentIndex = index);
+      },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 56,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isActive ? activeIcon : inactiveIcon,
-                color: isActive ? AppColors.primary : AppColors.textSecondary, size: 24),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(isActive ? activeIcon : inactiveIcon,
+                    color: isActive ? AppColors.primary : AppColors.textSecondary, size: 24),
+                if (badge > 0)
+                  Positioned(
+                    right: -8,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        '$badge',
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 2),
             Text(label,
                 style: GoogleFonts.nunito(

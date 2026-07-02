@@ -10,7 +10,9 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic>? _cultivoSeleccionado;
   String _nivelRoya = 'Sin datos';
   String? _fotoPerfil;
- 
+  final List<Map<String, dynamic>> _notificacionesPendientes = [];
+  int _notificacionesNoLeidas = 0;
+
   // ── Getters ────────────────────────────────────────────────
   Map<String, dynamic>? get fincaSeleccionada => _fincaSeleccionada;
   List get cultivosFinca => List.unmodifiable(_cultivosFinca);
@@ -34,7 +36,23 @@ class AppState extends ChangeNotifier {
   /// IDs de todos los cultivos de la finca activa.
   List get idsCultivosFinca =>
       _cultivosFinca.map((c) => c['idCultivo'] ?? c['id_cultivo']).toList();
- 
+
+  // ── Notificaciones ─────────────────────────────────────────
+  List<Map<String, dynamic>> get notificacionesPendientes =>
+      List.unmodifiable(_notificacionesPendientes);
+  int get notificacionesNoLeidas => _notificacionesNoLeidas;
+
+  void agregarNotificacion(Map<String, dynamic> notif) {
+    _notificacionesPendientes.add(Map.from(notif));
+    _notificacionesNoLeidas++;
+    notifyListeners();
+  }
+
+  void marcarNotificacionesLeidas() {
+    _notificacionesNoLeidas = 0;
+    notifyListeners();
+  }
+
   // ── Setters ────────────────────────────────────────────────
  
   /// Llamar desde HomeScreen cuando cambia la finca.
@@ -72,6 +90,8 @@ void reset() {
   _cultivoSeleccionado = null;
   _nivelRoya           = 'Sin datos';
   _fotoPerfil          = null;
+  _notificacionesPendientes.clear();
+  _notificacionesNoLeidas = 0;
   notifyListeners();
 }
 }
