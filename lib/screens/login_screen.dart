@@ -4,7 +4,6 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'main_navigation.dart';
-import 'main_navigation_experto.dart';
 import 'forgot_password_screen.dart';
  
 class LoginScreen extends StatefulWidget {
@@ -51,12 +50,10 @@ class _LoginScreenState extends State<LoginScreen> {
 final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowerCase() ?? 'cafetero';
  
         if (rol == 'experto' || rol == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => MainNavigationExperto(usuario: result['data']),
-            ),
-          );
+          setState(() {
+            _errorGeneral =
+                'Los usuarios expertos y administradores deben iniciar sesión desde la plataforma web.';
+          });
         } else {
           Navigator.pushReplacement(
             context,

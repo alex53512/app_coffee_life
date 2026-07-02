@@ -600,6 +600,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             valor: _finca?['nombreFinca']?.toString() ?? 'Sin finca registrada',
             icono: Icons.park_outlined,
           ),
+          if (_finca?['expertoAsignado'] != null) ...[
+            _divider(),
+            _rowItem(
+              label: 'Experto asignado',
+              valor: () {
+                final e = _finca!['expertoAsignado'];
+                final nom = '${e['nombre'] ?? ''} ${e['apellido'] ?? ''}'.trim();
+                return nom.isNotEmpty ? nom : 'Experto asignado';
+              }(),
+              icono: Icons.person_outline,
+            ),
+          ],
           _divider(),
           _rowItem(
             label: 'Municipio',

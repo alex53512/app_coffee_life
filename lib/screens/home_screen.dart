@@ -721,6 +721,12 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
+  String _expertoNombre(dynamic exp) {
+    if (exp == null) return '';
+    final nom = '${exp['nombre'] ?? ''} ${exp['apellido'] ?? ''}'.trim();
+    return nom.isNotEmpty ? nom : 'Experto asignado';
+  }
+
   Widget _buildFincaCard(Map<String, dynamic> finca) {
     final cultivos  = _cultivosFincaActual;
     final nombre    = finca['nombreFinca'] ?? 'Mi Finca';
@@ -746,6 +752,15 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(nombre, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             Text(municipio, style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+            if (finca['expertoAsignado'] != null) ...[
+              SizedBox(height: 4),
+              Row(children: [
+                Icon(Icons.person_outline, size: 12, color: AppColors.primary),
+                const SizedBox(width: 4),
+                Flexible(child: Text('Experto: ${_expertoNombre(finca['expertoAsignado'])}',
+                    style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary))),
+              ]),
+            ],
           ])),
         ]),
         const SizedBox(height: 14),
@@ -817,18 +832,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: selected ? AppColors.primary : AppColors.textSecondary)),
                     const SizedBox(height: 2),
                     Row(children: [
-                      Icon(Icons.forest_outlined, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
-                      const SizedBox(width: 3),
-                      Text('$plantas plantas', style: GoogleFonts.nunito(fontSize: 10,
-                          color: selected ? AppColors.primary : AppColors.textSecondary)),
-                      if (variedad.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Icon(Icons.local_florist_outlined, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
-                        const SizedBox(width: 3),
-                        Text(variedad, style: GoogleFonts.nunito(fontSize: 10,
-                            color: selected ? AppColors.primary : AppColors.textSecondary)),
-                      ],
-                    ]),
+  Icon(Icons.forest_outlined, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
+  const SizedBox(width: 3),
+  Flexible(
+    child: Text('$plantas plantas', overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.nunito(fontSize: 10,
+            color: selected ? AppColors.primary : AppColors.textSecondary)),
+  ),
+  if (variedad.isNotEmpty) ...[
+    const SizedBox(width: 8),
+    Icon(Icons.local_florist_outlined, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
+    const SizedBox(width: 3),
+    Flexible(
+      child: Text(variedad, overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.nunito(fontSize: 10,
+              color: selected ? AppColors.primary : AppColors.textSecondary)),
+    ),
+  ],
+]),
                   ])),
                   // ── Editar ──
                   IconButton(

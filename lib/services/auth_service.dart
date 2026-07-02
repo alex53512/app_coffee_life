@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://backend-coffe-lifee-production.up.railway.app';
+ static const String baseUrl = 'https://backend-coffe-lifee-production-191b.up.railway.app';
+
   static const String _tokenKey = 'auth_token';
   static const String _userKey  = 'auth_user';
 
