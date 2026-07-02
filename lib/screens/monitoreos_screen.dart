@@ -1,43 +1,43 @@
 import 'dart:math' as math;
-
+ 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
 import 'monitoreo_detalle_screen.dart';
-
+ 
 // ─── Helpers generales ────────────────────────────────────────────────────────
-
+ 
 int? _toInt(dynamic v) => v == null ? null : int.tryParse(v.toString());
 double? _toDouble(dynamic v) =>
     v == null ? null : double.tryParse(v.toString());
-
+ 
 /// Amarillo usado para el riesgo "Medio" de los lotes (mapa y leyendas).
 const Color _amarilloRiesgoLote = Color(0xFFFBC02D);
-
+ 
 Color _riesgoColor(int nivel) => switch (nivel) {
       1 => AppColors.primary,
       2 => _amarilloRiesgoLote,
       3 => Colors.red,
       _ => AppColors.primary,
     };
-
+ 
 String _riesgoLabel(int nivel) => switch (nivel) {
       1 => 'Bajo',
       2 => 'Medio',
       3 => 'Alto',
       _ => 'Sin datos',
     };
-
+ 
 // ─── Layout tipo Voronoi (lotes irregulares que encajan entre sí) ────────────
-
+ 
 class _LoteLayout {
   final List<Offset> centers;
   final List<List<Offset>> cells;
   const _LoteLayout(this.centers, this.cells);
 }
-
+ 
 /// Genera puntos "semilla" repartidos por el lienzo (uno por lote) de forma
 /// realmente aleatoria (con una semilla fija para que no "salte" en cada
 /// rebuild), evitando que queden demasiado pegados entre sí. Esto, sumado a
@@ -46,18 +46,18 @@ class _LoteLayout {
 List<Offset> _generarSemillas(Size size, int n) {
   if (n <= 0) return [];
   if (n == 1) return [Offset(size.width / 2, size.height / 2)];
-
+ 
   final marginX = size.width * 0.10;
   final marginY = size.height * 0.10;
   final minDist =
       math.sqrt(size.width * size.height / n) * (n <= 3 ? 0.7 : 0.45);
   final rnd = math.Random(7000 + n * 131);
-
+ 
   Offset puntoAleatorio() => Offset(
         marginX + rnd.nextDouble() * (size.width - marginX * 2),
         marginY + rnd.nextDouble() * (size.height - marginY * 2),
       );
-
+ 
   final seeds = <Offset>[];
   int attempts = 0;
   while (seeds.length < n && attempts < n * 300) {
@@ -73,7 +73,7 @@ List<Offset> _generarSemillas(Size size, int n) {
   }
   return seeds;
 }
-
+ 
 /// Genera un "peso" aleatorio por lote para un diagrama de Voronoi ponderado
 /// (power diagram): entre más peso tiene una semilla, más territorio gana
 /// frente a sus vecinas. Así, aunque dos lotes estén cerca, sus formas y
@@ -85,7 +85,7 @@ List<double> _generarPesos(Size size, int n) {
   return List.generate(
       n, (_) => (rnd.nextDouble() - 0.5) * 2 * escala * 0.5);
 }
-
+ 
 /// Recorta un polígono convexo contra un semiplano (Sutherland–Hodgman).
 /// Se conservan los puntos donde dot(P, normal) <= c.
 List<Offset> _clipHalfPlane(List<Offset> poly, Offset normal, double c) {
@@ -107,7 +107,7 @@ List<Offset> _clipHalfPlane(List<Offset> poly, Offset normal, double c) {
   }
   return out;
 }
-
+ 
 /// Calcula las celdas de un diagrama de Voronoi ponderado (una por semilla),
 /// recortadas al rectángulo del lienzo. El resultado son polígonos
 /// irregulares que encajan perfectamente entre sí, como parcelas reales,
@@ -140,12 +140,12 @@ List<List<Offset>> _calcularCeldasVoronoi(
   }
   return cells;
 }
-
+ 
 /// Factor de escala aplicado a cada lote respecto a su propio centro,
 /// para que no ocupen el 100% del mapa y quede un pequeño espacio
 /// (de "calle") visible entre lotes vecinos.
 const double _factorEscalaLote = 0.92;
-
+ 
 /// Encoge un polígono hacia su propio centro (promedio de sus vértices)
 /// según [factor] (1.0 = tamaño original, valores menores = más pequeño).
 List<Offset> _encogerPoligono(List<Offset> poly, double factor) {
@@ -164,7 +164,7 @@ List<Offset> _encogerPoligono(List<Offset> poly, double factor) {
           ))
       .toList();
 }
-
+ 
 _LoteLayout _computeLoteLayout(Size size, int n) {
   if (n <= 0 || size.width <= 0 || size.height <= 0) {
     return const _LoteLayout([], []);
@@ -188,7 +188,7 @@ _LoteLayout _computeLoteLayout(Size size, int n) {
       .toList();
   return _LoteLayout(seeds, cells);
 }
-
+ 
 /// Test punto-en-polígono (ray casting), usado para detectar toques.
 bool _puntoEnPoligono(Offset p, List<Offset> poly) {
   if (poly.length < 3) return false;
@@ -203,7 +203,7 @@ bool _puntoEnPoligono(Offset p, List<Offset> poly) {
   }
   return inside;
 }
-
+ 
 /// Genera una versión "facetada" e irregular del segmento a→b, como el
 /// borde real de una parcela vista desde arriba (no una línea recta
 /// perfecta). La semilla aleatoria se calcula a partir de las coordenadas
@@ -214,24 +214,24 @@ bool _puntoEnPoligono(Offset p, List<Offset> poly) {
 List<Offset> _bordeFacetado(Offset a, Offset b) {
   final length = (b - a).distance;
   if (length < 14) return [a, b];
-
+ 
   final reversed = (a.dx > b.dx) || (a.dx == b.dx && a.dy > b.dy);
   final p1 = reversed ? b : a;
   final p2 = reversed ? a : b;
-
+ 
   final seed = ((p1.dx * 131.7).round() +
           (p1.dy * 743.3).round() +
           (p2.dx * 977.1).round() +
           (p2.dy * 53.9).round())
       .abs();
   final rnd = math.Random(seed);
-
+ 
   final dir = Offset((p2.dx - p1.dx) / length, (p2.dy - p1.dy) / length);
   final normal = Offset(-dir.dy, dir.dx);
-
+ 
   final nSeg = (length / 24).clamp(2, 7).round();
   final amplitude = (length * 0.05).clamp(2.5, 10.0);
-
+ 
   final pts = <Offset>[p1];
   for (int k = 1; k < nSeg; k++) {
     final t = k / nSeg;
@@ -246,10 +246,10 @@ List<Offset> _bordeFacetado(Offset a, Offset b) {
     pts.add(Offset(base.dx + normal.dx * off, base.dy + normal.dy * off));
   }
   pts.add(p2);
-
+ 
   return reversed ? pts.reversed.toList() : pts;
 }
-
+ 
 /// Convierte una lista de vértices del Voronoi en un Path con bordes
 /// facetados (irregulares), para que cada lote se vea como una parcela
 /// real, con su propia forma distintiva, en vez de un polígono limpio.
@@ -276,35 +276,35 @@ Path _poligonoOrganico(List<Offset> pts) {
   path.close();
   return path;
 }
-
+ 
 double _radioPromedio(Size size, int n) {
   if (n <= 0) return 60;
   final area = size.width * size.height / n;
   return math.sqrt(area) * 0.5;
 }
-
+ 
 // ─── Painter principal ────────────────────────────────────────────────────────
-
+ 
 class _MapaFincaPainter extends CustomPainter {
   final List<_LoteRiesgo> lotes;
   final int? selectedIdCultivo;
-
+ 
   _MapaFincaPainter({required this.lotes, this.selectedIdCultivo});
-
+ 
   // ── Pin estilo "drop pin" ─────────────────────────────────────────────────
-
+ 
   void _drawPin(Canvas canvas, Offset center, Color color,
       {bool selected = false}) {
     final r = selected ? 11.0 : 9.0;
     final pinTop = Offset(center.dx, center.dy - r * 2.2);
-
+ 
     // Sombra
     canvas.drawCircle(
       pinTop.translate(1, 1),
       r,
       Paint()..color = Colors.black.withOpacity(0.25),
     );
-
+ 
     // Punta triangular
     final tipPath = Path()
       ..moveTo(center.dx - r * 0.55, pinTop.dy + r * 0.65)
@@ -320,7 +320,7 @@ class _MapaFincaPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0,
     );
-
+ 
     // Círculo principal
     canvas.drawCircle(pinTop, r,
         Paint()..color = selected ? color : Colors.white);
@@ -332,7 +332,7 @@ class _MapaFincaPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = selected ? 2.0 : 1.8,
     );
-
+ 
     // Punto interior
     canvas.drawCircle(
       pinTop,
@@ -340,16 +340,16 @@ class _MapaFincaPainter extends CustomPainter {
       Paint()..color = selected ? Colors.white : color,
     );
   }
-
+ 
   // ── Etiqueta del lote seleccionado ───────────────────────────────────────
-
+ 
   void _drawLabel(Canvas canvas, Offset center, _LoteRiesgo lote,
       double refSize) {
     final color = _riesgoColor(lote.nivel);
     final label = lote.nivel == 0 ? 'Sin datos' : _riesgoLabel(lote.nivel);
     final nameFontSize = (refSize * 0.22).clamp(9.0, 13.0);
     final riskFontSize = (refSize * 0.16).clamp(7.0, 10.0);
-
+ 
     final tp = TextPainter(
       text: TextSpan(
         text: lote.nombre,
@@ -364,9 +364,9 @@ class _MapaFincaPainter extends CustomPainter {
       maxLines: 2,
       ellipsis: '…',
     )..layout(maxWidth: refSize * 1.4);
-
+ 
     final labelY = center.dy + refSize * 0.18;
-
+ 
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(
@@ -379,7 +379,7 @@ class _MapaFincaPainter extends CustomPainter {
       Paint()..color = Colors.black.withOpacity(0.48),
     );
     tp.paint(canvas, Offset(center.dx - tp.width / 2, labelY));
-
+ 
     final tp2 = TextPainter(
       text: TextSpan(
         text: label,
@@ -391,9 +391,9 @@ class _MapaFincaPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-
+ 
     final riskY = labelY + tp.height + 12;
-
+ 
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(
@@ -408,30 +408,30 @@ class _MapaFincaPainter extends CustomPainter {
     tp2.paint(
         canvas, Offset(center.dx - tp2.width / 2, riskY - tp2.height / 2));
   }
-
+ 
   // ── paint ─────────────────────────────────────────────────────────────────
-
+ 
   @override
   void paint(Canvas canvas, Size size) {
     if (lotes.isEmpty) return;
-
+ 
     final layout = _computeLoteLayout(size, lotes.length);
     if (layout.cells.isEmpty) return;
-
+ 
     final refSize = _radioPromedio(size, lotes.length);
-
+ 
     // Paso 1 – polígonos de cada lote (encajan entre sí, sin huecos)
     for (int i = 0; i < lotes.length; i++) {
       final lote = lotes[i];
       final cellPts = layout.cells[i];
       if (cellPts.length < 3) continue;
-
+ 
       final color = _riesgoColor(lote.nivel);
       final isSel =
           selectedIdCultivo != null && lote.idCultivo == selectedIdCultivo;
-
+ 
       final path = _poligonoOrganico(cellPts);
-
+ 
       // Relleno semitransparente
       canvas.drawPath(
         path,
@@ -456,7 +456,7 @@ class _MapaFincaPainter extends CustomPainter {
           ..strokeWidth = 0.8,
       );
     }
-
+ 
     // Paso 2 – pines y etiquetas (encima de los polígonos)
     for (int i = 0; i < lotes.length; i++) {
       final lote = lotes[i];
@@ -464,11 +464,11 @@ class _MapaFincaPainter extends CustomPainter {
       final color = _riesgoColor(lote.nivel);
       final isSel =
           selectedIdCultivo != null && lote.idCultivo == selectedIdCultivo;
-
+ 
       _drawPin(canvas, center, color, selected: isSel);
       if (isSel) _drawLabel(canvas, center, lote, refSize);
     }
-
+ 
     // Borde interior del contenedor
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
@@ -478,43 +478,43 @@ class _MapaFincaPainter extends CustomPainter {
         ..strokeWidth = 1.5,
     );
   }
-
+ 
   @override
   bool shouldRepaint(covariant _MapaFincaPainter old) =>
       old.lotes != lotes || old.selectedIdCultivo != selectedIdCultivo;
 }
-
+ 
 // ─── ViewModel lote ───────────────────────────────────────────────────────────
-
+ 
 class _LoteRiesgo {
   final int idCultivo;
   final String nombre;
   final int nivel;
-
+ 
   const _LoteRiesgo({
     required this.idCultivo,
     required this.nombre,
     required this.nivel,
   });
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 class MontoreosScreen extends StatefulWidget {
   const MontoreosScreen({super.key});
-
+ 
   @override
   State<MontoreosScreen> createState() => _MontoreosScreenState();
 }
-
+ 
 class _MontoreosScreenState extends State<MontoreosScreen> {
   int _tabIndex = 0;
   bool _cargando = true;
   String? _error;
   List _monitoreos = [];
-
+ 
   String _busqueda = '';
-
+ 
   List get _monitoreosFiltrados {
     if (_busqueda.isEmpty) return _monitoreos;
     final q = _busqueda.toLowerCase();
@@ -529,29 +529,29 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           titulo.contains(q);
     }).toList();
   }
-
+ 
   bool _cargandoMapa = false;
   List<_LoteRiesgo> _lotes = [];
   _LoteRiesgo? _loteSeleccionado;
-
+ 
   Map<String, dynamic>? get _fincaActiva =>
       AppState.instance.fincaSeleccionada;
-
+ 
   int? get _idFincaActiva =>
       _toInt(_fincaActiva?['idFinca'] ?? _fincaActiva?['id_finca']);
-
+ 
   String get _nombreFincaActiva =>
       _fincaActiva?['nombreFinca'] ??
       _fincaActiva?['nombre_finca'] ??
       'Finca';
-
+ 
   @override
   void initState() {
     super.initState();
     _cargarMonitoreos();
     AppState.instance.addListener(_onFincaCambiada);
   }
-
+ 
   void _onFincaCambiada() {
     setState(() {
       _busqueda = '';
@@ -560,15 +560,15 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     });
     _cargarMonitoreos();
   }
-
+ 
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
     super.dispose();
   }
-
+ 
   // ── Carga monitoreos ───────────────────────────────────────────────────────
-
+ 
   Future<void> _cargarMonitoreos() async {
     setState(() {
       _cargando = true;
@@ -576,8 +576,33 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     });
     try {
       final idFinca = _idFincaActiva;
-      final endpoint =
-          idFinca != null ? '/monitoreos?idFinca=$idFinca' : '/monitoreos';
+ 
+      // NOTA: el backend (AdonisJS) todavía no soporta filtrar por
+      // "idFinca" directamente -- solo entiende "id_cultivo" o
+      // "id_experto". Por eso el filtro real por finca se sigue haciendo
+      // aquí en el cliente (más abajo). El problema es que, sin filtro
+      // server-side, el endpoint aplica su paginación por defecto
+      // (page=1, limit=10) sobre TODOS los monitoreos de la base de
+      // datos, ordenados por id_monitoreo DESC. Si hay otros usuarios o
+      // cultivos generando monitoreos en el mismo backend (por ejemplo,
+      // otros compañeros probando la app contra el mismo servidor), los
+      // tuyos pueden quedar fuera de esos primeros 10 antes de que el
+      // filtro local por finca llegue a verlos, dando la impresión de
+      // que "se borran" cuando en realidad solo quedaron fuera de la
+      // página actual.
+      //
+      // Mientras el backend no exponga un filtro real por finca, subimos
+      // el límite de paginación para traer suficientes registros y que
+      // el filtro local no se quede corto. Esto es un parche temporal:
+      // lo correcto a futuro es que el backend acepte un filtro real
+      // "id_finca" (haciendo join con cultivos) para no depender de
+      // pedir cientos de registros cada vez.
+      const limiteSeguro = 200;
+ 
+      final endpoint = idFinca != null
+          ? '/monitoreos?idFinca=$idFinca&limit=$limiteSeguro'
+          : '/monitoreos?limit=$limiteSeguro';
+ 
       final data = await ApiService.get(endpoint);
       List lista =
           data is List ? List.from(data) : List.from(data['data'] ?? []);
@@ -604,9 +629,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       });
     }
   }
-
+ 
   // ── Carga lotes coloreados por riesgo ──────────────────────────────────────
-
+ 
   Future<void> _cargarMapa() async {
     if (_lotes.isNotEmpty) return;
     setState(() => _cargandoMapa = true);
@@ -617,7 +642,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       List cultivos = resCultivos is List
           ? List.from(resCultivos)
           : List.from(resCultivos['data'] ?? []);
-
+ 
       if (idFinca != null) {
         cultivos = cultivos.where((c) {
           final fId = _toInt(
@@ -625,7 +650,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           return fId == null || fId == idFinca;
         }).toList();
       }
-
+ 
       if (cultivos.isEmpty) {
         setState(() {
           _lotes = [];
@@ -633,7 +658,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         });
         return;
       }
-
+ 
       final Map<int, int> nivelPorCultivo = {};
       for (final m in _monitoreos) {
         final idCultivo = _toInt(m['idCultivo'] ??
@@ -650,7 +675,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         final actual = nivelPorCultivo[idCultivo] ?? 0;
         if (nivel > actual) nivelPorCultivo[idCultivo] = nivel;
       }
-
+ 
       final List<_LoteRiesgo> resultado = [];
       for (final c in cultivos) {
         final idCultivo = _toInt(c['idCultivo'] ?? c['id_cultivo']);
@@ -661,7 +686,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         resultado.add(
             _LoteRiesgo(idCultivo: idCultivo, nombre: nombre, nivel: nivel));
       }
-
+ 
       setState(() {
         _lotes = resultado;
         _cargandoMapa = false;
@@ -670,9 +695,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       setState(() => _cargandoMapa = false);
     }
   }
-
+ 
   // ── Eliminar ───────────────────────────────────────────────────────────────
-
+ 
   Future<void> _eliminarMonitoreo(dynamic m) async {
     final id = m['idMonitoreo'] ?? m['id_monitoreo'];
     try {
@@ -694,7 +719,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       }
     }
   }
-
+ 
   Future<void> _confirmarEliminar(dynamic m) async {
     final confirmado = await showDialog<bool>(
       context: context,
@@ -723,9 +748,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     );
     if (confirmado == true) _eliminarMonitoreo(m);
   }
-
+ 
   // ── Helpers de nivel ───────────────────────────────────────────────────────
-
+ 
   String _labelNivel(dynamic m) {
     final nivelRoyaObj = m['nivelRoya'] ?? m['nivel_roya'];
     if (nivelRoyaObj != null) {
@@ -762,21 +787,21 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         obs.contains('observacion')) return 'Medio';
     return 'Bajo';
   }
-
+ 
   Color _colorNivel(dynamic m) {
     final nivel = _labelNivel(m).toLowerCase();
     if (nivel.contains('alt')) return Colors.red;
     if (nivel.contains('med')) return _amarilloRiesgoLote;
     return AppColors.primary;
   }
-
+ 
   String _titulo(dynamic m) {
     final nivel = _labelNivel(m).toLowerCase();
     if (nivel.contains('alt')) return 'Roya encontrada';
     if (nivel.contains('med')) return 'Riesgo medio';
     return 'Riesgo bajo';
   }
-
+ 
   String _fecha(dynamic m) {
     final f = m['fechaMonitoreo'] ??
         m['fecha_monitoreo'] ??
@@ -794,7 +819,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       return f.toString();
     }
   }
-
+ 
   String _parcela(dynamic m) {
     final fincaNombre = m['cultivo']?['finca']?['nombreFinca'] ??
         m['cultivo']?['finca']?['nombre_finca'] ??
@@ -821,7 +846,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     }
     return 'Sin finca';
   }
-
+ 
   String? _imagenUrl(dynamic m) {
     final imagenes = m['imagenes'];
     if (imagenes == null || imagenes is! List || imagenes.isEmpty) return null;
@@ -833,9 +858,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     if (ruta.toString().startsWith('http')) return ruta.toString();
     return 'https://coffeelife-api.up.railway.app/$ruta';
   }
-
+ 
   // ── Build ──────────────────────────────────────────────────────────────────
-
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -863,7 +888,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 90,
@@ -937,7 +962,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _buildTabs() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -958,7 +983,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _tabItem(String label, int index) {
     final isActive = _tabIndex == index;
     return Expanded(
@@ -985,7 +1010,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _buildError() {
     return Center(
       child: Column(
@@ -1006,9 +1031,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   // ── Historial ─────────────────────────────────────────────────────────────
-
+ 
   Widget _buildHistorial() {
     final lista = _monitoreosFiltrados;
     return Column(
@@ -1105,14 +1130,14 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ],
     );
   }
-
+ 
   Widget _monitoreoCard(dynamic m) {
     final color = _colorNivel(m);
     final nivel = _labelNivel(m);
     final fecha = _fecha(m);
     final parcela = _parcela(m);
     final imgUrl = _imagenUrl(m);
-
+ 
     final obs = (m['observaciones'] ?? '').toString();
     final partes = obs.contains('—')
         ? obs.split('—').map((p) => p.trim()).toList()
@@ -1122,7 +1147,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         : (obs.isNotEmpty ? obs : _titulo(m));
     final confianza = partes.length > 1 ? partes[1] : '';
     final nombreCientifico = partes.length > 2 ? partes[2] : '';
-
+ 
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -1240,7 +1265,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _colorFallback(Color color) {
     return Container(
       width: 56,
@@ -1251,9 +1276,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   // ── Tab Lotes ─────────────────────────────────────────────────────────────
-
+ 
   Widget _buildMapa() {
     if (_fincaActiva == null) {
       return _mapaPlaceholder(
@@ -1272,7 +1297,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         mensaje: 'No hay lotes registrados\nen "$_nombreFincaActiva"',
       );
     }
-
+ 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
@@ -1290,7 +1315,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
-
+ 
           // ── Info lote seleccionado ────────────────────────────────────
           if (_loteSeleccionado != null)
             AnimatedContainer(
@@ -1346,7 +1371,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 ),
               ]),
             ),
-
+ 
           // ── Contenedor del "mapa" (ocupa todo el espacio, sin recortes) ─
           Container(
             width: double.infinity,
@@ -1368,7 +1393,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                       Size(constraints.maxWidth, constraints.maxHeight);
                   final layout =
                       _computeLoteLayout(canvasSize, _lotes.length);
-
+ 
                   return GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onTapUp: (details) {
@@ -1415,10 +1440,10 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                             ),
                           ),
                         ),
-
+ 
                         // ── Capa oscura leve para contraste ───────────
                         Container(color: Colors.black.withOpacity(0.10)),
-
+ 
                         // ── Lotes (polígonos) + pines ─────────────────
                         CustomPaint(
                           size: canvasSize,
@@ -1427,7 +1452,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                             selectedIdCultivo: _loteSeleccionado?.idCultivo,
                           ),
                         ),
-
+ 
                         // ── Etiqueta superior izquierda ───────────────
                         Positioned(
                           top: 12,
@@ -1456,7 +1481,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                             ),
                           ),
                         ),
-
+ 
                         // ── Controles de zoom (decorativos) ───────────
                         Positioned(
                           top: 12,
@@ -1471,7 +1496,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                             ],
                           ),
                         ),
-
+ 
                         // ── Leyenda flotante estilo mapa ──────────────
                         Positioned(
                           left: 12,
@@ -1510,9 +1535,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
               ),
             ),
           ),
-
+ 
           const SizedBox(height: 16),
-
+ 
           // ── Lista de estado por lote + leyenda ────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
@@ -1587,13 +1612,13 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
               ],
             ),
           ),
-
+ 
           const SizedBox(height: 20),
         ],
       ),
     );
   }
-
+ 
   Widget _mapControlButton(IconData icon) {
     return Container(
       width: 30,
@@ -1608,7 +1633,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       child: Icon(icon, size: 16, color: AppColors.textPrimary),
     );
   }
-
+ 
   Widget _leyendaFlotanteItem(Color color, String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1627,7 +1652,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ],
     );
   }
-
+ 
   Widget _mapaPlaceholder(
       {required IconData icon, required String mensaje}) {
     return Center(
@@ -1655,7 +1680,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       ),
     );
   }
-
+ 
   Widget _legendaItem(Color color, String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,

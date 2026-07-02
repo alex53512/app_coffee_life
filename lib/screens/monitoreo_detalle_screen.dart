@@ -6,36 +6,39 @@ import '../services/app_state.dart';
 
 class MonitoreoDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> monitoreo;
-
+ 
   const MonitoreoDetalleScreen({super.key, required this.monitoreo});
-
+ 
   @override
   State<MonitoreoDetalleScreen> createState() => _MonitoreoDetalleScreenState();
 }
-
+ 
 class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   int _tabIndex = 0;
   bool _cargando = true;
-
+ 
   Map<String, dynamic>? _monitoreoCompleto;
   Map<String, dynamic>? _analisisIa;
-  Map<String, dynamic>? _recomendacionExperto;
-  Map<String, dynamic>? _tratamiento;
-
+ 
+  // Diagnóstico del experto, resuelto por id_cultivo (no por idMonitoreo,
+  // porque el experto guarda su diagnóstico como un monitoreo NUEVO y
+  // separado -- ver _cargarDiagnosticoExperto más abajo).
+  Map<String, dynamic>? _diagnosticoExperto;
+ 
   Map<String, dynamic> get _m => _monitoreoCompleto ?? widget.monitoreo;
-
+ 
   @override
   void initState() {
     super.initState();
     _cargarDatos();
   }
-
+ 
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
-
+ 
     final idMonitoreo =
         widget.monitoreo['idMonitoreo'] ?? widget.monitoreo['id_monitoreo'];
-
+ 
     try {
       final rawMonitoreo = await ApiService.get('/monitoreos/$idMonitoreo');
       if (rawMonitoreo is Map) {
@@ -70,7 +73,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     } catch (_) {
       _analisisIa ??= _parsearObservaciones(widget.monitoreo);
     }
-
+ 
     if (mounted) setState(() => _cargando = false);
   }
 
@@ -102,7 +105,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   Map<String, dynamic>? _parsearObservaciones(Map<String, dynamic> m) {
     final obs = (m['observaciones'] ?? '').toString().trim();
     if (obs.isEmpty) return null;
-
+ 
     if (obs.contains('—')) {
       final partes = obs.split('—').map((p) => p.trim()).toList();
       final resultado = partes.isNotEmpty ? partes[0] : 'Sin resultado';
@@ -147,7 +150,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       return '${dt.day.toString().padLeft(2,'0')} de ${meses[dt.month-1]} de ${dt.year}';
     } catch (_) { return f; }
   }
-
+ 
   String _cultivo() {
     final cultivo = _m['cultivo'];
     if (cultivo is Map) {
@@ -155,7 +158,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return 'Sin cultivo';
   }
-
+ 
   String _finca() {
     final cultivo = _m['cultivo'];
 
@@ -197,7 +200,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
 
     return 'Sin finca';
   }
-
+ 
   String _municipio() {
     final cultivo = _m['cultivo'];
     if (cultivo is Map) {
@@ -211,8 +214,15 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return '';
   }
-
+ 
+  // Antes esto leía _m['experto'], que nunca se llena porque no existe
+  // ningún campo real de "experto asignado" en el monitoreo: ahora usa el
+  // nombre que sacamos del monitoreo [EXPERTO] encontrado por id_cultivo.
   String _experto() {
+    final nombreDelDiagnostico =
+        (_diagnosticoExperto?['nombreExperto'] ?? '').toString();
+    if (nombreDelDiagnostico.isNotEmpty) return nombreDelDiagnostico;
+ 
     final exp = _m['experto'];
     if (exp is Map) {
       final nombre   = exp['nombre'] ?? '';
@@ -222,7 +232,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return 'Sin experto asignado';
   }
-
+ 
   String _nivelRoya() {
     final obj = _m['nivelRoya'];
     if (obj is Map) return (obj['nombreNivel'] ?? obj['nombre_nivel'] ?? '').toString();
@@ -239,13 +249,13 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     }
     return 'Sin análisis';
   }
-
+ 
   List _imagenes() {
     final imgs = _m['imagenes'];
     if (imgs is List) return imgs;
     return [];
   }
-
+ 
   Color _colorNivel() {
     final nivel = _nivelRoya().toLowerCase();
     if (nivel.contains('alt')) return Colors.red;
@@ -257,7 +267,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   @override
   Widget build(BuildContext context) {
     final municipio = _municipio();
-
+ 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
@@ -440,7 +450,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         mensaje: 'Este monitoreo no tiene un análisis de inteligencia artificial registrado.',
       );
     }
-
+ 
     final resultado   = _analisisIa!['resultado'] ?? 'Sin resultado';
     final confianza   = _analisisIa!['confianza'] ?? _analisisIa!['porcentajeConfianza'] ?? 0;
     final version     = _analisisIa!['versionModelo'] ?? _analisisIa!['version_modelo'] ?? '1.0';
@@ -451,7 +461,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
 
     final confianzaNum = (confianza is num) ? confianza.toDouble() : double.tryParse(confianza.toString()) ?? 0.0;
     final confianzaPct = confianzaNum > 1 ? confianzaNum / 100 : confianzaNum;
-
+ 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -585,7 +595,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   }
 
   Widget _buildTabExperto() {
-    if (_recomendacionExperto == null) {
+    if (_diagnosticoExperto == null) {
       return _sinDatos(
         icono: Icons.person_outline_rounded,
         titulo: 'Sin recomendación del experto',
@@ -618,7 +628,11 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     if (expertoRec is Map) {
       nombreExperto = '${expertoRec['nombre'] ?? ''} ${expertoRec['apellido'] ?? ''}'.trim();
     }
-
+ 
+    Color colorSeveridad = AppColors.primary;
+    if (severidad.toLowerCase().contains('alt')) colorSeveridad = Colors.red;
+    else if (severidad.toLowerCase().contains('med')) colorSeveridad = Colors.orange;
+ 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -642,6 +656,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         const SizedBox(height: 14),
         _card(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _infoFilaColor(Icons.flag_outlined, 'Prioridad', prioridad.toString(), colorPrioridad),
               if (fechaFormateada.isNotEmpty) ...[
@@ -655,6 +670,96 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
             ],
           ),
         ),
+ 
+        // ── Observaciones del experto ───────────────────────────────────
+        if (observaciones.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Observaciones',
+                    style: GoogleFonts.nunito(
+                        fontSize: 13, fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(observaciones,
+                      style: GoogleFonts.nunito(
+                          fontSize: 13, color: AppColors.textPrimary, height: 1.5)),
+                ),
+              ],
+            ),
+          ),
+        ],
+ 
+        // ── Recomendaciones y tratamientos del experto ──────────────────
+        if (recomendaciones.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _seccionTitulo('Recomendaciones del experto'),
+          const SizedBox(height: 10),
+          ...recomendaciones.map((rec) {
+            final descripcion = (rec['descripcion'] ?? '').toString();
+            final tratamientos = (rec['tratamientos'] as List?) ?? [];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.notes_rounded,
+                            color: AppColors.primary, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            descripcion.isNotEmpty ? descripcion : 'Sin descripción',
+                            style: GoogleFonts.nunito(
+                                fontSize: 14, color: AppColors.textPrimary, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (tratamientos.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 8),
+                      ...tratamientos.map((t) {
+                        final nombreTrat = (t is Map)
+                            ? (t['nombre'] ?? t['nombreTratamiento'] ?? '').toString()
+                            : '';
+                        if (nombreTrat.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.healing_outlined,
+                                  size: 14, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(nombreTrat,
+                                    style: GoogleFonts.nunito(
+                                        fontSize: 12, color: AppColors.textSecondary)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
       ],
     );
   }
@@ -712,12 +817,12 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ),
     );
   }
-
+ 
   Widget _seccionTitulo(String titulo) {
     return Text(titulo,
         style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary));
   }
-
+ 
   Widget _card({required Widget child}) {
     return Container(
       width: double.infinity,
@@ -730,7 +835,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       child: child,
     );
   }
-
+ 
   Widget _infoFila(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,11 +873,19 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ],
     );
   }
-
+ 
   Widget _imagenPlaceholder() {
     return Container(
       color: const Color(0xFFE8F5E9),
       child: const Center(child: Icon(Icons.eco_outlined, color: Colors.green, size: 40)),
     );
   }
+}
+ 
+class _RecomendacionIA {
+  final IconData icon;
+  final Color color;
+  final String titulo;
+  final String subtitulo;
+  const _RecomendacionIA(this.icon, this.color, this.titulo, this.subtitulo);
 }

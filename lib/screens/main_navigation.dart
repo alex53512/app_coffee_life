@@ -53,7 +53,7 @@ class _MainNavigationState extends State<MainNavigation>
   List<Widget> get _screens => [
         HomeScreen(usuario: widget.usuario),
         const DiagnosticScreen(),
-        ClimaScreen(nombreFinca: _nombreFincaActual),
+        const ClimaScreen(),
         const MontoreosScreen(),
         const AprenderScreen(),
         ProfileScreen(usuario: widget.usuario),
