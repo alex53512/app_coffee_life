@@ -106,6 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _cargarDatos() async {
+    print('USUARIO DATA: $_usuarioData');
     setState(() => _cargando = true);
     try {
       final results = await Future.wait([

@@ -49,6 +49,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   Color  _severityColor  = AppColors.primary;
   List<Map<String, dynamic>> _detections = [];
   _IaClase _claseDetectada = _IaClase.desconocida;
+
+  // ✅ Flag para evitar doble guardado
+  bool _guardando = false;
  
   String _invalidTitle      = '';
   String _invalidMessage    = '';
@@ -79,6 +82,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _stage      = 'idle';
       _imagenFile  = null;
       _imagenBytes = null;
+      _guardando   = false; // ✅
     });
   }
  
@@ -512,6 +516,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               _stage       = 'idle';
               _imagenFile  = null;
               _imagenBytes = null;
+              _guardando   = false; // ✅
             }),
             icon: const Icon(Icons.add_a_photo_outlined, size: 20),
             label: Text('Nuevo diagnóstico',
@@ -979,6 +984,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       setState(() {
         _imagenFile  = foto;
         _imagenBytes = bytes;
+        _guardando   = false; // ✅ reset al tomar nueva foto
       });
       _startAnalysis(foto, bytes);
     }
@@ -996,6 +1002,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       setState(() {
         _imagenFile  = foto;
         _imagenBytes = bytes;
+        _guardando   = false; // ✅ reset al seleccionar nueva foto
       });
       _startAnalysis(foto, bytes);
     }
@@ -1031,19 +1038,19 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _procesarDetecciones([]);
     }
  
-    if (_esResultadoValido) {
+    if (_esResultadoValido && !_guardando) {
+      _guardando = true;
       try {
         final hoy      = DateTime.now();
         final fechaStr =
             '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
  
-        // Las observaciones guardan también la SEVERIDAD calculada
-        // (Baja/Media/Alta/Ninguna). Esto permite que cualquier pantalla
-        // que lea este monitoreo (caficultor o experto) reconstruya el
-        // mismo tratamiento recomendado de forma consistente.
         final observaciones =
             '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
             '— $_scientificName — Severidad: $_severity';
+        debugPrint('CULTIVO ID: $_cultivoSeleccionado');
+        debugPrint('FINCA: ${AppState.instance.fincaSeleccionada?["nombreFinca"]}');
+        debugPrint('CULTIVOS EN ESTADO: ${AppState.instance.cultivosFinca.length}');
  
         final resMonitoreo = await ApiService.post('/monitoreos', {
           'id_cultivo':      _cultivoSeleccionado,

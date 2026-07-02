@@ -176,91 +176,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     } catch (_) { return fecha.toString(); }
   }
  
-  // ─── Recomendaciones de IA (mismas que ve el caficultor) ──────────────
-  //
-  // Esto es lo mismo que se muestra en diagnostic_screen.dart y en
-  // monitoreo_detalle_screen.dart (lado del caficultor): un set de
-  // recomendaciones fijas según si el resultado es roya o planta sana.
-  // Se agrega aquí para que el experto vea exactamente la misma base que
-  // tuvo el caficultor al recibir su diagnóstico, y pueda partir de ahí
-  // para su propio criterio profesional.
- 
-  List<_RecomendacionIA> _recomendacionesIa() {
-    return _esRoya
-        ? [
-            _RecomendacionIA(Icons.medication_outlined, const Color(0xFF1565C0),
-                'Aplicar fungicida recomendado', 'Fungicida Cúprico 250g/200L agua'),
-            _RecomendacionIA(Icons.air_outlined, const Color(0xFF2E7D32),
-                'Mejorar ventilación del cultivo', 'Poda para mayor aireación'),
-            _RecomendacionIA(Icons.delete_outline_rounded, const Color(0xFFE65100),
-                'Eliminar hojas afectadas', 'Retirar y destruir hojas con síntomas'),
-          ]
-        : [
-            _RecomendacionIA(Icons.check_circle_outline, AppColors.primary,
-                'Planta en buen estado', 'Continúa con el manejo habitual'),
-            _RecomendacionIA(Icons.water_drop_outlined, const Color(0xFF1565C0),
-                'Mantén el riego adecuado', 'Riega según las condiciones del clima'),
-            _RecomendacionIA(Icons.search_outlined, const Color(0xFF388E3C),
-                'Monitorea regularmente', 'Revisa las hojas cada 15 días'),
-          ];
-  }
- 
-  Widget _buildRecomendacionesIa() {
-    final recs = _recomendacionesIa();
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Recomendaciones de la IA',
-              style: GoogleFonts.nunito(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          const SizedBox(height: 14),
-          ...recs.asMap().entries.map((e) {
-            final rec = e.value;
-            final isLast = e.key == recs.length - 1;
-            return Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 38, height: 38,
-                      decoration: BoxDecoration(
-                          color: rec.color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10)),
-                      child: Icon(rec.icon, color: rec.color, size: 19),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(rec.titulo,
-                              style: GoogleFonts.nunito(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary)),
-                          Text(rec.subtitulo,
-                              style: GoogleFonts.nunito(
-                                  fontSize: 12, color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (!isLast) ...[
-                  const SizedBox(height: 10),
-                  const Divider(height: 1, indent: 50, color: AppColors.border),
-                  const SizedBox(height: 10),
-                ],
-              ],
-            );
-          }),
-        ],
-      ),
-    );
-  }
- 
   // ─── Guardar diagnóstico del experto ───────────────────────────────────
  
   // ─── Usar IA como apoyo ─────────────────────────────────────────────────
@@ -581,11 +496,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
               ],
             ],
           )),
-          const SizedBox(height: 14),
- 
-          // ── Recomendaciones de la IA ─────────────────────────────
-          // (las mismas que vio el caficultor al recibir su diagnóstico)
-          _buildRecomendacionesIa(),
           const SizedBox(height: 14),
  
           // ── Observaciones del caficultor ──────────────────────────
@@ -1038,12 +948,4 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
       ),
     );
   }
-}
- 
-class _RecomendacionIA {
-  final IconData icon;
-  final Color color;
-  final String titulo;
-  final String subtitulo;
-  const _RecomendacionIA(this.icon, this.color, this.titulo, this.subtitulo);
 }
