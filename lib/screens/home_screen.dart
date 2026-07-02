@@ -1,6 +1,11 @@
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:bootstrap_icons/bootstrap_icons.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/dashboard_service.dart';
 import '../services/auth_service.dart';
@@ -26,6 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _fincaSeleccionada = 0;
   int? _cultivoSeleccionado;
   String? _fotoPerfil;
+
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -75,6 +82,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _cultivoSeleccionado = null;
         _cargando = false;
       });
+      // 🔍 DEBUG TEMPORAL: revisa en la consola qué claves trae cada finca
+      // (busca algo como fotoFinca, foto_finca, imagenFinca, etc.)
+      for (final f in _fincas) {
+        print('FINCA "${f['nombreFinca'] ?? f['nombre_finca']}" -> keys: ${f.keys.toList()}');
+        print('   fotoUrl = "${f['fotoUrl']}"  (tipo: ${f['fotoUrl'].runtimeType})');
+      }
       if (_fincas.isNotEmpty) {
         AppState.instance.setFinca(_fincas[_fincaSeleccionada], _cultivosFincaActual);
       }
@@ -145,7 +158,103 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Alto';
   }
 
-  // ─── Nueva Finca ──────────────────────────────────────────────────────────
+  // ── Selección/subida de foto de finca ──────────────────────────────────
+
+  Future<XFile?> _elegirOrigenYSeleccionarImagen() async {
+    ImageSource? origen;
+
+    if (kIsWeb) {
+      origen = ImageSource.gallery;
+    } else {
+      origen = await showModalBottomSheet<ImageSource>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Foto de la finca',
+                  style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                title: Text('Tomar foto', style: GoogleFonts.nunito()),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                title: Text('Elegir de galería', style: GoogleFonts.nunito()),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (origen == null) return null;
+
+    return _picker.pickImage(source: origen, imageQuality: 80, maxWidth: 900);
+  }
+
+  /// Sube (o actualiza) la foto de una finca YA EXISTENTE.
+  /// Usa el mismo patrón multipart que `_subirFoto` en ProfileScreen.
+  Future<void> _subirFotoFincaExistente(dynamic idFinca) async {
+    final picked = await _elegirOrigenYSeleccionarImagen();
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+
+    setState(() => _cargando = true);
+    try {
+      final token   = await AuthService.getToken();
+      final baseUrl = ApiService.baseUrl;
+
+      final request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('$baseUrl/fincas/$idFinca'),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(http.MultipartFile.fromBytes(
+        'foto_finca',
+        bytes,
+        filename: picked.name,
+      ));
+
+      final response = await request.send();
+      final body      = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        await _cargarDatos();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Foto de la finca actualizada'), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        throw Exception('Error ${response.statusCode}: $body');
+      }
+    } catch (e) {
+      setState(() => _cargando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al subir foto: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   void _mostrarFormFinca() {
     final formKey       = GlobalKey<FormState>();
@@ -153,6 +262,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final municipioCtrl = TextEditingController();
     final deptoCtrl     = TextEditingController();
     bool guardando      = false;
+
+    XFile?     imagenSeleccionada;
+    Uint8List? imagenBytes;
 
     showModalBottomSheet(
       context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
@@ -168,13 +280,66 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             Text('Ingresa los datos de tu finca', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 20),
-            _campo(nombreCtrl, 'Nombre de la finca *', Icons.park_outlined,
+
+            // ── Selector de foto de la finca ──
+            Center(
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () async {
+                    final picked = await _elegirOrigenYSeleccionarImagen();
+                    if (picked != null) {
+                      final bytes = await picked.readAsBytes();
+                      setModal(() {
+                        imagenSeleccionada = picked;
+                        imagenBytes        = bytes;
+                      });
+                    }
+                  },
+                child: Container(
+                  width: double.infinity,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(16),
+                    image: imagenBytes != null
+                        ? DecorationImage(image: MemoryImage(imagenBytes!), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: imagenBytes == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.add_a_photo_outlined, color: AppColors.primary, size: 30),
+                            const SizedBox(height: 8),
+                            Text('Agregar foto de la finca (opcional)',
+                                style: GoogleFonts.nunito(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                          ],
+                        )
+                      : Align(
+                          alignment: Alignment.bottomRight,
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                            child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                          ),
+                        ),
+                ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            _campo(nombreCtrl, 'Nombre de la finca *', BootstrapIcons.tree,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
             const SizedBox(height: 12),
-            _campo(municipioCtrl, 'Municipio *', Icons.location_city_outlined,
+            _campo(municipioCtrl, 'Municipio *', BootstrapIcons.building,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
             const SizedBox(height: 12),
-            _campo(deptoCtrl, 'Departamento', Icons.map_outlined),
+            _campo(deptoCtrl, 'Departamento', BootstrapIcons.map),
             const SizedBox(height: 24),
             SizedBox(width: double.infinity, height: 50,
               child: ElevatedButton(
@@ -183,10 +348,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   setModal(() => guardando = true);
                   final idUsuario = widget.usuario['idUsuario'] ?? widget.usuario['id_usuario'] ?? widget.usuario['id'];
                   try {
-                    await ApiService.post('/fincas', {
-                      'id_usuario': idUsuario, 'nombre_finca': nombreCtrl.text.trim(),
-                      'municipio': municipioCtrl.text.trim(), 'departamento': deptoCtrl.text.trim(),
-                    });
+                    if (imagenBytes != null) {
+                      // ── Con foto: multipart (mismo patrón que foto de perfil) ──
+                      final token   = await AuthService.getToken();
+                      final baseUrl = ApiService.baseUrl;
+                      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/fincas'));
+                      request.headers['Authorization'] = 'Bearer $token';
+                      request.fields['id_usuario']    = idUsuario.toString();
+                      request.fields['nombre_finca']  = nombreCtrl.text.trim();
+                      request.fields['municipio']     = municipioCtrl.text.trim();
+                      request.fields['departamento']  = deptoCtrl.text.trim();
+                      request.files.add(http.MultipartFile.fromBytes(
+                        'foto_finca', imagenBytes!, filename: imagenSeleccionada!.name,
+                      ));
+                      final response = await request.send();
+                      final body     = await response.stream.bytesToString();
+                      if (response.statusCode != 200 && response.statusCode != 201) {
+                        throw Exception('Error ${response.statusCode}: $body');
+                      }
+                    } else {
+                      // ── Sin foto: como antes, JSON normal ──
+                      await ApiService.post('/fincas', {
+                        'id_usuario': idUsuario, 'nombre_finca': nombreCtrl.text.trim(),
+                        'municipio': municipioCtrl.text.trim(), 'departamento': deptoCtrl.text.trim(),
+                      });
+                    }
                     if (ctx.mounted) Navigator.pop(ctx);
                     await _cargarDatos();
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -208,8 +394,6 @@ class _HomeScreenState extends State<HomeScreen> {
       )),
     );
   }
-
-  // ─── Nuevo Lote ───────────────────────────────────────────────────────────
 
   void _mostrarFormLote(dynamic idFinca) {
     final formKey      = GlobalKey<FormState>();
@@ -234,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             Text('Agrega un lote a esta finca', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 20),
-            _campo(nombreCtrl, 'Nombre del lote *', Icons.eco_outlined,
+            _campo(nombreCtrl, 'Nombre del lote *', BootstrapIcons.grid,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
             const SizedBox(height: 16),
             Text('Variedad de café', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -245,14 +429,13 @@ class _HomeScreenState extends State<HomeScreen> {
               _campoVariedadLibre(variedadCtrl),
             ],
             const SizedBox(height: 16),
-            _campo(arbolesCtrl, 'Número de árboles de café', Icons.forest_outlined, keyboard: TextInputType.number),
+            _campo(arbolesCtrl, 'Número de árboles de café', BootstrapIcons.tree_fill, keyboard: TextInputType.number),
             const SizedBox(height: 24),
             SizedBox(width: double.infinity, height: 50,
               child: ElevatedButton(
                 onPressed: guardando ? null : () async {
                   if (!formKey.currentState!.validate()) return;
                   setModal(() => guardando = true);
-                  // ✅ variedad se guarda en tipo_cultivo
                   final variedad = (variedadSel != null && variedadSel != '__otra__')
                       ? variedadSel! : variedadCtrl.text.trim();
                   try {
@@ -284,8 +467,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Eliminar Lote ────────────────────────────────────────────────────────
-
   Future<void> _eliminarLote(dynamic idCultivo, String nombreLote) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -314,8 +495,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ─── Editar Lote ──────────────────────────────────────────────────────────
-
   void _mostrarFormEditarLote(Map<String, dynamic> cultivo) {
     final formKey      = GlobalKey<FormState>();
     final nombreCtrl   = TextEditingController(text: cultivo['nombreCultivo'] ?? cultivo['nombre_cultivo'] ?? '');
@@ -323,7 +502,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final variedadCtrl = TextEditingController();
     const variedades = ['Castillo', 'Caturra', 'Colombia', 'Bourbon', 'Typica', 'Tabi', 'Cenicafé 1', 'Gesha'];
 
-    // ✅ la variedad viene en tipoCultivo
     final variedadActual = cultivo['tipoCultivo']?.toString() ?? '';
     String? variedadSel = variedades.contains(variedadActual) ? variedadActual
         : (variedadActual.isNotEmpty ? '__otra__' : null);
@@ -346,7 +524,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             Text('Actualiza los datos del lote', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 20),
-            _campo(nombreCtrl, 'Nombre del lote *', Icons.eco_outlined,
+            _campo(nombreCtrl, 'Nombre del lote *', BootstrapIcons.grid,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
             const SizedBox(height: 16),
             Text('Variedad de café', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -360,14 +538,13 @@ class _HomeScreenState extends State<HomeScreen> {
               _campoVariedadLibre(variedadCtrl),
             ],
             const SizedBox(height: 16),
-            _campo(arbolesCtrl, 'Número de árboles de café', Icons.forest_outlined, keyboard: TextInputType.number),
+            _campo(arbolesCtrl, 'Número de árboles de café', BootstrapIcons.tree_fill, keyboard: TextInputType.number),
             const SizedBox(height: 24),
             SizedBox(width: double.infinity, height: 50,
               child: ElevatedButton(
                 onPressed: guardando ? null : () async {
                   if (!formKey.currentState!.validate()) return;
                   setModal(() => guardando = true);
-                  // ✅ variedad se guarda en tipo_cultivo
                   final variedad = (variedadSel != null && variedadSel != '__otra__')
                       ? variedadSel! : variedadCtrl.text.trim();
                   try {
@@ -398,16 +575,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Widgets reutilizables ────────────────────────────────────────────────
-
   Widget _dropdownVariedad(List<String> variedades, String? variedadSel,
       TextEditingController ctrl, void Function(String?) onChanged) {
     return DropdownButtonFormField<String>(
       value: variedadSel,
       hint: Text('Selecciona una variedad', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+      icon: const Icon(BootstrapIcons.chevron_down, color: AppColors.primary),
       decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.local_florist_outlined, color: AppColors.primary, size: 20),
+        prefixIcon: const Icon(BootstrapIcons.flower1, color: AppColors.primary, size: 20),
         filled: true, fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
@@ -431,7 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: InputDecoration(
         hintText: 'Escribe la variedad',
         hintStyle: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary),
-        prefixIcon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+        prefixIcon: const Icon(BootstrapIcons.pencil, color: AppColors.primary, size: 20),
         filled: true, fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
@@ -461,15 +636,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final nombreRaw = (widget.usuario['nombre'] ?? '').toString().trim();
     final nombre = nombreRaw.isNotEmpty ? nombreRaw : 'Caficultor';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
+      backgroundColor: const Color(0xFAFAFA),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _error != null
@@ -509,55 +682,126 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildError() {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      const Icon(Icons.wifi_off, size: 60, color: AppColors.textSecondary),
+      const Icon(BootstrapIcons.wifi_off, size: 60, color: AppColors.textSecondary),
       const SizedBox(height: 16),
       Text('No se pudo conectar al servidor', style: GoogleFonts.nunito(fontSize: 16, color: AppColors.textSecondary)),
       const SizedBox(height: 8),
       Text(_error ?? '', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary), textAlign: TextAlign.center),
       const SizedBox(height: 12),
-      ElevatedButton.icon(onPressed: _cargarDatos, icon: const Icon(Icons.refresh), label: const Text('Reintentar'),
+      ElevatedButton.icon(onPressed: _cargarDatos,
+          icon: const Icon(BootstrapIcons.arrow_clockwise),
+          label: const Text('Reintentar'),
           style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44))),
     ]));
   }
 
-  Widget _buildHeader(BuildContext context, String nombre) {
-    final tieneFoto = _fotoPerfil != null && _fotoPerfil!.isNotEmpty;
-    return Container(
-      width: double.infinity, color: const Color(0xFFF4E7D6),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: Row(children: [
+ Widget _buildHeader(BuildContext context, String nombre) {
+  final tieneFoto = _fotoPerfil != null && _fotoPerfil!.isNotEmpty;
+
+  return Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF97D340), // Verde claro
+          Color(0xFF388E3C), // Verde oscuro
+        ],
+      ),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    child: Row(
+      children: [
         CircleAvatar(
-          radius: 24, backgroundColor: AppColors.primary,
+          radius: 24,
+          backgroundColor: AppColors.primary,
           backgroundImage: tieneFoto ? NetworkImage(_fotoPerfil!) : null,
-          onBackgroundImageError: tieneFoto ? (_, __) => setState(() => _fotoPerfil = null) : null,
-          child: tieneFoto ? null : Text(nombre.isNotEmpty ? nombre[0].toUpperCase() : 'C',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+          onBackgroundImageError: tieneFoto
+              ? (_, __) => setState(() => _fotoPerfil = null)
+              : null,
+          child: tieneFoto
+              ? null
+              : Text(
+                  nombre.isNotEmpty ? nombre[0].toUpperCase() : 'C',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
         ),
         const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Hola, $nombre', style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: const Color.fromARGB(255, 26, 26, 26))),
-          const SizedBox(height: 2),
-          Text('Bienvenido de nuevo', style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
-        ])),
-        GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificacionesScreen())),
-          child: Stack(children: [
-            Container(padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 28)),
-            if (_recomendaciones.isNotEmpty)
-              Positioned(right: 6, top: 6, child: Container(
-                width: 16, height: 16,
-                decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-                child: Center(child: Text(
-                  '${_recomendaciones.length > 9 ? "9+" : _recomendaciones.length}',
-                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold))),
-              )),
-          ]),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hola, $nombre',
+                style: GoogleFonts.nunito(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF262A24),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Bienvenido de nuevo',
+                style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
-      ]),
-    );
-  }
-
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const NotificacionesScreen(),
+            ),
+          ),
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: const Icon(
+                  BootstrapIcons.bell,
+                  color: AppColors.textPrimary,
+                  size: 28,
+                ),
+              ),
+              if (_recomendaciones.isNotEmpty)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${_recomendaciones.length > 9 ? "9+" : _recomendaciones.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildResumenCard() {
     final salud = _getSaludCultivo();
     final fincaNombre = _fincas.isNotEmpty && _fincaSeleccionada < _fincas.length
@@ -579,17 +823,12 @@ class _HomeScreenState extends State<HomeScreen> {
         width: double.infinity, padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(color: colorSalud, borderRadius: BorderRadius.circular(20)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(cultivoNombre ?? fincaNombre, style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
-              const SizedBox(height: 2),
-              Text('Salud general del cultivo', style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
-              const SizedBox(height: 4),
-              Text(salud['texto'], style: GoogleFonts.nunito(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
-            ])),
-            Container(width: 48, height: 48,
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                child: const Icon(Icons.eco_rounded, color: Colors.white, size: 26)),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(cultivoNombre ?? fincaNombre, style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
+            const SizedBox(height: 2),
+            Text('Salud general del cultivo', style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
+            const SizedBox(height: 4),
+            Text(salud['texto'], style: GoogleFonts.nunito(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
           ]),
           const SizedBox(height: 14),
           Container(
@@ -617,47 +856,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  Widget _buildStatsRow() {
-    final cultivosFinca = _cultivosFincaActual;
-    return Row(children: [
-      _statCard('${_monitoreos.length}', 'Monitoreos\nrealizados', Colors.black),
-      const SizedBox(width: 10),
-      _statCard('${cultivosFinca.length}', 'Cultivos\nactivos', Colors.black),
-      const SizedBox(width: 10),
-      Expanded(child: GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificacionesScreen())),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.red.withOpacity(0.3)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Alertas\nactivas', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            Row(children: [
-              Text('${_recomendaciones.length}', style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.red)),
-              const Spacer(),
-              const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.red),
-            ]),
-          ]),
-        ),
-      )),
-    ]);
-  }
-
-  Widget _statCard(String value, String label, Color valueColor) {
-    return Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-        const SizedBox(height: 4),
-        Text(value, style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w800, color: valueColor)),
-      ]),
-    ));
-  }
-
   Widget _buildFincasSection(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -668,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.add, color: Colors.white, size: 16),
+              const Icon(BootstrapIcons.plus, color: Colors.white, size: 16),
               const SizedBox(width: 4),
               Text('Nueva finca', style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
             ]),
@@ -687,7 +885,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(children: [
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: AppColors.primaryLight, shape: BoxShape.circle),
-                  child: const Icon(Icons.add_location_alt_outlined, color: AppColors.primary, size: 28)),
+                  child: const Icon(BootstrapIcons.geo_alt, color: AppColors.primary, size: 28)),
               const SizedBox(height: 12),
               Text('Agrega tu primera finca', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               const SizedBox(height: 4),
@@ -697,19 +895,38 @@ class _HomeScreenState extends State<HomeScreen> {
         )
       else ...[
         if (_fincas.length > 1) ...[
-          SizedBox(height: 40, child: ListView.separated(
+          SizedBox(height: 46, child: ListView.separated(
             scrollDirection: Axis.horizontal, itemCount: _fincas.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (_, i) {
               final finca = _fincas[i]; final selected = i == _fincaSeleccionada;
-              return GestureDetector(
-                onTap: () { setState(() { _fincaSeleccionada = i; _cultivoSeleccionado = null; }); AppState.instance.setFinca(_fincas[i], _cultivosFincaActual); },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(color: selected ? AppColors.primary : Colors.white, borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: selected ? AppColors.primary : AppColors.border)),
-                  child: Text(finca['nombreFinca'] ?? 'Finca ${i + 1}',
-                      style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.textSecondary)),
+              return Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () { setState(() { _fincaSeleccionada = i; _cultivoSeleccionado = null; }); AppState.instance.setFinca(_fincas[i], _cultivosFincaActual); },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: selected ? null : Border.all(color: AppColors.border.withOpacity(0.8)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: selected
+                              ? AppColors.primary.withOpacity(0.35)
+                              : Colors.black.withOpacity(0.05),
+                          blurRadius: selected ? 12 : 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Text(finca['nombreFinca'] ?? 'Finca ${i + 1}',
+                        style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700,
+                            color: selected ? Colors.white : AppColors.textPrimary)),
+                  ),
                 ),
               );
             },
@@ -726,6 +943,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final nombre    = finca['nombreFinca'] ?? 'Mi Finca';
     final municipio = finca['municipio']   ?? 'Sin municipio';
     final idFinca   = finca['idFinca']     ?? finca['id_finca'];
+    final fotoFinca = (finca['fotoUrl'] ??
+            finca['fotoFinca'] ??
+            finca['foto_finca'] ??
+            finca['imagenFinca'] ??
+            finca['imagen_finca'] ??
+            finca['foto_url'] ??
+            finca['foto'] ??
+            finca['imagen'])
+        ?.toString();
+    final tieneFoto = fotoFinca != null && fotoFinca.isNotEmpty;
 
     final totalArboles = cultivos.fold<int>(0, (sum, c) {
       final n = (c as Map<String, dynamic>)['numeroArboles'] ?? c['numero_arboles'];
@@ -733,132 +960,198 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     return Container(
-      width: double.infinity, padding: const EdgeInsets.all(16),
+      width: double.infinity,
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border.withOpacity(0.7)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 18, offset: const Offset(0, 6))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(width: 44, height: 44,
-              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.park_outlined, color: AppColors.primary, size: 22)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(nombre, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            Text(municipio, style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
-          ])),
-        ]),
-        const SizedBox(height: 14),
-        const Divider(color: AppColors.border),
-        const SizedBox(height: 10),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-          _fincaDato(Icons.eco_outlined, '${cultivos.length}', 'Lotes registrados'),
-          Container(width: 1, height: 36, color: AppColors.border),
-          _fincaDato(Icons.forest_outlined, '$totalArboles', 'Plantas de café'),
-        ]),
-        const SizedBox(height: 14),
-        const Divider(color: AppColors.border),
-        const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Lotes registrados', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          GestureDetector(
-            onTap: () => _mostrarFormLote(idFinca),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(16)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.add, color: AppColors.primary, size: 14),
-                const SizedBox(width: 3),
-                Text('Agregar lote', style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              ]),
-            ),
-          ),
-        ]),
-        if (cultivos.isEmpty) ...[
-          const SizedBox(height: 10),
-          Center(child: Text('Sin lotes registrados aún', style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary))),
-        ] else ...[
-          const SizedBox(height: 6),
-          Text('(toca para ver su salud)', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-          const SizedBox(height: 8),
-          ...cultivos.map((c) {
-            final idCultivo = c['idCultivo'] ?? c['id_cultivo'];
-            final selected  = _cultivoSeleccionado?.toString() == idCultivo.toString();
-            final nivel     = selected ? _calcularNivelRoyaPara(idCultivo) : '';
-            final nivelColor = nivel == 'Alto' ? Colors.red : nivel == 'Medio' ? Colors.orange : nivel == 'Bajo' ? AppColors.primary : Colors.grey;
 
-            // ✅ plantas desde numeroArboles
-            final plantas = int.tryParse((c['numeroArboles'] ?? c['numero_arboles'] ?? '0').toString()) ?? 0;
-            // ✅ variedad desde tipoCultivo
-            final variedad = c['tipoCultivo']?.toString() ?? '';
-
-            return GestureDetector(
-              onTap: () {
-                final nuevoId = selected ? null : idCultivo;
-                setState(() => _cultivoSeleccionado = nuevoId);
-                if (nuevoId != null) AppState.instance.setCultivo(c, _calcularNivelRoyaPara(idCultivo));
-                else AppState.instance.setCultivo(null, _getSaludCultivo()['nivel']);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.primaryLight : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: selected ? Border.all(color: AppColors.primary, width: 1.5) : null,
+        // ── Foto de la finca (si existe) con botón para cambiarla ──
+        if (tieneFoto)
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+                child: Image.network(
+                  fotoFinca,
+                  width: double.infinity,
+                  height: 130,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: double.infinity, height: 130,
+                    color: AppColors.primaryLight,
+                    child: const Icon(BootstrapIcons.tree, color: AppColors.primary, size: 34),
+                  ),
                 ),
-                child: Row(children: [
-                  Icon(Icons.circle, color: selected ? AppColors.primary : AppColors.textSecondary, size: 8),
-                  const SizedBox(width: 8),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo',
-                        style: GoogleFonts.nunito(fontSize: 12,
-                            fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
-                            color: selected ? AppColors.primary : AppColors.textSecondary)),
-                    const SizedBox(height: 2),
-                    Row(children: [
-                      Icon(Icons.forest_outlined, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
-                      const SizedBox(width: 3),
-                      Text('$plantas plantas', style: GoogleFonts.nunito(fontSize: 10,
-                          color: selected ? AppColors.primary : AppColors.textSecondary)),
-                      if (variedad.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Icon(Icons.local_florist_outlined, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
-                        const SizedBox(width: 3),
-                        Text(variedad, style: GoogleFonts.nunito(fontSize: 10,
-                            color: selected ? AppColors.primary : AppColors.textSecondary)),
+              ),
+              Positioned(
+                right: 10, bottom: 10,
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _subirFotoFincaExistente(idFinca),
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              if (!tieneFoto)
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _subirFotoFincaExistente(idFinca),
+                    child: Container(width: 44, height: 44,
+                        decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
+                        alignment: Alignment.center,
+                        child: Text(
+                          nombre.toString().isNotEmpty ? nombre.toString()[0].toUpperCase() : 'F',
+                          style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary),
+                        )),
+                  ),
+                ),
+              if (!tieneFoto) const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(nombre, style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                Text(municipio, style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+              ])),
+              if (!tieneFoto)
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _subirFotoFincaExistente(idFinca),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
+                      child: const Icon(Icons.add_a_photo_outlined, color: AppColors.primary, size: 16),
+                    ),
+                  ),
+                ),
+            ]),
+            const SizedBox(height: 14),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 10),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+              _fincaDato(BootstrapIcons.grid, '${cultivos.length}', 'Lotes registrados'),
+              Container(width: 1, height: 36, color: AppColors.border),
+              _fincaDato(BootstrapIcons.tree_fill, '$totalArboles', 'Plantas de café'),
+            ]),
+            const SizedBox(height: 14),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('Lotes registrados', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              GestureDetector(
+                onTap: () => _mostrarFormLote(idFinca),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(16)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(BootstrapIcons.plus, color: AppColors.primary, size: 14),
+                    const SizedBox(width: 3),
+                    Text('Agregar lote', style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  ]),
+                ),
+              ),
+            ]),
+            if (cultivos.isEmpty) ...[
+              const SizedBox(height: 10),
+              Center(child: Text('Sin lotes registrados aún', style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary))),
+            ] else ...[
+              const SizedBox(height: 6),
+              Text('(toca para ver su salud)', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              ...cultivos.map((c) {
+                final idCultivo = c['idCultivo'] ?? c['id_cultivo'];
+                final selected  = _cultivoSeleccionado?.toString() == idCultivo.toString();
+                final nivel     = selected ? _calcularNivelRoyaPara(idCultivo) : '';
+                final nivelColor = nivel == 'Alto' ? Colors.red : nivel == 'Medio' ? Colors.orange : nivel == 'Bajo' ? AppColors.primary : Colors.grey;
+
+                final plantas = int.tryParse((c['numeroArboles'] ?? c['numero_arboles'] ?? '0').toString()) ?? 0;
+                final variedad = c['tipoCultivo']?.toString() ?? '';
+
+                return GestureDetector(
+                  onTap: () {
+                    final nuevoId = selected ? null : idCultivo;
+                    setState(() => _cultivoSeleccionado = nuevoId);
+                    if (nuevoId != null) AppState.instance.setCultivo(c, _calcularNivelRoyaPara(idCultivo));
+                    else AppState.instance.setCultivo(null, _getSaludCultivo()['nivel']);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primaryLight : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: selected ? Border.all(color: AppColors.primary, width: 1.5) : null,
+                    ),
+                    child: Row(children: [
+                      Icon(BootstrapIcons.circle_fill, color: selected ? AppColors.primary : AppColors.textSecondary, size: 8),
+                      const SizedBox(width: 8),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo',
+                            style: GoogleFonts.nunito(fontSize: 12,
+                                fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+                                color: selected ? AppColors.primary : AppColors.textSecondary)),
+                        const SizedBox(height: 2),
+                        Row(children: [
+                          Icon(BootstrapIcons.tree_fill, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
+                          const SizedBox(width: 3),
+                          Text('$plantas plantas', style: GoogleFonts.nunito(fontSize: 10,
+                              color: selected ? AppColors.primary : AppColors.textSecondary)),
+                          if (variedad.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Icon(BootstrapIcons.flower1, size: 11, color: selected ? AppColors.primary : AppColors.textSecondary),
+                            const SizedBox(width: 3),
+                            Text(variedad, style: GoogleFonts.nunito(fontSize: 10,
+                                color: selected ? AppColors.primary : AppColors.textSecondary)),
+                          ],
+                        ]),
+                      ])),
+                      IconButton(
+                        onPressed: () => _mostrarFormEditarLote(c as Map<String, dynamic>),
+                        icon: const Icon(BootstrapIcons.pencil, size: 18),
+                        color: AppColors.primary, padding: EdgeInsets.zero, constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () => _eliminarLote(idCultivo, c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo'),
+                        icon: const Icon(BootstrapIcons.trash, size: 18),
+                        color: Colors.red, padding: EdgeInsets.zero, constraints: const BoxConstraints(),
+                      ),
+                      if (selected) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: nivelColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: nivelColor.withOpacity(0.4))),
+                          child: Text('Roya: $nivel', style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700, color: nivelColor)),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(BootstrapIcons.check_circle, color: AppColors.primary, size: 16),
                       ],
                     ]),
-                  ])),
-                  // ── Editar ──
-                  IconButton(
-                    onPressed: () => _mostrarFormEditarLote(c as Map<String, dynamic>),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: AppColors.primary, padding: EdgeInsets.zero, constraints: const BoxConstraints(),
                   ),
-                  const SizedBox(width: 4),
-                  // ── Eliminar ──
-                  IconButton(
-                    onPressed: () => _eliminarLote(idCultivo, c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo'),
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    color: Colors.red, padding: EdgeInsets.zero, constraints: const BoxConstraints(),
-                  ),
-                  if (selected) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: nivelColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: nivelColor.withOpacity(0.4))),
-                      child: Text('Roya: $nivel', style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w700, color: nivelColor)),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
-                  ],
-                ]),
-              ),
-            );
-          }),
-        ],
+                );
+              }),
+            ],
+          ]),
+        ),
       ]),
     );
   }

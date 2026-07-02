@@ -24,7 +24,9 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   // porque el experto guarda su diagnóstico como un monitoreo NUEVO y
   // separado -- ver _cargarDiagnosticoExperto más abajo).
   Map<String, dynamic>? _diagnosticoExperto;
- 
+  Map<String, dynamic>? _recomendacionExperto;
+  Map<String, dynamic>? _tratamiento;
+
   Map<String, dynamic> get _m => _monitoreoCompleto ?? widget.monitoreo;
  
   @override
@@ -602,6 +604,11 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         mensaje: 'El experto aún no ha registrado una recomendación para este monitoreo.',
       );
     }
+
+    final d2             = _diagnosticoExperto!;
+    final severidad      = (d2['severidad'] ?? '').toString();
+    final observaciones  = (d2['observaciones'] ?? '').toString();
+    final recomendaciones = (d2['recomendaciones'] as List<Map<String, dynamic>>?) ?? [];
 
     final descripcion  = _recomendacionExperto!['descripcion'] ?? 'Sin descripción';
     final fechaLimite  = _recomendacionExperto!['fechaLimite'] ?? _recomendacionExperto!['fecha_limite'] ?? '';

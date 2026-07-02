@@ -323,11 +323,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF7F8F5),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           padding: EdgeInsets.only(
             left: 20, right: 20, top: 20,
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
@@ -335,11 +337,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 Text('Editar perfil',
                     style: GoogleFonts.nunito(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                        fontSize: 20, fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
                 Text('Datos personales',
                     style: GoogleFonts.nunito(
                         fontSize: 13,
@@ -371,15 +385,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed: _guardarCambios,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                     child: Text('Guardar cambios',
                         style: GoogleFonts.nunito(
-                            fontWeight: FontWeight.bold)),
+                            fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -401,11 +417,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       controller: controller,
       keyboardType: tipo,
       enabled: enabled,
+      style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
-        filled: !enabled,
-        fillColor: enabled ? null : Colors.grey.shade100,
+        labelStyle: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary),
+        filled: true,
+        fillColor: enabled ? Colors.white : Colors.grey.shade100,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
       ),
     );
   }
@@ -449,74 +479,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4E7D6),
+      backgroundColor: const Color(0xFFF7F8F5),
       body: SafeArea(
         child: _cargando
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.primary))
-            : Column(
-                children: [
-                  _buildHeader(context),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _buildAvatarSection(),
-                          const SizedBox(height: 8),
-                          _buildInfoSection(),
-                          const SizedBox(height: 24),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: OutlinedButton.icon(
-                              onPressed: _cerrarSesion,
-                              icon: const Icon(Icons.logout, color: Colors.red),
-                              label: Text('Cerrar sesión',
-                                  style: GoogleFonts.nunito(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.w600)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.red),
-                                minimumSize: const Size(double.infinity, 50),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
+            : SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTopBar(context),
+                    const SizedBox(height: 16),
+                    _buildAvatarCard(),
+                    const SizedBox(height: 16),
+                    _buildInfoCard(),
+                    const SizedBox(height: 16),
+                    _buildSettingsCard(),
+                    const SizedBox(height: 16),
+                    _buildLogoutCard(),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Text('App versión 1.0',
+                          style: GoogleFonts.nunito(
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: const Color(0xFFF4E7D6),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
-            onPressed: () => Navigator.pop(context),
+  Widget _buildTopBar(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _iconCircleButton(
+          icon: Icons.arrow_back_ios_new_rounded,
+          onTap: () => Navigator.pop(context),
+        ),
+        Text('Mi perfil',
+            style: GoogleFonts.nunito(
+                fontSize: 18, fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary)),
+        _iconCircleButton(
+          icon: Icons.settings_outlined,
+          onTap: _mostrarFormularioEditar,
+        ),
+      ],
+    );
+  }
+
+  Widget _iconCircleButton({required IconData icon, required VoidCallback onTap}) {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 0,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
+            ],
           ),
-          Expanded(
-            child: Text('Mi perfil',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                    fontSize: 18, fontWeight: FontWeight.w800)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: _mostrarFormularioEditar,
-          ),
-        ],
+          child: Icon(icon, color: AppColors.textPrimary, size: 18),
+        ),
       ),
     );
   }
 
-  Widget _buildAvatarSection() {
+  Widget _buildAvatarCard() {
     final nombre   = (_usuarioData['nombre']   ?? widget.usuario['nombre']   ?? '').toString();
     final apellido = (_usuarioData['apellido'] ?? widget.usuario['apellido'] ?? '').toString();
     final correo   = (_usuarioData['correo']   ?? widget.usuario['correo']   ?? '').toString();
@@ -531,58 +570,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28),
-      color: const Color(0xFFF4E7D6),
-      child: Column(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Stack(
             alignment: Alignment.bottomRight,
             children: [
               CircleAvatar(
-                radius: 48,
+                radius: 36,
                 backgroundColor: AppColors.primary,
                 backgroundImage: imageProvider,
                 child: imageProvider == null
                     ? Text(inicial,
-                        style: const TextStyle(
-                            fontSize: 40,
+                        style: GoogleFonts.nunito(
+                            fontSize: 28,
                             color: Colors.white,
-                            fontWeight: FontWeight.bold))
+                            fontWeight: FontWeight.w800))
                     : null,
               ),
-              GestureDetector(
-                onTap: _seleccionarFoto,
-                child: Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+              Material(
+                color: AppColors.primary,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _seleccionarFoto,
+                  child: Container(
+                    width: 26, height: 26,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 13),
                   ),
-                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text('$nombre $apellido'.trim(),
-              style: GoogleFonts.nunito(
-                  fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(correo,
-              style: GoogleFonts.nunito(
-                  fontSize: 13, color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              _leerRol(_usuarioData),
-              style: GoogleFonts.nunito(
-                  color: AppColors.primary, fontWeight: FontWeight.bold),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$nombre $apellido'.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.nunito(
+                        fontSize: 16, fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 2),
+                Text(correo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.nunito(
+                        fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 32,
+                  child: ElevatedButton(
+                    onPressed: _mostrarFormularioEditar,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                    child: Text('Editar perfil',
+                        style: GoogleFonts.nunito(
+                            fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -590,10 +656,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoSection() {
+  Widget _buildInfoCard() {
     return Container(
-      color: const Color(0xFFF4E7D6),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
       child: Column(
         children: [
           _rowItem(
@@ -627,8 +700,173 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return cedula.isNotEmpty ? cedula : 'No registrada';
             }(),
             icono: Icons.badge_outlined,
+            esUltimo: true,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        children: [
+          _settingsRow(
+            icono: Icons.notifications_outlined,
+            label: 'Notificaciones',
+            onTap: () => _mostrarProximamente('Notificaciones'),
+          ),
+          _divider(),
+          _settingsRow(
+            icono: Icons.description_outlined,
+            label: 'Términos y condiciones',
+            onTap: () => _mostrarProximamente('Términos y condiciones'),
+          ),
+          _divider(),
+          _settingsRow(
+            icono: Icons.info_outline_rounded,
+            label: 'Acerca de la app',
+            onTap: _mostrarAcercaDe,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsRow({
+    required IconData icono,
+    required String label,
+    String? valor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icono, color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(label,
+                    style: GoogleFonts.nunito(
+                        fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              ),
+              if (valor != null) ...[
+                Text(valor,
+                    style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(width: 6),
+              ],
+              Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary.withOpacity(0.6), size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarProximamente(String funcion) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$funcion estará disponible pronto', style: GoogleFonts.nunito()),
+        backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  void _mostrarAcercaDe() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Coffee Life',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Tecnología para el cultivo del café.\n\n'
+              'Diagnostica la roya, monitorea tus lotes y recibe '
+              'recomendaciones personalizadas para tu finca.',
+              style: GoogleFonts.nunito(
+                  color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 14),
+            Text('Versión 1.0',
+                style: GoogleFonts.nunito(
+                    fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary, minimumSize: const Size(0, 40)),
+            child: Text('Cerrar', style: GoogleFonts.nunito(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _cerrarSesion,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.logout_rounded, color: Colors.red, size: 18),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text('Cerrar sesión',
+                      style: GoogleFonts.nunito(
+                          fontSize: 14, fontWeight: FontWeight.w700, color: Colors.red)),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.red.withOpacity(0.6), size: 20),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -637,12 +875,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required String valor,
     required IconData icono,
+    bool esUltimo = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          Icon(icono, color: AppColors.primary, size: 22),
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icono, color: AppColors.primary, size: 18),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -650,11 +896,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(label,
                     style: GoogleFonts.nunito(
-                        fontSize: 12, color: AppColors.textSecondary)),
+                        fontSize: 11, color: AppColors.textSecondary)),
+                const SizedBox(height: 2),
                 Text(valor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.nunito(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
               ],
             ),
@@ -665,6 +914,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _divider() {
-    return const Divider(height: 1, color: Color.fromARGB(255, 202, 200, 200));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: const Divider(height: 1, color: Color(0xFFEFEFEF)),
+    );
   }
 }

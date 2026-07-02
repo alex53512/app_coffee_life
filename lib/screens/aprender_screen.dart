@@ -97,38 +97,27 @@ class _AprenderScreenState extends State<AprenderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4E7D6),
+      backgroundColor: const Color(0xFFF7F8F5),
       body: Column(
         children: [
           // ── HEADER ──
-          SafeArea(
-            bottom: false,
-            child: _buildHeader(),
-          ),
+          _buildHeader(),
+
+          const SizedBox(height: 14),
 
           // BUSCADOR
           _buildBuscador(),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
 
           // CATEGORÍAS
           _buildCategorias(),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
 
-          // CONTENEDOR REDONDEADO
+          // LISTA DE ARTÍCULOS
           Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFFBF7EF),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: _buildListaArticulos(),
-            ),
+            child: _buildListaArticulos(),
           ),
         ],
       ),
@@ -138,76 +127,71 @@ class _AprenderScreenState extends State<AprenderScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            const Color(0xFFF4E7D6),
-            const Color(0xFFF4E7D6).withOpacity(0.88),
+            Color(0xFF97D340),
+            Color(0xFF388E3C),
           ],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            Container(
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary.withOpacity(0.22),
-                    AppColors.primary.withOpacity(0.08),
-                  ],
-                ),
+                color: Colors.white.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.18)),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.04), blurRadius: 6),
-                ],
               ),
               child: const Icon(
                 Icons.menu_book_rounded,
-                color: AppColors.primary,
-                size: 22,
+                color: Color(0xFF262A24),
+                size: 20,
               ),
             ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Aprender',
-                style: GoogleFonts.nunito(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Aprender',
+                    style: GoogleFonts.nunito(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF262A24),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tips y guías para tu cultivo',
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: const Color(0xFF262A24).withOpacity(0.75),
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                'Tips y guías para tu cultivo',
-                style: GoogleFonts.nunito(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildBuscador() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -221,13 +205,14 @@ class _AprenderScreenState extends State<AprenderScreen> {
         child: TextField(
           controller: _searchController,
           onChanged: (_) => setState(() {}),
-          style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textPrimary),
+          style:
+              GoogleFonts.nunito(fontSize: 14, color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: 'Buscar contenido...',
-            hintStyle:
-                GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary),
+            hintStyle: GoogleFonts.nunito(
+                fontSize: 13, color: AppColors.textSecondary),
             prefixIcon:
-                const Icon(Icons.search, color: AppColors.textSecondary),
+                const Icon(Icons.search, color: AppColors.primary, size: 20),
             suffixIcon: _searchController.text.isNotEmpty
                 ? GestureDetector(
                     onTap: () => setState(() => _searchController.clear()),
@@ -240,11 +225,11 @@ class _AprenderScreenState extends State<AprenderScreen> {
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: AppColors.border.withOpacity(0.7)),
+              borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: AppColors.border.withOpacity(0.7)),
+              borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -262,7 +247,7 @@ class _AprenderScreenState extends State<AprenderScreen> {
       height: 50,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         itemCount: _categorias.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
@@ -273,23 +258,15 @@ class _AprenderScreenState extends State<AprenderScreen> {
             onTap: () => setState(() => _categoriaSeleccionada = cat),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? LinearGradient(
-                        colors: [
-                          AppColors.primary,
-                          Color.lerp(AppColors.primary, Colors.black, 0.15) ??
-                              AppColors.primary,
-                        ],
-                      )
-                    : null,
-                color: isSelected ? null : Colors.white,
+                color: isSelected ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
                       ? Colors.transparent
-                      : AppColors.border.withOpacity(0.8),
+                      : Colors.grey.shade200,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -301,12 +278,15 @@ class _AprenderScreenState extends State<AprenderScreen> {
                   ),
                 ],
               ),
-              child: Text(
-                cat,
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.white : AppColors.textSecondary,
+              child: Center(
+                child: Text(
+                  cat,
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        isSelected ? Colors.white : AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
@@ -322,8 +302,49 @@ class _AprenderScreenState extends State<AprenderScreen> {
     final resto =
         _articulosFiltrados.where((a) => a['destacado'] != true).toList();
 
+    if (_articulosFiltrados.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.menu_book_outlined,
+                    color: AppColors.primary, size: 34),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Sin resultados',
+                style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Prueba con otra categoría o término de búsqueda',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       children: [
         if (destacados.isNotEmpty) ...[
           Text(
@@ -363,7 +384,6 @@ class _AprenderScreenState extends State<AprenderScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border.withOpacity(0.8)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
@@ -411,8 +431,8 @@ class _AprenderScreenState extends State<AprenderScreen> {
                   top: 12,
                   left: 12,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: color,
                       borderRadius: BorderRadius.circular(20),
@@ -436,8 +456,8 @@ class _AprenderScreenState extends State<AprenderScreen> {
                   top: 12,
                   right: 12,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.45),
                       borderRadius: BorderRadius.circular(20),
@@ -501,7 +521,8 @@ class _AprenderScreenState extends State<AprenderScreen> {
                           color: color.withOpacity(0.12),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.arrow_forward, size: 12, color: color),
+                        child: Icon(Icons.arrow_forward,
+                            size: 12, color: color),
                       ),
                     ],
                   ),
@@ -524,11 +545,10 @@ class _AprenderScreenState extends State<AprenderScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border.withOpacity(0.7)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
                 offset: const Offset(0, 3)),
           ],
         ),
@@ -641,89 +661,100 @@ class _ArticuloScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = articulo['color'] as Color;
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF4E7D6),
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-        title: Text(
-          'Artículo',
-          style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                Image.asset(
-                  articulo['imagen'],
-                  height: 220,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 220,
+      backgroundColor: const Color(0xFFF7F8F5),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 240,
+            pinned: true,
+            backgroundColor: const Color(0xFF388E3C),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    articulo['imagen'],
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            color.withOpacity(0.5),
+                            color.withOpacity(0.25),
+                          ],
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: 80,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                  // Degradado oscuro inferior para que el texto/badges resalten
+                  Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
                         colors: [
-                          color.withOpacity(0.18),
-                          color.withOpacity(0.06),
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.55),
                         ],
                       ),
                     ),
-                    child: Icon(
-                      Icons.image_outlined,
-                      size: 80,
-                      color: color,
+                  ),
+                  Positioned(
+                    bottom: 14,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                              color: color.withOpacity(0.4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            articulo['categoria'],
+                            style: GoogleFonts.nunito(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                              width: 1, height: 10, color: Colors.white54),
+                          const SizedBox(width: 6),
+                          Text(
+                            articulo['tiempo'],
+                            style: GoogleFonts.nunito(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  bottom: 14,
-                  left: 16,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                            color: color.withOpacity(0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4)),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          articulo['categoria'],
-                          style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(width: 1, height: 10, color: Colors.white54),
-                        const SizedBox(width: 6),
-                        Text(
-                          articulo['tiempo'],
-                          style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            Padding(
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -733,6 +764,7 @@ class _ArticuloScreen extends StatelessWidget {
                     style: GoogleFonts.nunito(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -742,11 +774,9 @@ class _ArticuloScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border:
-                          Border.all(color: AppColors.border.withOpacity(0.7)),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withOpacity(0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 4)),
                       ],
@@ -763,8 +793,8 @@ class _ArticuloScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

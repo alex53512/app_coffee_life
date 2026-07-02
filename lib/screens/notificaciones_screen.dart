@@ -94,7 +94,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
+      backgroundColor: const Color(0xFFF7F8F5),
       body: SafeArea(
         child: Column(
           children: [
@@ -108,32 +108,81 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: const Color(0xFFF4E7D6),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          Expanded(
-            child: Text('Notificaciones',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-          ),
-          if (_sinLeer > 0)
-            TextButton(
-              onPressed: _marcarTodasLeidas,
-              child: Text('Leer todas',
-                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
-            )
-          else
-            const SizedBox(width: 48),
+  return Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF97D340),
+          Color(0xFF388E3C),
         ],
       ),
-    );
-  }
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(28),
+        bottomRight: Radius.circular(28),
+      ),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    child: SafeArea(
+      bottom: false,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Color(0xFF262A24),
+                size: 18,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'Notificaciones',
+              style: GoogleFonts.nunito(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF262A24),
+              ),
+            ),
+          ),
+          if (_sinLeer > 0)
+            Material(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: _marcarTodasLeidas,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    'Leer todas',
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF262A24),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 42),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildBannerSinLeer() {
     return Container(
@@ -226,7 +275,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         duration: const Duration(milliseconds: 250),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFBF7EF),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: leida ? null : Border.all(color: color.withOpacity(0.3), width: 1.2),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(leida ? 0.04 : 0.08), blurRadius: 10, offset: const Offset(0, 2))],

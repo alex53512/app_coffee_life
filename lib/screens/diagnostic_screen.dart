@@ -1049,7 +1049,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         debugPrint('CULTIVO ID: $_cultivoSeleccionado');
         debugPrint('FINCA: ${AppState.instance.fincaSeleccionada?["nombreFinca"]}');
         debugPrint('CULTIVOS EN ESTADO: ${AppState.instance.cultivosFinca.length}');
- 
+
+        final observaciones =
+            '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
+            '— $_scientificName — Severidad: $_severity';
+
         final resMonitoreo = await ApiService.post('/monitoreos', {
           'id_cultivo':      _cultivoSeleccionado,
           'fecha_monitoreo': fechaStr,

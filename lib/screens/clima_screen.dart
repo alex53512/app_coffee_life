@@ -6,33 +6,33 @@ import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
- 
+
 class ClimaScreen extends StatefulWidget {
   final String nombreFinca;
   const ClimaScreen({super.key, this.nombreFinca = 'Finca El Paraíso'});
- 
+
   @override
   State<ClimaScreen> createState() => _ClimaScreenState();
 }
- 
+
 class _ClimaScreenState extends State<ClimaScreen> {
   bool _cargando = true;
   Map<String, dynamic> _clima = {};
   String _ciudadActual = 'Cargando ubicación...';
- 
+
   @override
   void initState() {
     super.initState();
     _cargarClima();
     AppState.instance.addListener(_onEstadoCambiado);
   }
- 
+
   @override
   void dispose() {
     AppState.instance.removeListener(_onEstadoCambiado);
     super.dispose();
   }
- 
+
   String? _lastFincaId;
 
   void _onEstadoCambiado() {
@@ -42,7 +42,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       _cargarClima();
     }
   }
- 
+
   Future<void> _cargarClima() async {
     setState(() => _cargando = true);
     try {
@@ -77,10 +77,10 @@ class _ClimaScreenState extends State<ClimaScreen> {
 
       final url = 'https://api.weatherapi.com/v1/forecast.json'
           '?key=$apiKey&q=$query&days=4&lang=es&aqi=no&alerts=no';
- 
+
       final response = await http.get(Uri.parse(url));
       final data     = jsonDecode(response.body);
- 
+
       if (response.statusCode == 200) {
         final current      = data['current'];
         final location     = data['location'];
@@ -116,7 +116,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       _usarDatosSimulados();
     }
   }
- 
+
   void _usarDatosSimulados() {
     final finca = AppState.instance.fincaSeleccionada;
     final nombre = finca?['nombreFinca'] ?? finca?['nombre_finca'] ?? 'Popayán, Colombia';
@@ -135,7 +135,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       _cargando = false;
     });
   }
- 
+
   String _getEmojiFromCode(int code, int isDay) {
     if (code == 1000) return isDay == 1 ? '☀️' : '🌙';
     if (code == 1003) return '⛅';
@@ -145,7 +145,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
     if (code <= 1282) return '🌧️';
     return '⛅';
   }
- 
+
   IconData _getIconFromCode(int code) {
     if (code == 1000) return Icons.wb_sunny_rounded;
     if (code == 1003) return Icons.cloud_queue_rounded;
@@ -154,18 +154,18 @@ class _ClimaScreenState extends State<ClimaScreen> {
     if (code <= 1282) return Icons.grain_rounded;
     return Icons.cloud_rounded;
   }
- 
+
   List<Map<String, dynamic>> _getRecomendaciones() {
     final temp    = (_clima['temp']    ?? 22) as int;
     final humedad = (_clima['humedad'] ?? 70) as int;
     final lluvia  = (_clima['lluvia']  ?? false) as bool;
- 
+
     final nivelRoya     = AppState.instance.nivelRoya;
     final cultivoNombre = AppState.instance.cultivoNombre;
     final tieneCultivo  = cultivoNombre.isNotEmpty;
- 
+
     List<Map<String, dynamic>> recs = [];
- 
+
     if (tieneCultivo) {
       if (nivelRoya == 'Alto') {
         recs.add({
@@ -203,7 +203,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         });
       }
     }
- 
+
     if (lluvia) {
       recs.add({
         'icono': Icons.water_drop_outlined,
@@ -221,7 +221,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
             'La humedad actual favorece la absorción del agua.',
       });
     }
- 
+
     if (humedad > 80 && (nivelRoya == 'Alto' || nivelRoya == 'Medio')) {
       recs.add({
         'icono': Icons.science_outlined,
@@ -247,7 +247,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
             '${tieneCultivo ? "para $cultivoNombre" : ""}.',
       });
     }
- 
+
     if (lluvia) {
       recs.add({
         'icono': Icons.agriculture_outlined,
@@ -271,7 +271,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         'descripcion': 'Las condiciones son favorables para recolectar café.',
       });
     }
- 
+
     if (temp >= 18 && temp <= 24) {
       recs.add({
         'icono': Icons.thermostat_outlined,
@@ -294,16 +294,16 @@ class _ClimaScreenState extends State<ClimaScreen> {
         'descripcion': 'El frío puede afectar el desarrollo de la planta. Protege los cultivos jóvenes.',
       });
     }
- 
+
     return recs;
   }
- 
+
   @override
   Widget build(BuildContext context) {
     final fincaNombre   = AppState.instance.fincaSeleccionada?['nombreFinca'] ?? widget.nombreFinca;
     final cultivoNombre = AppState.instance.cultivoNombre;
     final nivelRoya     = AppState.instance.nivelRoya;
- 
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
@@ -357,43 +357,67 @@ class _ClimaScreenState extends State<ClimaScreen> {
       ),
     );
   }
- 
-  Widget _buildHeader(String fincaNombre, String cultivoNombre, String nivelRoya) {
-    return Container(
-      width: double.infinity,
-      color: const Color(0xFFF4E7D6),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: Row(
-        children: [
-          const Icon(Icons.wb_cloudy_rounded, color: AppColors.primary, size: 26),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Clima · $fincaNombre',
-                    style: GoogleFonts.nunito(
-                        fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                if (cultivoNombre.isNotEmpty)
-                  Row(
-                    children: [
-                      Text('Cultivo: $cultivoNombre',
-                          style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-                      const SizedBox(width: 6),
-                      _royaBadge(nivelRoya),
-                    ],
-                  )
-                else
-                  Text('Selecciona un cultivo en Inicio para ver recomendaciones personalizadas',
-                      style: GoogleFonts.nunito(fontSize: 10, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
+
+ Widget _buildHeader(
+  String fincaNombre,
+  String cultivoNombre,
+  String nivelRoya,
+) {
+  return Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF97D340),
+          Color(0xFF388E3C),
         ],
       ),
-    );
-  }
- 
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Clima · $fincaNombre',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.nunito(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF262A24),
+          ),
+        ),
+        const SizedBox(height: 6),
+        if (cultivoNombre.isNotEmpty)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Cultivo: $cultivoNombre',
+                style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  color: const Color(0xFF262A24),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _royaBadge(nivelRoya),
+            ],
+          )
+        else
+          Text(
+            'Selecciona un cultivo en Inicio para ver recomendaciones personalizadas',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.nunito(
+              fontSize: 11,
+              color: const Color(0xFF262A24),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
   Widget _royaBadge(String nivel) {
     final color = nivel == 'Alto'  ? Colors.red
                 : nivel == 'Medio' ? Colors.orange
@@ -411,15 +435,21 @@ class _ClimaScreenState extends State<ClimaScreen> {
           style: GoogleFonts.nunito(fontSize: 9, fontWeight: FontWeight.w700, color: color)),
     );
   }
- 
+
   Widget _buildClimaCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF7EF),
+        color: const Color.fromARGB(255, 241, 244, 241),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -442,11 +472,11 @@ class _ClimaScreenState extends State<ClimaScreen> {
       ),
     );
   }
- 
+
   Widget _climaDato(IconData icon, String valor, String label) {
     return Column(
       children: [
-        Icon(icon, color: AppColors.primary, size: 18),
+        Icon(icon, color: const Color.fromARGB(255, 62, 73, 54), size: 18),
         const SizedBox(height: 2),
         Text(valor,
             style: GoogleFonts.nunito(
@@ -456,38 +486,107 @@ class _ClimaScreenState extends State<ClimaScreen> {
       ],
     );
   }
- 
-  Widget _buildPronosticoCard() {
-    final pronostico = _clima['pronostico'] as List? ?? [];
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBF7EF),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 1.2),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: pronostico.map<Widget>((p) {
-          return Column(
-            children: [
-              Text(p['dia'],
-                  style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-              const SizedBox(height: 8),
-              Icon(p['icono'], color: AppColors.primary),
-              const SizedBox(height: 8),
-              Text('${p['max']}°/${p['min']}°',
-                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700)),
-              if (p['lluvia'] == true)
-                const Text('🌧️', style: TextStyle(fontSize: 10)),
-            ],
-          );
-        }).toList(),
+
+ Widget _buildPronosticoCard() {
+  final pronostico = _clima['pronostico'] as List? ?? [];
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: const Color.fromARGB(255, 241, 244, 241),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: pronostico.map<Widget>((p) {
+        return Column(
+          children: [
+            Text(p['dia'],
+                style: GoogleFonts.nunito(
+                    fontSize: 11, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            _iconoClima(p['icono'] as IconData),
+            const SizedBox(height: 8),
+            Text('${p['max']}°/${p['min']}°',
+                style: GoogleFonts.nunito(
+                    fontSize: 12, fontWeight: FontWeight.w700)),
+            if (p['lluvia'] == true)
+              const Text('🌧️', style: TextStyle(fontSize: 10)),
+          ],
+        );
+      }).toList(),
+    ),
+  );
+}
+
+/// Colorea el ícono del clima según su tipo:
+/// - Sol → amarillo
+/// - Nube parcialmente soleada → nube gris-azulada con sol amarillo detrás
+/// - Nube (nublado) → gris-azulada (para que se note sobre fondo claro)
+/// - Lluvia → azul
+Widget _iconoClima(IconData icono) {
+  const amarillo = Color(0xFFFBC02D);
+  const azul = Color(0xFF2196F3);
+  const grisNube = Color(0xFFB0BEC5); // gris-azulado, contrasta sobre fondo claro
+
+  final esSol = icono == Icons.wb_sunny ||
+      icono == Icons.wb_sunny_rounded ||
+      icono == Icons.sunny;
+
+  final esLluvia = icono == Icons.grain ||
+      icono == Icons.grain_rounded ||
+      icono == Icons.water_drop ||
+      icono == Icons.umbrella ||
+      icono == Icons.beach_access ||
+      icono == Icons.thunderstorm ||
+      icono == Icons.thunderstorm_rounded;
+
+  final esParcialmenteNublado = icono == Icons.wb_cloudy ||
+      icono == Icons.cloud_queue ||
+      icono == Icons.cloud_queue_rounded;
+
+  if (esSol) {
+    return const Icon(Icons.wb_sunny_rounded, color: amarillo, size: 24);
+  }
+
+  if (esLluvia) {
+    return Icon(icono, color: azul, size: 24);
+  }
+
+  if (esParcialmenteNublado) {
+    // Sol amarillo detrás + nube gris-azulada al frente, como en apps de clima
+    return SizedBox(
+      width: 28,
+      height: 24,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Positioned(
+            right: 0,
+            top: 0,
+            child: Icon(Icons.wb_sunny_rounded, color: amarillo, size: 16),
+          ),
+          const Positioned(
+            left: 0,
+            bottom: 0,
+            child: Icon(Icons.cloud_rounded, color: grisNube, size: 20),
+          ),
+        ],
       ),
     );
   }
- 
+
+  // Nublado normal (Icons.cloud_rounded, etc.)
+  return Icon(icono, color: grisNube, size: 24);
+}
+
   Widget _buildRecomendacionesHeader(String cultivoNombre, String nivelRoya) {
     return Row(
       children: [
@@ -510,7 +609,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       ],
     );
   }
- 
+
   Widget _buildRecomendacionesCard() {
     final recs = _getRecomendaciones();
     return Column(
@@ -520,8 +619,10 @@ class _ClimaScreenState extends State<ClimaScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFBF7EF),
+            color: const Color.fromARGB(255, 241, 244, 241),
             borderRadius: BorderRadius.circular(18),
+            // Este borde SÍ es informativo (indica la severidad con color),
+            // por eso se mantiene a diferencia de las tarjetas neutras de arriba.
             border: Border.all(color: (rec['color'] as Color).withOpacity(0.45), width: 1.2),
           ),
           child: Row(
