@@ -1075,12 +1075,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             }
             final idStr = buf.toString();
             if (idStr.isNotEmpty) {
-              final idActualizado = int.parse(idStr);
-              idMonitoreo = idActualizado;
-              await ApiService.patch('/monitoreos/$idActualizado', {
-                'observaciones': observaciones,
-              });
-              debugPrint('✅ Monitoreo $idActualizado actualizado');
+              idMonitoreo = int.parse(idStr);
+              debugPrint('✅ Monitoreo existente reutilizado: $idMonitoreo');
             }
           }
           if (idMonitoreo == null) rethrow;
