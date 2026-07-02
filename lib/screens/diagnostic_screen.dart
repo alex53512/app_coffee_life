@@ -1052,15 +1052,40 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         debugPrint('FINCA: ${AppState.instance.fincaSeleccionada?["nombreFinca"]}');
         debugPrint('CULTIVOS EN ESTADO: ${AppState.instance.cultivosFinca.length}');
  
-        final resMonitoreo = await ApiService.post('/monitoreos', {
-          'id_cultivo':      _cultivoSeleccionado,
-          'fecha_monitoreo': fechaStr,
-          'observaciones':   observaciones,
-        });
-        final idMonitoreo =
-            resMonitoreo['data']?['idMonitoreo'] as int?;
-        debugPrint('✅ Monitoreo creado: $idMonitoreo');
- 
+        int? idMonitoreo;
+        try {
+          final resMonitoreo = await ApiService.post('/monitoreos', {
+            'id_cultivo':      _cultivoSeleccionado,
+            'fecha_monitoreo': fechaStr,
+            'observaciones':   observaciones,
+          });
+          idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
+          debugPrint('✅ Monitoreo creado: $idMonitoreo');
+        } catch (e) {
+          final msg = e.toString();
+          if ((msg.contains('409') || msg.contains('ya existe')) && msg.contains('idMonitoreo')) {
+            final idx = msg.indexOf('idMonitoreo');
+            final trozo = msg.substring(idx + 11);
+            final buf = StringBuffer();
+            for (var i = 0; i < trozo.length; i++) {
+              final c = trozo[i];
+              if (c.codeUnitAt(0) >= 48 && c.codeUnitAt(0) <= 57) {
+                buf.write(c);
+              } else if (buf.isNotEmpty) break;
+            }
+            final idStr = buf.toString();
+            if (idStr.isNotEmpty) {
+              final idActualizado = int.parse(idStr);
+              idMonitoreo = idActualizado;
+              await ApiService.patch('/monitoreos/$idActualizado', {
+                'observaciones': observaciones,
+              });
+              debugPrint('✅ Monitoreo $idActualizado actualizado');
+            }
+          }
+          if (idMonitoreo == null) rethrow;
+        }
+
         int? idImagen;
         if (idMonitoreo != null) {
           idImagen = await ApiService.uploadImagen(
@@ -1070,7 +1095,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           );
           debugPrint('✅ Imagen subida: $idImagen');
         }
- 
+
         await ApiService.post('/analisis_ia', {
           'resultado':          _diagnosisText,
           'confianza':          '${(_confidence * 100).round()}',
