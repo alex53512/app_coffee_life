@@ -545,25 +545,31 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       _fincaActiva?['nombre_finca'] ??
       'Finca';
  
+  dynamic _ultimoIdFinca;
+
   @override
   void initState() {
     super.initState();
     _cargarMonitoreos();
-    AppState.instance.addListener(_onFincaCambiada);
+    AppState.instance.addListener(_onAppStateChanged);
   }
- 
-  void _onFincaCambiada() {
-    setState(() {
-      _busqueda = '';
-      _lotes = [];
-      _loteSeleccionado = null;
-    });
+
+  void _onAppStateChanged() {
+    final nuevoId = _idFincaActiva;
+    if (nuevoId != _ultimoIdFinca) {
+      _ultimoIdFinca = nuevoId;
+      setState(() {
+        _busqueda = '';
+        _lotes = [];
+        _loteSeleccionado = null;
+      });
+    }
     _cargarMonitoreos();
   }
- 
+
   @override
   void dispose() {
-    AppState.instance.removeListener(_onFincaCambiada);
+    AppState.instance.removeListener(_onAppStateChanged);
     super.dispose();
   }
  
