@@ -195,15 +195,12 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
  
     setState(() => _guardando = true);
     try {
-      final hoy = DateTime.now();
-      final fecha = '${hoy.year}-${hoy.month.toString().padLeft(2,'0')}-${hoy.day.toString().padLeft(2,'0')}T00:00:00.000-05:00';
       final observaciones =
           '[EXPERTO] $_resultado - Severidad $_severidad - ${_obsCtrl.text.trim()}';
- 
+
       // 1. Crear monitoreo del experto
       final resMonitoreo = await ApiService.post('/monitoreos', {
         'id_cultivo': idCultivo,
-        'fecha_monitoreo': fecha,
         'observaciones': observaciones,
       });
       final idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
@@ -230,10 +227,11 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
       }
  
       // Actualizar estado local
+      final ahora = DateTime.now();
       setState(() {
         _diagnosticoExperto = {
           'observaciones': observaciones,
-          'fechaMonitoreo': fecha,
+          'fechaMonitoreo': '${ahora.year}-${ahora.month.toString().padLeft(2,'0')}-${ahora.day.toString().padLeft(2,'0')}',
           'recomendacion': _recCtrl.text.trim(),
           'tratamiento': _tratamientoSeleccionado?['nombre'] ?? '',
         };

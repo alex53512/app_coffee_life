@@ -1041,22 +1041,17 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     if (_esResultadoValido && !_guardando) {
       _guardando = true;
       try {
-        final hoy      = DateTime.now();
-        final fechaStr =
-            '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}T00:00:00.000-05:00';
- 
         final observaciones =
             '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
             '— $_scientificName — Severidad: $_severity';
         debugPrint('CULTIVO ID: $_cultivoSeleccionado');
         debugPrint('FINCA: ${AppState.instance.fincaSeleccionada?["nombreFinca"]}');
         debugPrint('CULTIVOS EN ESTADO: ${AppState.instance.cultivosFinca.length}');
- 
+
         int? idMonitoreo;
         try {
           final resMonitoreo = await ApiService.post('/monitoreos', {
             'id_cultivo':      _cultivoSeleccionado,
-            'fecha_monitoreo': fechaStr,
             'observaciones':   observaciones,
           });
           idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
