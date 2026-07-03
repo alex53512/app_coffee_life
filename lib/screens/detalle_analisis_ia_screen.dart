@@ -190,31 +190,19 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
   Future<void> _guardarDiagnosticoExperto() async {
     final monitoreoIA = _monitoreoIA;
     if (monitoreoIA == null) return;
-    final idCultivo = monitoreoIA['idCultivo'] ?? monitoreoIA['id_cultivo'];
-    if (idCultivo == null) return;
- 
+    final idMonitoreoOriginal = monitoreoIA['idMonitoreo'] ?? monitoreoIA['id_monitoreo'];
+    if (idMonitoreoOriginal == null) return;
+
     setState(() => _guardando = true);
     try {
-      final observaciones =
-          '[EXPERTO] $_resultado - Severidad $_severidad - ${_obsCtrl.text.trim()}';
-
-      // 1. Crear monitoreo del experto
-      final hoy = DateTime.now();
-      final fecha = '${hoy.year}-${hoy.month.toString().padLeft(2,'0')}-${hoy.day.toString().padLeft(2,'0')}T00:00:00.000-05:00';
-      final resMonitoreo = await ApiService.post('/monitoreos', {
-        'id_cultivo': idCultivo,
-        'fecha_monitoreo': fecha,
-        'observaciones': observaciones,
-      });
-      final idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
- 
-      // 2. Crear recomendación vinculada
-      if (_recCtrl.text.trim().isNotEmpty && idMonitoreo != null) {
+      // Crear recomendación directamente vinculada al monitoreo original
+      if (_recCtrl.text.trim().isNotEmpty) {
         final resRec = await ApiService.post('/recomendaciones', {
           'descripcion': _recCtrl.text.trim(),
-          'id_monitoreo': idMonitoreo,
+          'id_monitoreo': idMonitoreoOriginal,
         });
-        // 3. Vincular tratamiento si seleccionó uno
+
+        // Vincular tratamiento si seleccionó uno
         final idTratamiento = _tratamientoSeleccionado?['idTratamiento'] ??
             _tratamientoSeleccionado?['id_tratamiento'];
         if (idTratamiento != null) {
@@ -228,9 +216,11 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           }
         }
       }
- 
+
       // Actualizar estado local
       final ahora = DateTime.now();
+      final observaciones =
+          '[EXPERTO] $_resultado - Severidad $_severidad - ${_obsCtrl.text.trim()}';
       setState(() {
         _diagnosticoExperto = {
           'observaciones': observaciones,
@@ -241,7 +231,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
         _modoFormulario = false;
         _guardando = false;
       });
- 
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

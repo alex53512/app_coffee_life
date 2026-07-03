@@ -618,6 +618,26 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           return fId == null || fId == idFinca;
         }).toList();
       }
+      // Marcar monitoreos que tienen diagnóstico de experto
+      Set<dynamic> conExperto = {};
+      try {
+        final recData = await ApiService.get('/recomendaciones?limit=500');
+        final recs = recData is List ? recData : (recData['data'] ?? []);
+        for (final r in recs) {
+          final idM = r['id_monitoreo'] ?? r['idMonitoreo'];
+          if (idM != null) conExperto.add(idM);
+        }
+      } catch (_) {}
+
+      lista.sort((a, b) {
+        final aExp = conExperto.contains(a['idMonitoreo'] ?? a['id_monitoreo']);
+        final bExp = conExperto.contains(b['idMonitoreo'] ?? b['id_monitoreo']);
+        if (aExp != bExp) return aExp ? -1 : 1;
+        final idA = _toInt(a['idMonitoreo'] ?? a['id_monitoreo']) ?? 0;
+        final idB = _toInt(b['idMonitoreo'] ?? b['id_monitoreo']) ?? 0;
+        return idB.compareTo(idA);
+      });
+
       setState(() {
         _monitoreos = lista;
         _cargando = false;
