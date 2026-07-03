@@ -744,6 +744,10 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 20),
+        _seccionTitulo('Imágenes (${_imagenes().length})'),
+        const SizedBox(height: 10),
+        _buildImagenes(),
       ],
     );
   }
