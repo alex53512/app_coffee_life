@@ -606,6 +606,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       final data = await ApiService.get(endpoint);
       List lista =
           data is List ? List.from(data) : List.from(data['data'] ?? []);
+      // Filtrar monitoreos del experto (creados aparte con tag [EXPERTO])
+      // para evitar duplicados — ahora las recomendaciones se vinculan directo
+      lista = lista.where((m) {
+        final obs = (m['observaciones'] ?? '').toString();
+        return !obs.startsWith('[EXPERTO]');
+      }).toList();
       if (idFinca != null) {
         lista = lista.where((m) {
           final fId = _toInt(
