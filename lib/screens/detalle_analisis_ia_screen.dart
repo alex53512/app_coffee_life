@@ -196,7 +196,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     setState(() => _guardando = true);
     try {
       final hoy = DateTime.now();
-      final fecha = '${hoy.year}-${hoy.month.toString().padLeft(2,'0')}-${hoy.day.toString().padLeft(2,'0')}';
+      final fecha = '${hoy.year}-${hoy.month.toString().padLeft(2,'0')}-${hoy.day.toString().padLeft(2,'0')}T00:00:00.000-05:00';
       final observaciones =
           '[EXPERTO] $_resultado - Severidad $_severidad - ${_obsCtrl.text.trim()}';
  

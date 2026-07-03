@@ -1043,7 +1043,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       try {
         final hoy      = DateTime.now();
         final fechaStr =
-            '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
+            '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}T00:00:00.000-05:00';
  
         final observaciones =
             '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
