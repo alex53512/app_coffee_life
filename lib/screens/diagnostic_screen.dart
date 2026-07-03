@@ -1041,9 +1041,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     if (_esResultadoValido && !_guardando) {
       _guardando = true;
       try {
-        final manana = DateTime.now().add(const Duration(days: 1));
+        final hoy      = DateTime.now();
         final fechaStr =
-            '${manana.year}-${manana.month.toString().padLeft(2, '0')}-${manana.day.toString().padLeft(2, '0')}';
+            '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
  
         final observaciones =
             '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
