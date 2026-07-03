@@ -199,8 +199,8 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           '[EXPERTO] $_resultado - Severidad $_severidad - ${_obsCtrl.text.trim()}';
 
       // 1. Crear monitoreo del experto
-      final manana = DateTime.now().add(const Duration(days: 1));
-      final fecha = '${manana.year}-${manana.month.toString().padLeft(2,'0')}-${manana.day.toString().padLeft(2,'0')}T00:00:00.000-05:00';
+      final hoy = DateTime.now();
+      final fecha = '${hoy.year}-${hoy.month.toString().padLeft(2,'0')}-${hoy.day.toString().padLeft(2,'0')}T00:00:00.000-05:00';
       final resMonitoreo = await ApiService.post('/monitoreos', {
         'id_cultivo': idCultivo,
         'fecha_monitoreo': fecha,
