@@ -1050,8 +1050,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
         int? idMonitoreo;
         try {
+          final hoy = DateTime.now();
+          final fechaStr = '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}T00:00:00.000-05:00';
           final resMonitoreo = await ApiService.post('/monitoreos', {
             'id_cultivo':      _cultivoSeleccionado,
+            'fecha_monitoreo': fechaStr,
             'observaciones':   observaciones,
           });
           idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
