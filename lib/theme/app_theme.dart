@@ -128,6 +128,54 @@ class AppColors {
 
 class AppTheme {
 
+  // ── Helper de fecha con timezone Colombia (UTC-5) ────────
+
+  /// Parsea [fechaStr] (ISO 8601) y devuelve fecha + hora en hora
+  /// local (Colombia UTC-5). Si el string trae un offset explícito
+  /// (Z, +HH:MM, -HH:MM), lo usa; si no, asume que ya está en hora local.
+  static String formatFechaColombia(dynamic fechaStr, {bool withTime = true}) {
+    final raw = fechaStr?.toString() ?? '';
+    if (raw.isEmpty) return 'Sin fecha';
+
+    final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})').firstMatch(raw);
+    debugPrint('⏰ raw="$raw" match=${m?.group(0)}');
+    if (m == null) return raw;
+
+    int h = int.parse(m[4]!);
+    final int min = int.parse(m[5]!);
+    int d = int.parse(m[3]!);
+    final int mes = int.parse(m[2]!);
+    final int anio = int.parse(m[1]!);
+
+    if (raw.endsWith('Z')) {
+      h -= 5;
+      debugPrint('⏰ UTC detectado: h=$h tras -5');
+    } else {
+      final tz = RegExp(r'([+-])(\d{2}):(\d{2})$').firstMatch(raw);
+      if (tz != null) {
+        final signo = tz[1]!;
+        final tzh = int.parse(tz[2]!);
+        h += (signo == '-' ? tzh : -tzh) - 5;
+        debugPrint('⏰ offset ${signo}${tzh} detectado: h=$h');
+      } else {
+        debugPrint('⏰ sin timezone: h=$h (asumido local)');
+      }
+    }
+
+    if (h < 0) { h += 24; d -= 1; }
+    if (h > 23) { h -= 24; d += 1; }
+    int dAjustado = d;
+    if (dAjustado < 1) { dAjustado = 1; }
+
+    const meses = [
+      'Ene','Feb','Mar','Abr','May','Jun',
+      'Jul','Ago','Sep','Oct','Nov','Dic'
+    ];
+    final fecha = '${dAjustado.toString().padLeft(2,'0')} ${meses[mes-1]} $anio';
+    if (!withTime) return fecha;
+    return '$fecha · ${h.toString().padLeft(2,'0')}:${min.toString().padLeft(2,'0')}';
+  }
+
   // =========================================================
   // COMPATIBILIDAD CON TU APP
   // =========================================================

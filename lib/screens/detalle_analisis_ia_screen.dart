@@ -168,12 +168,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
   }
  
   String _formatFecha(dynamic fecha) {
-    if (fecha == null) return 'Sin fecha';
-    try {
-      final dt = DateTime.parse(fecha.toString());
-      const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-      return '${dt.day.toString().padLeft(2,'0')} ${meses[dt.month-1]} ${dt.year}';
-    } catch (_) { return fecha.toString(); }
+    return AppTheme.formatFechaColombia(fecha);
   }
  
   // ─── Guardar diagnóstico del experto ───────────────────────────────────

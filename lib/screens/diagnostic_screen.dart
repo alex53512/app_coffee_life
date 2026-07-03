@@ -57,21 +57,37 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   String _invalidMessage    = '';
   String _invalidSuggestion = '';
  
+  int? _ultimoIdFinca;
+
   @override
   void initState() {
     super.initState();
+    _ultimoIdFinca = _idFincaActiva;
     _cargarDesdeAppState();
     AppState.instance.addListener(_onFincaCambiada);
   }
- 
+
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
     super.dispose();
   }
- 
-  void _onFincaCambiada() => _cargarDesdeAppState();
- 
+
+  int? get _idFincaActiva {
+    final f = AppState.instance.fincaSeleccionada;
+    return f == null
+        ? null
+        : (f['idFinca'] ?? f['id_finca'] as int?);
+  }
+
+  void _onFincaCambiada() {
+    final nuevoId = _idFincaActiva;
+    if (nuevoId != _ultimoIdFinca) {
+      _ultimoIdFinca = nuevoId;
+      _cargarDesdeAppState();
+    }
+  }
+
   void _cargarDesdeAppState() {
     final cultivos = AppState.instance.cultivosFinca;
     setState(() {
@@ -82,7 +98,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _stage      = 'idle';
       _imagenFile  = null;
       _imagenBytes = null;
-      _guardando   = false; // ✅
+      _guardando   = false;
     });
   }
  
@@ -1051,7 +1067,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         int? idMonitoreo;
         try {
           final hoy = DateTime.now();
-          final fechaStr = '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}T00:00:00.000-05:00';
+          final fechaStr = '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}T${hoy.hour.toString().padLeft(2, '0')}:${hoy.minute.toString().padLeft(2, '0')}:00.000-05:00';
           final resMonitoreo = await ApiService.post('/monitoreos', {
             'id_cultivo':      _cultivoSeleccionado,
             'fecha_monitoreo': fechaStr,
@@ -1079,6 +1095,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           }
           if (idMonitoreo == null) rethrow;
         }
+        AppState.instance.notifyMonitoreoGuardado();
 
         int? idImagen;
         if (idMonitoreo != null) {

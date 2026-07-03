@@ -612,13 +612,18 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       final data = await ApiService.get(endpoint);
       List lista =
           data is List ? List.from(data) : List.from(data['data'] ?? []);
+      debugPrint('📋 Monitoreos recibidos: ${lista.map((m) => m['idMonitoreo'] ?? m['id_monitoreo']).toList()}');
+      debugPrint('🔎 idFinca usado en query: $idFinca');
       // Filtrar monitoreos del experto (creados aparte con tag [EXPERTO])
       // para evitar duplicados — ahora las recomendaciones se vinculan directo
+      final antesExperto = lista.length;
       lista = lista.where((m) {
         final obs = (m['observaciones'] ?? '').toString();
         return !obs.startsWith('[EXPERTO]');
       }).toList();
+      debugPrint('🔻 Filtro [EXPERTO]: ${antesExperto - lista.length} eliminados');
       if (idFinca != null) {
+        final antesFinca = lista.length;
         lista = lista.where((m) {
           final fId = _toInt(
             m['cultivo']?['finca']?['idFinca'] ??
@@ -629,31 +634,20 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           );
           return fId == null || fId == idFinca;
         }).toList();
+        debugPrint('🔻 Filtro finca: ${antesFinca - lista.length} eliminados, ${lista.length} restantes');
       }
-      // Marcar monitoreos que tienen diagnóstico de experto
-      Set<dynamic> conExperto = {};
-      try {
-        final recData = await ApiService.get('/recomendaciones?limit=500');
-        final recs = recData is List ? recData : (recData['data'] ?? []);
-        for (final r in recs) {
-          final idM = r['id_monitoreo'] ?? r['idMonitoreo'];
-          if (idM != null) conExperto.add(idM);
-        }
-      } catch (_) {}
-
       lista.sort((a, b) {
-        final aExp = conExperto.contains(a['idMonitoreo'] ?? a['id_monitoreo']);
-        final bExp = conExperto.contains(b['idMonitoreo'] ?? b['id_monitoreo']);
-        if (aExp != bExp) return aExp ? -1 : 1;
         final idA = _toInt(a['idMonitoreo'] ?? a['id_monitoreo']) ?? 0;
         final idB = _toInt(b['idMonitoreo'] ?? b['id_monitoreo']) ?? 0;
         return idB.compareTo(idA);
       });
+      debugPrint('📊 IDs ordenados: ${lista.take(20).map((m) => m['idMonitoreo'] ?? m['id_monitoreo']).toList()}...');
 
       setState(() {
         _monitoreos = lista;
         _cargando = false;
       });
+      debugPrint('👁️ _monitoreos.length=${_monitoreos.length}, _monitoreosFiltrados.length=${_monitoreosFiltrados.length}, _busqueda="$_busqueda"');
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -835,21 +829,8 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
  
   String _fecha(dynamic m) {
-    final f = m['fechaMonitoreo'] ??
-        m['fecha_monitoreo'] ??
-        m['fechaRegistro'] ??
-        '';
-    if (f.toString().isEmpty) return 'Sin fecha';
-    try {
-      final dt = DateTime.parse(f.toString());
-      const meses = [
-        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-      ];
-      return '${dt.day.toString().padLeft(2, '0')} ${meses[dt.month - 1]} ${dt.year}';
-    } catch (_) {
-      return f.toString();
-    }
+    final f = m['fechaMonitoreo'] ?? m['fecha_monitoreo'] ?? m['fechaRegistro'];
+    return AppTheme.formatFechaColombia(f);
   }
  
   String _parcela(dynamic m) {
@@ -1073,7 +1054,10 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
           child: TextField(
-            onChanged: (v) => setState(() => _busqueda = v),
+            onChanged: (v) {
+              debugPrint('🔍 búsqueda cambió: "$v"');
+              setState(() => _busqueda = v);
+            },
             decoration: InputDecoration(
               hintText: 'Buscar por finca, nivel, fecha...',
               hintStyle: GoogleFonts.nunito(

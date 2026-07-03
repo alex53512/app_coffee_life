@@ -156,16 +156,8 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   }
  
   String _fecha() {
-    final f = (_m['fechaMonitoreo'] ?? _m['fecha_monitoreo'] ?? '').toString();
-    if (f.isEmpty) return 'Sin fecha';
-    try {
-      final dt = DateTime.parse(f);
-      const meses = [
-        'Enero','Febrero','Marzo','Abril','Mayo','Junio',
-        'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
-      ];
-      return '${dt.day.toString().padLeft(2,'0')} de ${meses[dt.month-1]} de ${dt.year}';
-    } catch (_) { return f; }
+    final f = _m['fechaMonitoreo'] ?? _m['fecha_monitoreo'];
+    return AppTheme.formatFechaColombia(f);
   }
  
   String _cultivo() {
@@ -248,6 +240,25 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       final nombre2  = '$nombre $apellido'.trim();
       if (nombre2.isNotEmpty) return nombre2;
     }
+
+    final fincaCultivo = _m['cultivo']?['finca'];
+    if (fincaCultivo is Map) {
+      final expAsignado = fincaCultivo['expertoAsignado'];
+      if (expAsignado is Map) {
+        final n = '${expAsignado['nombre'] ?? ''} ${expAsignado['apellido'] ?? ''}'.trim();
+        if (n.isNotEmpty) return n;
+      }
+    }
+
+    final fincaState = AppState.instance.fincaSeleccionada;
+    if (fincaState != null) {
+      final expAsignado = fincaState['expertoAsignado'];
+      if (expAsignado is Map) {
+        final n = '${expAsignado['nombre'] ?? ''} ${expAsignado['apellido'] ?? ''}'.trim();
+        if (n.isNotEmpty) return n;
+      }
+    }
+
     return 'Sin experto asignado';
   }
  
