@@ -217,24 +217,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return '';
   }
  
-  // Antes esto leía _m['experto'], que nunca se llena porque no existe
-  // ningún campo real de "experto asignado" en el monitoreo: ahora usa el
-  // nombre que sacamos del monitoreo [EXPERTO] encontrado por id_cultivo.
-  String _experto() {
-    final nombreDelDiagnostico =
-        (_diagnosticoExperto?['nombreExperto'] ?? '').toString();
-    if (nombreDelDiagnostico.isNotEmpty) return nombreDelDiagnostico;
- 
-    final exp = _m['experto'];
-    if (exp is Map) {
-      final nombre   = exp['nombre'] ?? '';
-      final apellido = exp['apellido'] ?? '';
-      final nombre2  = '$nombre $apellido'.trim();
-      if (nombre2.isNotEmpty) return nombre2;
-    }
-    return 'Sin experto asignado';
-  }
- 
   String _nivelRoya() {
     final obj = _m['nivelRoya'];
     if (obj is Map) return (obj['nombreNivel'] ?? obj['nombre_nivel'] ?? '').toString();
@@ -266,157 +248,210 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return AppColors.primary;
   }
 
+  String? _urlImagen(dynamic img) {
+    final url = img['rutaImagen'] ?? img['urlImagen'] ?? img['url_imagen'] ?? img['ruta_imagen'];
+    if (url == null || url.toString().isEmpty) return null;
+    return url.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final municipio = _municipio();
+    final imagenes = _imagenes();
+    final primeraImagenUrl = imagenes.isNotEmpty ? _urlImagen(imagenes[0]) : null;
  
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
+      backgroundColor: const Color(0xFFF7F8F5),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            Container(
-              color: const Color(0xFFF4E7D6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
+            // ── Imagen principal FIJA (no se encoge ni desaparece con el scroll) ──
+            SizedBox(
+              height: 260,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary, size: 20),
-                    onPressed: () => Navigator.pop(context),
+                  primeraImagenUrl != null
+                      ? Image.network(
+                          primeraImagenUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _heroPlaceholder(),
+                        )
+                      : _heroPlaceholder(),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.25),
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.45),
+                        ],
+                        stops: const [0.0, 0.45, 1.0],
+                      ),
+                    ),
                   ),
-                  Expanded(
-                    child: Text('Detalle del monitoreo',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.nunito(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
+                  if (imagenes.length > 1)
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.45),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.photo_library_outlined, color: Colors.white, size: 13),
+                            const SizedBox(width: 5),
+                            Text('${imagenes.length} fotos',
+                                style: GoogleFonts.nunito(
+                                    fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, top: 6),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.35),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 48),
                 ],
               ),
             ),
+
+            // ── Resto de la información: esto es lo único que se desplaza ──
             Expanded(
               child: _cargando
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                   : RefreshIndicator(
                       color: AppColors.primary,
                       onRefresh: _cargarDatos,
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.calendar_today_outlined,
-                                        size: 16, color: AppColors.textSecondary),
-                                    const SizedBox(width: 6),
-                                    Text(_fecha(),
-                                        style: GoogleFonts.nunito(
-                                            fontSize: 13, color: AppColors.textSecondary)),
-                                  ],
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                                  decoration: BoxDecoration(
-                                    color: _colorNivel().withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
+                      child: ShaderMask(
+                        shaderCallback: (rect) {
+                          return const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+                            stops: [0.0, 0.06, 0.94, 1.0],
+                          ).createShader(rect);
+                        },
+                        blendMode: BlendMode.dstIn,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
                                     children: [
-                                      Icon(Icons.eco_rounded, size: 13, color: _colorNivel()),
-                                      const SizedBox(width: 4),
-                                      Text(_nivelRoya(),
+                                      const Icon(Icons.calendar_today_outlined,
+                                          size: 16, color: AppColors.textSecondary),
+                                      const SizedBox(width: 6),
+                                      Text(_fecha(),
                                           style: GoogleFonts.nunito(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: _colorNivel())),
+                                              fontSize: 13, color: AppColors.textSecondary)),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            _seccionTitulo('Cultivo y Finca'),
-                            const SizedBox(height: 10),
-                            _card(
-                              child: Column(
-                                children: [
-                                  _infoFila(Icons.grass_rounded, 'Cultivo', _cultivo()),
-                                  const Divider(height: 20, color: AppColors.border),
-                                  _infoFila(Icons.location_on_outlined, 'Finca', _finca()),
-                                  if (municipio.isNotEmpty) ...[
-                                    const Divider(height: 20, color: AppColors.border),
-                                    _infoFila(Icons.map_outlined, 'Ubicación', municipio),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _seccionTitulo('Experto asignado'),
-                            const SizedBox(height: 10),
-                            _card(
-                              child: Row(
-                                children: [
                                   Container(
-                                    width: 42, height: 42,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFE8F5E9),
-                                      borderRadius: BorderRadius.circular(12),
+                                      color: _colorNivel().withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: const Icon(Icons.person_outline_rounded,
-                                        color: Color(0xFF388E3C), size: 22),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                    child: Row(
                                       children: [
-                                        Text('Experto',
+                                        Icon(Icons.eco_rounded, size: 13, color: _colorNivel()),
+                                        const SizedBox(width: 4),
+                                        Text(_nivelRoya(),
                                             style: GoogleFonts.nunito(
-                                                fontSize: 11, color: AppColors.textSecondary)),
-                                        Text(_experto(),
-                                            style: GoogleFonts.nunito(
-                                                fontSize: 14,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.w700,
-                                                color: AppColors.textPrimary)),
+                                                color: _colorNivel())),
                                       ],
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+                              const SizedBox(height: 20),
+                              _seccionTitulo('Cultivo y Finca'),
+                              const SizedBox(height: 10),
+                              _card(
+                                child: Column(
+                                  children: [
+                                    _infoFila(Icons.grass_rounded, 'Cultivo', _cultivo()),
+                                    const Divider(height: 20, color: AppColors.border),
+                                    _infoFila(Icons.location_on_outlined, 'Finca', _finca()),
+                                    if (municipio.isNotEmpty) ...[
+                                      const Divider(height: 20, color: AppColors.border),
+                                      _infoFila(Icons.map_outlined, 'Ubicación', municipio),
+                                    ],
+                                  ],
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  _tabItem('Recomendación IA', 0),
-                                  _tabItem('Recomendación Experto', 1),
-                                ],
+                              const SizedBox(height: 20),
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+                                ),
+                                child: Row(
+                                  children: [
+                                    _tabItem('Recomendación IA', 0),
+                                    _tabItem('Recomendación Experto', 1),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            _tabIndex == 0 ? _buildTabIa() : _buildTabExperto(),
-                            const SizedBox(height: 20),
-                          ],
+                              const SizedBox(height: 16),
+                              _tabIndex == 0 ? _buildTabIa() : _buildTabExperto(),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
                         ),
                       ),
                     ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _heroPlaceholder() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.eco_outlined, color: Colors.white38, size: 64),
       ),
     );
   }
@@ -432,6 +467,15 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
           decoration: BoxDecoration(
             color: isActive ? AppColors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(26),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
           child: Text(label,
               textAlign: TextAlign.center,
@@ -467,13 +511,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        // ✅ Imagen primero
-        _seccionTitulo('Imágenes (${_imagenes().length})'),
-        const SizedBox(height: 10),
-        _buildImagenes(),
-        const SizedBox(height: 14),
-
         if (desdObs)
           Container(
             margin: const EdgeInsets.only(bottom: 12),
@@ -495,35 +532,33 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
             ),
           ),
         _card(
-          child: Row(
-            children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(14)),
-                child: const Icon(Icons.smart_toy_outlined, color: AppColors.primary, size: 26),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Resultado', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-                    Text(resultado, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                    if (nombreCient.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(nombreCient, style: GoogleFonts.nunito(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        _card(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(14)),
+                    child: const Icon(Icons.smart_toy_outlined, color: AppColors.primary, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Resultado', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+                        Text(resultado, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        if (nombreCient.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(nombreCient, style: GoogleFonts.nunito(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 28, color: AppColors.border),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -771,39 +806,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     );
   }
 
-  Widget _buildImagenes() {
-    final imagenes = _imagenes();
-    if (imagenes.isEmpty) {
-      return _card(
-        child: Row(
-          children: [
-            const Icon(Icons.image_not_supported_outlined, color: AppColors.textSecondary, size: 20),
-            const SizedBox(width: 10),
-            Text('Sin imágenes registradas',
-                style: GoogleFonts.nunito(color: AppColors.textSecondary, fontSize: 13)),
-          ],
-        ),
-      );
-    }
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10),
-      itemCount: imagenes.length,
-      itemBuilder: (_, i) {
-        final url = imagenes[i]['rutaImagen'] ?? imagenes[i]['urlImagen'] ?? imagenes[i]['url_imagen'] ?? imagenes[i]['ruta_imagen'] ?? '';
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: url.toString().isNotEmpty
-              ? Image.network(url.toString(), fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _imagenPlaceholder())
-              : _imagenPlaceholder(),
-        );
-      },
-    );
-  }
-
   Widget _sinDatos({required IconData icono, required String titulo, required String mensaje}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 40),
@@ -845,15 +847,24 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
   Widget _infoFila(IconData icon, String label, String value) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 10),
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primary),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+              const SizedBox(height: 2),
               Text(value, style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             ],
           ),
@@ -864,15 +875,24 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
 
   Widget _infoFilaColor(IconData icon, String label, String value, Color color) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 10),
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+              const SizedBox(height: 2),
               Text(value, style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
             ],
           ),
@@ -881,12 +901,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     );
   }
  
-  Widget _imagenPlaceholder() {
-    return Container(
-      color: const Color(0xFFE8F5E9),
-      child: const Center(child: Icon(Icons.eco_outlined, color: Colors.green, size: 40)),
-    );
-  }
 }
  
 class _RecomendacionIA {

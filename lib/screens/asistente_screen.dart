@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
@@ -9,12 +8,16 @@ import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import '../theme/app_theme.dart';
 import 'package:path_provider/path_provider.dart';
+import '../theme/app_theme.dart';
 
 // dart:html y dart:ui_web SOLO en web
 import 'asistente_web_stub.dart'
     if (dart.library.html) 'asistente_web_impl.dart';
+
+// dart:io SOLO en mobile/desktop (para copiar assets a temp)
+import 'asistente_file_stub.dart'
+    if (dart.library.io) 'asistente_file_impl.dart';
 
 class AsistenteScreen extends StatefulWidget {
   final String genero;
@@ -41,10 +44,15 @@ class _AsistenteScreenState extends State<AsistenteScreen>
   bool _webViewListo = false;
   String? _rutaAudio;
 
+  final List<String> _colaMensajes = [];
+
   late AnimationController _ondaCtrl;
 
   // Manejador web (iframe) — solo activo en web
   late final AvatarWebHandler _webHandler;
+
+  // Servidor HTTP local (solo Android) para evitar restricciones file://
+  LocalAvatarServer? _server;
 
   bool get _esMasculino => widget.genero.toLowerCase() == 'masculino';
   String get _nombreAsistente  => _esMasculino ? 'Yimmi' : 'Valentina';
@@ -65,6 +73,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
       _webHandler = AvatarWebHandler();
       _webHandler.register();
     } else {
+      _server = LocalAvatarServer();
       _iniciarWebView();
     }
 
@@ -75,28 +84,50 @@ class _AsistenteScreenState extends State<AsistenteScreen>
   }
 
   // ── WebView (Android / iOS) ──
-  void _iniciarWebView() {
+  Future<void> _iniciarWebView() async {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
       ..setOnConsoleMessage((message) {
-        // 🔍 DEBUG: esto imprime en la consola de Flutter cualquier
-        // console.log / console.error que ocurra DENTRO del HTML del avatar
-        // (incluye los errores que ya tiene tu HTML, como
-        // "❌ Error cargando avatar.glb").
         debugPrint('WEBVIEW-JS [${message.level.name}]: ${message.message}');
       })
       ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) => setState(() => _webViewListo = true),
+        onPageFinished: (_) {
+          setState(() => _webViewListo = true);
+          _ejecutarColaMensajes();
+          _iniciarCargaAvatar();
+        },
         onWebResourceError: (error) {
-          // 🔍 DEBUG: esto captura errores al cargar CUALQUIER recurso
-          // dentro del WebView (el propio HTML, el avatar.glb, three.js, etc.)
           debugPrint(
               'WEBVIEW-ERROR: ${error.errorCode} ${error.description} '
               '(url: ${error.url})');
         },
-      ))
-      ..loadFlutterAsset('assets/html/asistente.html');
+      ));
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android 11+ bloquea XHR a file:// → usamos servidor HTTP local
+      final url = await _server!.start();
+      await _webViewController.loadRequest(Uri.parse(url));
+    } else {
+      // iOS: WKWebView maneja file:// XHR correctamente
+      final htmlPath = await copiarAvatarAssetsATemp();
+      if (htmlPath.isNotEmpty) {
+        await _webViewController.loadFile(htmlPath);
+      } else {
+        await _webViewController.loadFlutterAsset('assets/html/asistente.html');
+      }
+    }
+  }
+
+  void _ejecutarColaMensajes() {
+    for (final msg in _colaMensajes) {
+      _webViewController.runJavaScript('window.recibirMensaje("$msg")');
+    }
+    _colaMensajes.clear();
+  }
+
+  void _iniciarCargaAvatar() {
+    _webViewController.runJavaScript('window._deferredLoad()');
   }
 
   // ── Enviar mensaje al avatar ──
@@ -105,12 +136,16 @@ class _AsistenteScreenState extends State<AsistenteScreen>
       _webHandler.postMessage(mensaje);
       return;
     }
-    if (!_webViewListo) return;
+    if (!_webViewListo) {
+      _colaMensajes.add(mensaje);
+      return;
+    }
     _webViewController.runJavaScript('window.recibirMensaje("$mensaje")');
   }
 
   @override
   void dispose() {
+    _server?.stop();
     _ondaCtrl.dispose();
     _recorder.dispose();
     _audioPlayer.dispose();
@@ -322,11 +357,29 @@ class _AsistenteScreenState extends State<AsistenteScreen>
               child: kIsWeb
                   ? _webHandler.buildView()
                   : _webViewListo
-                      ? WebViewWidget(
-                          controller: _webViewController)
-                      : Image.asset(
-                          'assets/images/modelo_personaje_valentina.png',
-                          fit: BoxFit.cover,
+                      ? WebViewWidget(controller: _webViewController)
+                      : Container(
+                          color: const Color(0xFFF5F0E8),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  BootstrapIcons.person_circle,
+                                  size: 60,
+                                  color: AppColors.primary.withOpacity(0.4),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Cargando...',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
             ),
           ),

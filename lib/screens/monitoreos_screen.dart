@@ -864,7 +864,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
+      backgroundColor: const Color(0xFFF7F8F5),
       body: SafeArea(
         child: Column(
           children: [
@@ -891,18 +891,22 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
  
   Widget _buildHeader(BuildContext context) {
     return Container(
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4E7D6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF97D340),
+            Color(0xFF388E3C),
+          ],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: SafeArea(
         bottom: false,
         child: Row(
@@ -915,31 +919,38 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.textPrimary, size: 18),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Color(0xFF262A24),
+                  size: 18,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Monitoreo',
-                      style: GoogleFonts.nunito(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary)),
-                  if (_fincaActiva != null)
+                  Text(
+                    'Monitoreo',
+                    style: GoogleFonts.nunito(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF262A24),
+                    ),
+                  ),
+                  if (_fincaActiva != null) ...[
+                    const SizedBox(height: 2),
                     Text(
                       _nombreFincaActiva,
                       style: GoogleFonts.nunito(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary),
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
+                  ],
                 ],
               ),
             ),
@@ -951,8 +962,11 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
-                icon: const Icon(Icons.refresh_rounded,
-                    color: AppColors.textPrimary, size: 20),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Color(0xFF262A24),
+                  size: 20,
+                ),
                 onPressed: _cargarMonitoreos,
                 tooltip: 'Recargar',
               ),
@@ -996,8 +1010,17 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : Colors.transparent,
+            color: isActive ? const Color(0xFF97D340) : Colors.transparent,
             borderRadius: BorderRadius.circular(26),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF97D340).withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
           child: Text(label,
               textAlign: TextAlign.center,
@@ -1040,40 +1063,54 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-          child: TextField(
-            onChanged: (v) => setState(() => _busqueda = v),
-            decoration: InputDecoration(
-              hintText: 'Buscar por finca, nivel, fecha...',
-              hintStyle: GoogleFonts.nunito(
-                  fontSize: 13, color: AppColors.textSecondary),
-              prefixIcon: const Icon(Icons.search,
-                  color: AppColors.textSecondary, size: 20),
-              suffixIcon: _busqueda.isNotEmpty
-                  ? GestureDetector(
-                      onTap: () => setState(() => _busqueda = ''),
-                      child: const Icon(Icons.close,
-                          size: 18, color: AppColors.textSecondary),
-                    )
-                  : null,
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide:
-                    BorderSide(color: AppColors.primary, width: 1.5),
-              ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            style: GoogleFonts.nunito(fontSize: 14),
+            child: TextField(
+              onChanged: (v) => setState(() => _busqueda = v),
+              decoration: InputDecoration(
+                hintText: 'Buscar por finca, nivel, fecha...',
+                hintStyle: GoogleFonts.nunito(
+                    fontSize: 13, color: AppColors.textSecondary),
+                prefixIcon: const Icon(Icons.search,
+                    color: AppColors.primary, size: 20),
+                suffixIcon: _busqueda.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () => setState(() => _busqueda = ''),
+                        child: const Icon(Icons.close,
+                            size: 18, color: AppColors.textSecondary),
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide:
+                      BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide:
+                      BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide:
+                      BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+              ),
+              style: GoogleFonts.nunito(fontSize: 14),
+            ),
           ),
         ),
         Expanded(
@@ -1544,7 +1581,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border, width: 1.2),
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withOpacity(0.04),

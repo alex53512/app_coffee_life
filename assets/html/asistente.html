@@ -20,19 +20,17 @@
 </head>
 <body>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+<!--
+  IMPORTANTE: usamos Three.js r128 con scripts clasicos (no ES modules,
+  no import maps). Esto es MUCHO mas compatible con WebViews de Android
+  desactualizados o personalizados (ej. MIUI/Xiaomi), que a veces no
+  soportan <script type="importmap"> ni <script type="module">.
+  En Chrome de escritorio funciona exactamente igual.
+-->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-<script type="module">
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
+<script>
 // ─────────────────────────────────────────────
 // ESTADO GLOBAL
 // ─────────────────────────────────────────────
@@ -95,67 +93,79 @@ function encuadrarCamara(object3D, fitOffset = 1.3) {
 // ─────────────────────────────────────────────
 // CARGAR GLB
 // ─────────────────────────────────────────────
-const loader = new GLTFLoader();
-loader.load(
-  'avatar.glb',
-  (gltf) => {
-    const avatar = gltf.scene;
-    scene.add(avatar);
+// ─────────────────────────────────────────────
+// CARGA DIFERIDA: espera señal de Flutter para cargar avatar.glb
+// (necesario para que Android tenga tiempo de habilitar file access)
+// ─────────────────────────────────────────────
+let _onAvatarReady = null;
 
-    console.log('✅ GLB cargado. Hijos:', avatar.children.length);
+window._deferredLoad = function() {
+  if (_onAvatarReady) {
+    _onAvatarReady();
+    return;
+  }
+  // Si aún no se configuró, esperar un poco
+  setTimeout(window._deferredLoad, 100);
+};
 
-    // (mostramos el cuerpo completo, sin ocultar nada)
+function _initLoader() {
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    'avatar.glb',
+    (gltf) => {
+      const avatar = gltf.scene;
+      scene.add(avatar);
 
-    // PASO 1: encuadrar cámara sobre el avatar visible completo
-    const info = encuadrarCamara(avatar, 1.1);
+      console.log('✅ GLB cargado. Hijos:', avatar.children.length);
 
-    // 🎚️ AJUSTE MANUAL: sube o baja el avatar dentro del recuadro
-    const ajusteVertical = 1.350; // mismo valor relativo que usaste (escalado para el nuevo offset)
-    camera.position.y += ajusteVertical;
-    camera.lookAt(info.center.x, info.center.y + ajusteVertical, info.center.z);
-    console.log('📐 Avatar size:', info.size);
-    console.log('📐 Avatar center:', info.center);
-    console.log('📷 Camera tras encuadre inicial:', camera.position);
+      const info = encuadrarCamara(avatar, 1.1);
 
-    // Encuadre completo del avatar (cuerpo entero visible)
-    console.log('📷 Camera FINAL:', camera.position);
+      const ajusteVertical = 1.55;
+      camera.position.y += ajusteVertical;
+      camera.lookAt(info.center.x, info.center.y + ajusteVertical, info.center.z);
+      console.log('📐 Avatar size:', info.size);
+      console.log('📐 Avatar center:', info.center);
+      console.log('📷 Camera FINAL:', camera.position);
 
-    avatar.traverse(obj => {
-      if (obj.isMesh) {
-        console.log('🔍 Mesh:', obj.name, '| vertices:', obj.geometry?.attributes?.position?.count, '| visible:', obj.visible);
-      }
-    });
-
-    const nombresHead = ['AvatarHead', 'Wolf3D_Head', 'Wolf3D_Head_Mesh', 'Head', 'head'];
-    for (const n of nombresHead) {
-      const obj = avatar.getObjectByName(n);
-      if (obj && obj.morphTargetDictionary) { morphMesh = obj; break; }
-    }
-    if (!morphMesh) {
       avatar.traverse(obj => {
-        if (!morphMesh && obj.isSkinnedMesh && obj.morphTargetDictionary) morphMesh = obj;
+        if (obj.isMesh) {
+          console.log('🔍 Mesh:', obj.name, '| vertices:', obj.geometry?.attributes?.position?.count, '| visible:', obj.visible);
+        }
       });
-    }
-    if (morphMesh) {
-      console.log('✅ Blendshapes en:', morphMesh.name, '→', Object.keys(morphMesh.morphTargetDictionary).length, 'shapes');
-    } else {
-      console.warn('⚠️ No se encontraron blendshapes');
-    }
 
-    avatar.traverse(obj => {
-      if (!headBone && obj.isBone) {
-        const n = (obj.name || '').toLowerCase();
-        if (n.includes('head')) headBone = obj;
+      const nombresHead = ['AvatarHead', 'Wolf3D_Head', 'Wolf3D_Head_Mesh', 'Head', 'head'];
+      for (const n of nombresHead) {
+        const obj = avatar.getObjectByName(n);
+        if (obj && obj.morphTargetDictionary) { morphMesh = obj; break; }
       }
-    });
+      if (!morphMesh) {
+        avatar.traverse(obj => {
+          if (!morphMesh && obj.isSkinnedMesh && obj.morphTargetDictionary) morphMesh = obj;
+        });
+      }
+      if (morphMesh) {
+        console.log('✅ Blendshapes en:', morphMesh.name, '→', Object.keys(morphMesh.morphTargetDictionary).length, 'shapes');
+      } else {
+        console.warn('⚠️ No se encontraron blendshapes');
+      }
 
-    aplicarEmocion('neutral');
-  },
-  (xhr) => {
-    if (xhr.total) console.log(`⏳ Cargando: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
-  },
-  (err) => console.error('❌ Error cargando avatar.glb:', err)
-);
+      avatar.traverse(obj => {
+        if (!headBone && obj.isBone) {
+          const n = (obj.name || '').toLowerCase();
+          if (n.includes('head')) headBone = obj;
+        }
+      });
+
+      aplicarEmocion('neutral');
+    },
+    (xhr) => {
+      if (xhr.total) console.log(`⏳ Cargando: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
+    },
+    (err) => console.error('❌ Error cargando avatar.glb:', err)
+  );
+}
+
+_onAvatarReady = _initLoader;
 
 // ─────────────────────────────────────────────
 // EMOCIONES — blendshapes ARKit
