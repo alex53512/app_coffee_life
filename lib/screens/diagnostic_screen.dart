@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
+import '../config/env_config.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
 import 'tratamiento_screen.dart';
@@ -40,7 +41,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   List _cultivos = [];
   int? _cultivoSeleccionado;
  
-  static const String _iaBaseUrl = 'http://127.0.0.1:8000';
  
   String _diagnosisText  = '';
   String _scientificName = '';
@@ -1034,7 +1034,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
  
     try {
       final request = http.MultipartRequest(
-          'POST', Uri.parse('$_iaBaseUrl/predict'));
+          'POST', Uri.parse('${EnvConfig.escanerBaseUrl}/predict'));
       request.files.add(http.MultipartFile.fromBytes(
         'file',
         bytes,

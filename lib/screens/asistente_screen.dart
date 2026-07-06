@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
+import '../config/env_config.dart';
 import '../theme/app_theme.dart';
 
 class AsistenteScreen extends StatefulWidget {
@@ -20,7 +21,6 @@ class AsistenteScreen extends StatefulWidget {
 class _AsistenteScreenState extends State<AsistenteScreen>
     with TickerProviderStateMixin {
 
-  static const String _baseUrl = 'http://127.0.0.1:8000';
 
   final AudioRecorder _recorder    = AudioRecorder();
   final AudioPlayer   _audioPlayer = AudioPlayer();
@@ -80,7 +80,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
     setState(() => _procesando = true);
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/chatbot/tts'),
+        Uri.parse('${EnvConfig.chatbotBaseUrl}/chatbot/tts'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'text': _saludoBienvenida}),
       );
@@ -126,7 +126,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
 
   Future<void> _enviarAudio(String path) async {
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/chatbot/audio'));
+      final request = http.MultipartRequest('POST', Uri.parse('${EnvConfig.chatbotBaseUrl}/chatbot/audio'));
       request.files.add(await http.MultipartFile.fromPath('file', path));
 
       final streamed = await request.send().timeout(const Duration(seconds: 30));

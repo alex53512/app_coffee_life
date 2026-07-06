@@ -7,7 +7,6 @@ import 'home_screen.dart';
 import 'diagnostic_screen.dart';
 import 'clima_screen.dart';
 import 'monitoreos_screen.dart';
-import 'aprender_screen.dart';
 import 'profile_screen.dart';
 import 'asistente_screen.dart';
 
@@ -82,7 +81,6 @@ class _MainNavigationState extends State<MainNavigation>
         const DiagnosticScreen(),
         const ClimaScreen(),
         const MontoreosScreen(),
-        const AprenderScreen(),
         ProfileScreen(usuario: widget.usuario),
       ];
 
@@ -157,8 +155,7 @@ class _MainNavigationState extends State<MainNavigation>
               _navItem(1, Icons.document_scanner_rounded, Icons.document_scanner_outlined, 'Diagnóstico'),
               _navItem(2, Icons.wb_cloudy_rounded,        Icons.wb_cloudy_outlined,        'Clima'),
               _navItem(3, Icons.bar_chart_rounded,        Icons.bar_chart_outlined,        'Monitoreos'),
-              _navItem(4, Icons.menu_book_rounded,        Icons.menu_book_outlined,        'Aprender'),
-              _navItem(5, Icons.person_rounded,           Icons.person_outline_rounded,    'Perfil'),
+              _navItem(4, Icons.person_rounded,           Icons.person_outline_rounded,    'Perfil'),
             ],
           ),
         ),
