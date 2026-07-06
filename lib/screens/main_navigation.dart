@@ -149,14 +149,26 @@ class _MainNavigationState extends State<MainNavigation>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isActive ? activeIcon : inactiveIcon,
-                color: isActive ? AppColors.primary : AppColors.textSecondary, size: 24),
-            const SizedBox(height: 2),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                scale: isActive ? 1.25 : 1.0,
+                child: Icon(
+                  isActive ? activeIcon : inactiveIcon,
+                  color: isActive ? const Color(0xFF97D340) : AppColors.textSecondary,
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
             Text(label,
                 style: GoogleFonts.nunito(
                     fontSize: 9,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? AppColors.primary : AppColors.textSecondary)),
+                    color: isActive ? const Color(0xFF97D340) : AppColors.textSecondary)),
           ],
         ),
       ),

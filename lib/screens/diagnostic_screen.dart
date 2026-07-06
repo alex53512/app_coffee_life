@@ -40,7 +40,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   List _cultivos = [];
   int? _cultivoSeleccionado;
  
-  static const String _iaBaseUrl = 'http://127.0.0.1:8080';
+  static const String _iaBaseUrl = 'https://despliegue-escaner-production.up.railway.app';
  
   String _diagnosisText  = '';
   String _scientificName = '';
@@ -301,24 +301,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     return Column(
       children: [
         const SizedBox(height: 14),
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.primary.withOpacity(0.20),
-                AppColors.primary.withOpacity(0.05),
-              ],
-            ),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.eco_outlined,
-              color: AppColors.primary, size: 26),
-        ),
-        const SizedBox(height: 14),
         Text('Diagnostica la roya\nde tu planta',
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
@@ -373,54 +355,32 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                   offset: const Offset(0, 3))
             ],
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withOpacity(0.18),
-                      AppColors.primary.withOpacity(0.05),
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.eco_outlined,
-                    color: AppColors.primary, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    isExpanded: true,
-                    value: _cultivoSeleccionado,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.primary),
-                    style: GoogleFonts.dmSans(
-                        fontSize: 14, color: AppColors.textPrimary),
-                    items: _cultivos.map<DropdownMenuItem<int>>((c) {
-                      final id =
-                          (c['idCultivo'] ?? c['id_cultivo']) as int;
-                      final nombre = c['nombreCultivo'] ??
-                          c['nombre_cultivo'] ??
-                          'Cultivo $id';
-                      return DropdownMenuItem<int>(
-                        value: id,
-                        child: Text(nombre,
-                            style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
-                      );
-                    }).toList(),
-                    onChanged: (val) =>
-                        setState(() => _cultivoSeleccionado = val),
-                  ),
-                ),
-              ),
-            ],
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              isExpanded: true,
+              value: _cultivoSeleccionado,
+              icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.primary),
+              style: GoogleFonts.dmSans(
+                  fontSize: 14, color: AppColors.textPrimary),
+              items: _cultivos.map<DropdownMenuItem<int>>((c) {
+                final id =
+                    (c['idCultivo'] ?? c['id_cultivo']) as int;
+                final nombre = c['nombreCultivo'] ??
+                    c['nombre_cultivo'] ??
+                    'Cultivo $id';
+                return DropdownMenuItem<int>(
+                  value: id,
+                  child: Text(nombre,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                );
+              }).toList(),
+              onChanged: (val) =>
+                  setState(() => _cultivoSeleccionado = val),
+            ),
           ),
         ),
       ],
