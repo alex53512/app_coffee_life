@@ -14,16 +14,14 @@ Future<String> copiarAvatarAssetsATemp() async {
   final htmlFile = File('${avatarDir.path}/asistente.html');
   final glbFile = File('${avatarDir.path}/avatar.glb');
 
-  if (!await htmlFile.exists()) {
     final htmlData = await rootBundle.load('assets/html/asistente.html');
     await htmlFile.writeAsBytes(htmlData.buffer.asUint8List());
-  }
-  if (!await glbFile.exists()) {
-    final glbData = await rootBundle.load('assets/html/avatar.glb');
-    await glbFile.writeAsBytes(glbData.buffer.asUint8List());
-  }
+    if (!await glbFile.exists()) {
+      final glbData = await rootBundle.load('assets/html/avatar.glb');
+      await glbFile.writeAsBytes(glbData.buffer.asUint8List());
+    }
 
-  return htmlFile.path;
+    return htmlFile.path;
 }
 
 /// Servidor HTTP local en 127.0.0.1 para servir assets del avatar.
@@ -42,16 +40,14 @@ class LocalAvatarServer {
     final htmlFile = File('$basePath/asistente.html');
     final glbFile = File('$basePath/avatar.glb');
 
-    if (!await htmlFile.exists()) {
       final htmlData = await rootBundle.load('assets/html/asistente.html');
       await htmlFile.writeAsBytes(htmlData.buffer.asUint8List());
-    }
-    if (!await glbFile.exists()) {
-      final glbData = await rootBundle.load('assets/html/avatar.glb');
-      await glbFile.writeAsBytes(glbData.buffer.asUint8List());
-    }
+      if (!await glbFile.exists()) {
+        final glbData = await rootBundle.load('assets/html/avatar.glb');
+        await glbFile.writeAsBytes(glbData.buffer.asUint8List());
+      }
 
-    _server = await HttpServer.bind('127.0.0.1', 0);
+      _server = await HttpServer.bind('127.0.0.1', 0);
     final port = _server!.port;
 
     _server!.listen((HttpRequest request) {

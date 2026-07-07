@@ -36,6 +36,9 @@ class _AsistenteScreenState extends State<AsistenteScreen>
 
   final AudioRecorder _recorder    = AudioRecorder();
   final AudioPlayer   _audioPlayer = AudioPlayer();
+  final TextEditingController _textCtrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
+  StreamSubscription? _playerSub;
   late WebViewController _webViewController;
 
   bool _grabando     = false;
@@ -44,6 +47,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
   bool _webViewListo = false;
   String? _rutaAudio;
 
+  final List<Map<String, dynamic>> _mensajes = [];
   final List<String> _colaMensajes = [];
 
   late AnimationController _ondaCtrl;
@@ -104,8 +108,9 @@ class _AsistenteScreenState extends State<AsistenteScreen>
         },
       ));
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      // Android 11+ bloquea XHR a file:// → usamos servidor HTTP local
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.windows) {
+      // Android 11+ y Windows bloquean XHR a file:// → usamos servidor HTTP local
       final url = await _server!.start();
       await _webViewController.loadRequest(Uri.parse(url));
     } else {
@@ -143,12 +148,59 @@ class _AsistenteScreenState extends State<AsistenteScreen>
     _webViewController.runJavaScript('window.recibirMensaje("$mensaje")');
   }
 
+  Future<void> _enviarTexto() async {
+    final texto = _textCtrl.text.trim();
+    if (texto.isEmpty) return;
+    _textCtrl.clear();
+    _agregarMensaje(texto, true);
+    setState(() => _procesando = true);
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/chatbot/predict'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': texto}),
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final respuesta = data['response'] as String;
+        _agregarMensaje(respuesta, false);
+        // Intentar reproducir con voz
+        try {
+          final tts = await http.post(
+            Uri.parse('$_baseUrl/chatbot/tts'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'text': respuesta}),
+          );
+          if (mounted && tts.statusCode == 200) {
+            final ct = tts.headers['content-type'] ?? '';
+            if (ct.startsWith('audio/mpeg')) {
+              setState(() => _hablando = true);
+              _enviarMensajeWebView('hablar');
+              await _reproducirAudio(tts.bodyBytes);
+            }
+          }
+        } catch (_) {}
+      } else {
+        _agregarMensaje('Lo siento, no pude procesar tu mensaje.', false);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _agregarMensaje('Error de conexión. Intenta de nuevo.', false);
+    } finally {
+      if (mounted) setState(() => _procesando = false);
+    }
+  }
+
   @override
   void dispose() {
+    _playerSub?.cancel();
     _server?.stop();
     _ondaCtrl.dispose();
     _recorder.dispose();
     _audioPlayer.dispose();
+    _textCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -164,15 +216,23 @@ class _AsistenteScreenState extends State<AsistenteScreen>
       );
       if (!mounted) return;
       if (response.statusCode == 200) {
-        setState(() { _procesando = false; _hablando = true; });
-        _enviarMensajeWebView('hablar');
-        await _reproducirAudio(response.bodyBytes);
+        final ct = response.headers['content-type'] ?? '';
+        if (ct.startsWith('audio/mpeg')) {
+          setState(() { _procesando = false; _hablando = true; });
+          _enviarMensajeWebView('hablar');
+          await _reproducirAudio(response.bodyBytes);
+        } else {
+          setState(() => _procesando = false);
+          _agregarMensaje(_saludoBienvenida, false);
+        }
       } else {
         setState(() => _procesando = false);
+        _agregarMensaje(_saludoBienvenida, false);
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _procesando = false);
+      _agregarMensaje(_saludoBienvenida, false);
     }
   }
 
@@ -232,17 +292,13 @@ class _AsistenteScreenState extends State<AsistenteScreen>
 
   Future<void> _enviarAudio(String path) async {
     try {
-      final request = http.MultipartRequest(
-          'POST', Uri.parse('$_baseUrl/chatbot/audio'));
+      final uri = Uri.parse('$_baseUrl/chatbot/audio');
+      final request = http.MultipartRequest('POST', uri);
 
       if (kIsWeb) {
-        // `path` aquí es en realidad una URL tipo "blob:..." que devuelve
-        // el navegador. La convertimos a bytes reales antes de enviarla.
         final bytes = await _webHandler.blobUrlToBytes(path);
         request.files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: 'audio_web.webm',
+          'file', bytes, filename: 'audio_web.webm',
         ));
       } else {
         request.files
@@ -251,15 +307,47 @@ class _AsistenteScreenState extends State<AsistenteScreen>
 
       final streamed =
           await request.send().timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(streamed);
-      if (!mounted) return;
-      if (response.statusCode == 200) {
-        setState(() { _procesando = false; _hablando = true; });
-        _enviarMensajeWebView('hablar');
-        await _reproducirAudio(response.bodyBytes);
+
+      if (kIsWeb) {
+        final response = await http.Response.fromStream(streamed);
+        if (!mounted) return;
+        if (response.statusCode == 200) {
+          final ct = response.headers['content-type'] ?? '';
+          if (ct.startsWith('audio/mpeg')) {
+            _agregarMensaje('(audio enviado)', true);
+            setState(() { _procesando = false; _hablando = true; });
+            _enviarMensajeWebView('hablar');
+            await _reproducirAudio(response.bodyBytes);
+          } else {
+            final data = jsonDecode(response.body);
+            _agregarMensaje(data['transcription'] ?? '', true);
+            _agregarMensaje(data['response'], false);
+            setState(() => _procesando = false);
+          }
+        } else {
+          _mostrarError('Error del servidor: ${response.statusCode}');
+          setState(() => _procesando = false);
+        }
       } else {
-        _mostrarError('Error del servidor: ${response.statusCode}');
-        setState(() => _procesando = false);
+        final response = await http.Response.fromStream(streamed);
+        if (!mounted) return;
+        if (response.statusCode == 200) {
+          final ct = response.headers['content-type'] ?? '';
+          if (ct.startsWith('audio/mpeg')) {
+            _agregarMensaje('(audio enviado)', true);
+            setState(() { _procesando = false; _hablando = true; });
+            _enviarMensajeWebView('hablar');
+            await _reproducirAudio(response.bodyBytes);
+          } else {
+            final data = jsonDecode(response.body);
+            _agregarMensaje(data['transcription'] ?? '', true);
+            _agregarMensaje(data['response'], false);
+            setState(() => _procesando = false);
+          }
+        } else {
+          _mostrarError('Error del servidor: ${response.statusCode}');
+          setState(() => _procesando = false);
+        }
       }
     } on TimeoutException {
       if (!mounted) return;
@@ -272,9 +360,24 @@ class _AsistenteScreenState extends State<AsistenteScreen>
     }
   }
 
+  void _agregarMensaje(String texto, bool esUsuario) {
+    if (texto.isEmpty) return;
+    setState(() {
+      _mensajes.add({'texto': texto, 'esUsuario': esUsuario});
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollCtrl.animateTo(
+        _scrollCtrl.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
   Future<void> _reproducirAudio(Uint8List bytes) async {
+    _playerSub?.cancel();
     await _audioPlayer.play(BytesSource(bytes));
-    _audioPlayer.onPlayerComplete.listen((_) {
+    _playerSub = _audioPlayer.onPlayerComplete.listen((_) {
       if (mounted) {
         setState(() => _hablando = false);
         _enviarMensajeWebView('parar');
@@ -312,7 +415,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
       ),
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Container(
             width: 40, height: 4,
             decoration: BoxDecoration(
@@ -320,21 +423,21 @@ class _AsistenteScreenState extends State<AsistenteScreen>
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(_nombreAsistente,
               style: GoogleFonts.nunito(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary)),
           Text('Asistente CoffeeLife',
               style: GoogleFonts.nunito(
-                  fontSize: 12, color: AppColors.textSecondary)),
-          const SizedBox(height: 12),
+                  fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 4),
 
           // ── Avatar 3D ──
           Container(
-            width: 200,
-            height: 220,
+            width: 160,
+            height: 180,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
@@ -384,7 +487,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -420,7 +523,92 @@ class _AsistenteScreenState extends State<AsistenteScreen>
                       color: _colorEstado)),
             ],
           ),
-          const Spacer(),
+          if (_mensajes.isEmpty) const Spacer(),
+
+          // ── Mensajes ──
+          if (_mensajes.isNotEmpty)
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollCtrl,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _mensajes.length,
+                itemBuilder: (context, i) {
+                  final msg = _mensajes[i];
+                  final esUsuario = msg['esUsuario'] as bool;
+                  return Align(
+                    alignment: esUsuario
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      constraints:
+                          BoxConstraints(maxWidth: 260),
+                      decoration: BoxDecoration(
+                        color: esUsuario
+                            ? AppColors.primary.withOpacity(0.15)
+                            : const Color(0xFFF5F0E8),
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(16),
+                          topRight: const Radius.circular(16),
+                          bottomLeft: esUsuario
+                              ? const Radius.circular(16)
+                              : const Radius.circular(4),
+                          bottomRight: esUsuario
+                              ? const Radius.circular(4)
+                              : const Radius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        msg['texto'] as String,
+                        style: GoogleFonts.nunito(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // ── Input de texto ──
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F0E8),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _textCtrl,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _enviarTexto(),
+                    decoration: InputDecoration(
+                      hintText: 'Escribe un mensaje...',
+                      hintStyle: GoogleFonts.nunito(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 12),
+                    ),
+                    style: GoogleFonts.nunito(fontSize: 13),
+                  ),
+                ),
+                if (!_procesando && !_grabando && !_hablando)
+                  IconButton(
+                    icon: Icon(BootstrapIcons.send,
+                        size: 20, color: AppColors.primary),
+                    onPressed: _enviarTexto,
+                  ),
+              ],
+            ),
+          ),
 
           // ── Botón micrófono ──
           GestureDetector(
@@ -462,7 +650,7 @@ class _AsistenteScreenState extends State<AsistenteScreen>
               ),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 12),
         ],
       ),
     );
