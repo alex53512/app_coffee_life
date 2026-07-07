@@ -124,57 +124,59 @@ class AppColors {
   static const Color surfaceVariant = marfilSuave;
 
   static const Color white = Colors.white;
+
+  // ── Theme-aware helpers ──
+
+  static Color cardBg(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF2C241E)
+        : Colors.white;
+  }
+
+  static Color surfaceVariantBg(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF3D322A)
+        : const Color(0xFFFBF7EF);
+  }
+
+  static Color successBg(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF1E3A1E)
+        : const Color(0xFFE8F5E9);
+  }
+
+  static Color warningBg(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF3D2E1B)
+        : const Color(0xFFFFF8E1);
+  }
+
+  static Color infoBg(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF1E2D3A)
+        : const Color(0xFFF1F8E9);
+  }
+
+  static Color headerBg(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF2C241E)
+        : const Color(0xFFF4E7D6);
+  }
+
+  static Color inputFill(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF3D322A)
+        : Colors.white;
+  }
+
+  static Color warningLightBg(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF3D2E1B)
+        : const Color(0xFFFFF3E0);
+  }
 }
 
 class AppTheme {
-
-  // ── Helper de fecha con timezone Colombia (UTC-5) ────────
-
-  /// Parsea [fechaStr] (ISO 8601) y devuelve fecha + hora en hora
-  /// local (Colombia UTC-5). Si el string trae un offset explícito
-  /// (Z, +HH:MM, -HH:MM), lo usa; si no, asume que ya está en hora local.
-  static String formatFechaColombia(dynamic fechaStr, {bool withTime = true}) {
-    final raw = fechaStr?.toString() ?? '';
-    if (raw.isEmpty) return 'Sin fecha';
-
-    final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})').firstMatch(raw);
-    debugPrint('⏰ raw="$raw" match=${m?.group(0)}');
-    if (m == null) return raw;
-
-    int h = int.parse(m[4]!);
-    final int min = int.parse(m[5]!);
-    int d = int.parse(m[3]!);
-    final int mes = int.parse(m[2]!);
-    final int anio = int.parse(m[1]!);
-
-    if (raw.endsWith('Z')) {
-      h -= 5;
-      debugPrint('⏰ UTC detectado: h=$h tras -5');
-    } else {
-      final tz = RegExp(r'([+-])(\d{2}):(\d{2})$').firstMatch(raw);
-      if (tz != null) {
-        final signo = tz[1]!;
-        final tzh = int.parse(tz[2]!);
-        h += (signo == '-' ? tzh : -tzh) - 5;
-        debugPrint('⏰ offset ${signo}${tzh} detectado: h=$h');
-      } else {
-        debugPrint('⏰ sin timezone: h=$h (asumido local)');
-      }
-    }
-
-    if (h < 0) { h += 24; d -= 1; }
-    if (h > 23) { h -= 24; d += 1; }
-    int dAjustado = d;
-    if (dAjustado < 1) { dAjustado = 1; }
-
-    const meses = [
-      'Ene','Feb','Mar','Abr','May','Jun',
-      'Jul','Ago','Sep','Oct','Nov','Dic'
-    ];
-    final fecha = '${dAjustado.toString().padLeft(2,'0')} ${meses[mes-1]} $anio';
-    if (!withTime) return fecha;
-    return '$fecha · ${h.toString().padLeft(2,'0')}:${min.toString().padLeft(2,'0')}';
-  }
 
   // =========================================================
   // COMPATIBILIDAD CON TU APP
@@ -197,6 +199,112 @@ class AppTheme {
   // =========================================================
   // THEME
   // =========================================================
+
+  // =========================================================
+  // DARK THEME
+  // =========================================================
+
+  static ThemeData get darkTheme {
+    const scaffoldBg = Color(0xFF1C1612);
+    const surfaceBg = Color(0xFF2C241E);
+    const surfaceVariantBg = Color(0xFF3D322A);
+    const textPrimary = Color(0xFFF0EAE4);
+    const textSecondary = Color(0xFFA89888);
+
+    return ThemeData(
+      useMaterial3: true,
+      scaffoldBackgroundColor: scaffoldBg,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.primary,
+        primary: AppColors.verdeClaro,
+        secondary: AppColors.verdeClaro,
+        surface: surfaceBg,
+        error: const Color(0xFFE57373),
+        brightness: Brightness.dark,
+      ),
+      textTheme: GoogleFonts.nunitoTextTheme(ThemeData.dark().textTheme).apply(
+        bodyColor: textPrimary,
+        displayColor: textPrimary,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: surfaceBg,
+        foregroundColor: textPrimary,
+        elevation: 0,
+        centerTitle: true,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: textPrimary),
+        titleTextStyle: GoogleFonts.nunito(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          color: textPrimary,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.verdeClaro,
+          foregroundColor: const Color(0xFF1C1612),
+          elevation: 2,
+          shadowColor: Colors.black.withOpacity(0.3),
+          minimumSize: const Size(double.infinity, 54),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          textStyle: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.verdeClaro,
+          backgroundColor: surfaceBg,
+          minimumSize: const Size(double.infinity, 54),
+          side: BorderSide(color: textSecondary.withOpacity(0.4), width: 1.4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          textStyle: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surfaceVariantBg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        hintStyle: GoogleFonts.nunito(color: textSecondary, fontSize: 15),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: textSecondary.withOpacity(0.3), width: 1.4),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.verdeClaro, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFE57373), width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFE57373), width: 2),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: surfaceBg,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shadowColor: Colors.black.withOpacity(0.4),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: textSecondary.withOpacity(0.15), width: 1),
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: surfaceBg,
+        selectedItemColor: AppColors.verdeClaro,
+        unselectedItemColor: textSecondary,
+        elevation: 10,
+        type: BottomNavigationBarType.fixed,
+      ),
+      iconTheme: const IconThemeData(color: AppColors.verdeClaro),
+      dividerColor: textSecondary.withOpacity(0.2),
+    );
+  }
 
   static ThemeData get lightTheme {
 
@@ -526,5 +634,42 @@ class AppTheme {
       dividerColor:
           AppColors.border,
     );
+  }
+
+  // ── Helper de fecha con timezone Colombia (UTC-5) ────────
+  static String formatFechaColombia(dynamic fechaStr, {bool withTime = true}) {
+    final raw = fechaStr?.toString() ?? '';
+    if (raw.isEmpty) return 'Sin fecha';
+
+    final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})').firstMatch(raw);
+    debugPrint('raw="$raw" match=${m?.group(0)}');
+    if (m == null) return raw;
+
+    int h = int.parse(m[4]!);
+    final int min = int.parse(m[5]!);
+    int d = int.parse(m[3]!);
+    final int mes = int.parse(m[2]!);
+    final int anio = int.parse(m[1]!);
+
+    if (raw.endsWith('Z')) {
+      h -= 5;
+    } else {
+      final tz = RegExp(r'([+-])(\d{2}):(\d{2})$').firstMatch(raw);
+      if (tz != null) {
+        final signo = tz[1]!;
+        final tzH = int.parse(tz[2]!);
+        final tzM = int.parse(tz[3]!);
+        if (signo == '+') { h -= tzH; } else { h += tzH; }
+        if (tzM > 0) h -= 1;
+      }
+    }
+
+    if (h >= 24) { h -= 24; d += 1; } else if (h < 0) { h += 24; d -= 1; }
+
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    final dAjustado = d.clamp(1, 31);
+    final fecha = '${dAjustado.toString().padLeft(2,'0')} ${meses[mes-1]} $anio';
+    if (!withTime) return fecha;
+    return '$fecha · ${h.toString().padLeft(2,'0')}:${min.toString().padLeft(2,'0')}';
   }
 }

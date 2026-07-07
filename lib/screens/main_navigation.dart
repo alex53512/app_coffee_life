@@ -21,6 +21,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  int _homeRefreshKey = 0;
 
   late AnimationController _fabController;
   late Animation<double> _fabScale;
@@ -77,7 +78,7 @@ class _MainNavigationState extends State<MainNavigation>
       AppState.instance.fincaSeleccionada?['nombreFinca'] ?? 'Mi Finca';
 
   List<Widget> get _screens => [
-        HomeScreen(usuario: widget.usuario),
+        HomeScreen(usuario: widget.usuario, key: ValueKey('home$_homeRefreshKey')),
         const DiagnosticScreen(),
         const ClimaScreen(),
         const MontoreosScreen(),
@@ -140,7 +141,7 @@ class _MainNavigationState extends State<MainNavigation>
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, -2)),
         ],
@@ -169,6 +170,7 @@ class _MainNavigationState extends State<MainNavigation>
     return GestureDetector(
       onTap: () {
         if (index == 3) AppState.instance.marcarNotificacionesLeidas();
+        if (index == 0) _homeRefreshKey++;
         setState(() => _currentIndex = index);
       },
       behavior: HitTestBehavior.opaque,

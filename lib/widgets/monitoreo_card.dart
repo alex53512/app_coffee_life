@@ -134,16 +134,6 @@ class MonitoreoCard extends StatelessWidget {
     final parcela = parcelaMonitoreo(m);
     final imgUrl = imagenUrlMonitoreo(m);
 
-    final obs = (m['observaciones'] ?? '').toString();
-    final partes = obs.contains('—')
-        ? obs.split('—').map((p) => p.trim()).toList()
-        : <String>[];
-    final diagnostico = partes.isNotEmpty
-        ? partes[0]
-        : (obs.isNotEmpty ? obs : tituloMonitoreo(m));
-    final confianza = partes.length > 1 ? partes[1] : '';
-    final nombreCientifico = partes.length > 2 ? partes[2] : '';
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -212,39 +202,6 @@ class MonitoreoCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(diagnostico,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.nunito(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
-                    if (confianza.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          const Icon(Icons.auto_awesome,
-                              size: 14, color: AppColors.primary),
-                          const SizedBox(width: 4),
-                          Text(confianza,
-                              style: GoogleFonts.nunito(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary)),
-                          if (nombreCientifico.isNotEmpty) ...[
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text('· $nombreCientifico',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.nunito(
-                                      fontSize: 10,
-                                      color: AppColors.textSecondary)),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
                     const SizedBox(height: 4),
                     Row(
                       children: [

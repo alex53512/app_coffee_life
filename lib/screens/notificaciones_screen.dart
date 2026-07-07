@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import 'monitoreo_detalle_screen.dart';
 
 class NotificacionesScreen extends StatefulWidget {
   const NotificacionesScreen({super.key});
@@ -70,7 +71,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final f = r['fechaLimite'] ?? r['fecha_limite'] ?? r['fechaRegistro'] ?? '';
     if (f.toString().isEmpty) return '';
     try {
-      final dt = DateTime.parse(f.toString());
+      final dt = DateTime.parse(f.toString()).toLocal();
       const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
       final hora = dt.hour.toString().padLeft(2, '0');
       final min  = dt.minute.toString().padLeft(2, '0');
@@ -91,10 +92,28 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     setState(() { for (final n in _notificaciones) n['leida'] = true; });
   }
 
+  void _abrirNotificacion(int index) {
+    final r = _notificaciones[index];
+    final idMonitoreo = r['idMonitoreo'] ?? r['id_monitoreo'];
+
+    setState(() => _notificaciones.removeAt(index));
+
+    if (idMonitoreo != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MonitoreoDetalleScreen(
+            monitoreo: {'idMonitoreo': idMonitoreo},
+            initialTab: 1,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -110,7 +129,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: const Color(0xFFF4E7D6),
+      color: AppColors.headerBg(context),
       child: Row(
         children: [
           IconButton(
@@ -221,12 +240,12 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final leida  = _leida(r);
 
     return GestureDetector(
-      onTap: () => _marcarLeida(index),
+      onTap: () => _abrirNotificacion(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFBF7EF),
+          color: AppColors.surfaceVariantBg(context),
           borderRadius: BorderRadius.circular(14),
           border: leida ? null : Border.all(color: color.withOpacity(0.3), width: 1.2),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(leida ? 0.04 : 0.08), blurRadius: 10, offset: const Offset(0, 2))],

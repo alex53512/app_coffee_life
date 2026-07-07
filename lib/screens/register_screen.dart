@@ -81,7 +81,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: Stack(
         children: [
           // ── FONDO VERDE ──
@@ -172,7 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: ClipPath(
                     clipper: _OvalTopClipper(),
                     child: Container(
-                      color: Colors.white,
+                      color: AppColors.cardBg(context),
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(28, 40, 28, 24),
                         child: Form(
@@ -211,7 +210,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   fontSize: 14,
                                   color: const Color(0xFF1A3A1E),
                                 ),
-                                dropdownColor: Colors.white,
+                                dropdownColor: AppColors.cardBg(context),
                                 items: const [
                                   DropdownMenuItem(value: 'CC', child: Text('Cédula de ciudadanía')),
                                   DropdownMenuItem(value: 'CE', child: Text('Cédula de extranjería')),

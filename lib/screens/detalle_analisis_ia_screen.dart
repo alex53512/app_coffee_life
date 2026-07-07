@@ -251,17 +251,16 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
           _buildHeader(context),
           // ── Toggle IA / Experto ──────────────────────────────────────
           Container(
-            color: const Color(0xFFF4E7D6),
+            color: AppColors.headerBg(context),
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.cardBg(context),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
@@ -315,7 +314,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
         child: SafeArea(
           bottom: false,
           child: Container(
-            color: const Color(0xFFF4E7D6),
+            color: AppColors.headerBg(context),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             child: Row(
               children: [
@@ -501,7 +500,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.inputFill(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -595,7 +594,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.inputFill(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(observaciones,
@@ -769,7 +768,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
             maxLines: 3,
             decoration: InputDecoration(
               hintText: 'Describe lo que observaste en el cultivo...',
-              filled: true, fillColor: Colors.white,
+              filled: true, fillColor: AppColors.inputFill(context),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -781,7 +780,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
             style: GoogleFonts.nunito(fontSize: 14),
           ),
           const SizedBox(height: 16),
- 
+
           // Recomendación
           Text('Tu recomendación',
               style: GoogleFonts.nunito(
@@ -792,7 +791,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
             maxLines: 2,
             decoration: InputDecoration(
               hintText: 'Ej: Aplicar fungicida cúprico, mejorar drenaje...',
-              filled: true, fillColor: Colors.white,
+              filled: true, fillColor: AppColors.inputFill(context),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -804,7 +803,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
             style: GoogleFonts.nunito(fontSize: 14),
           ),
           const SizedBox(height: 16),
- 
+
           // Tratamiento
           Text('Tratamiento sugerido (opcional)',
               style: GoogleFonts.nunito(
@@ -817,7 +816,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.cardBg(context),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),

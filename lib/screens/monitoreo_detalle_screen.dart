@@ -40,10 +40,10 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
   Future<void> _cargarDatos() async {
     setState(() => _cargando = true);
- 
+
     final idMonitoreo =
         widget.monitoreo['idMonitoreo'] ?? widget.monitoreo['id_monitoreo'];
- 
+
     try {
       final rawMonitoreo = await ApiService.get('/monitoreos/$idMonitoreo');
       if (rawMonitoreo is Map) {
@@ -52,15 +52,22 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
           (inner is Map) ? inner : rawMonitoreo,
         );
       }
-      print('IMAGENES: ${_monitoreoCompleto?['imagenes']}');
- 
-      _analisisIa = await _cargarAnalisisIa(idMonitoreo);
- 
-      await _cargarDiagnosticoExperto(idMonitoreoPropio: idMonitoreo);
-    } catch (_) {
-      _analisisIa ??= _parsearObservaciones(widget.monitoreo);
+    } catch (_) {}
+    print('IMAGENES: ${_monitoreoCompleto?['imagenes']}');
+
+    _analisisIa = await _cargarAnalisisIa(idMonitoreo);
+
+    if (_analisisIa?['_recomendaciones'] == null) {
+      final fuente = _monitoreoCompleto ?? widget.monitoreo;
+      final parsed = _parsearObservaciones(fuente);
+      if (parsed?['_recomendaciones'] != null) {
+        _analisisIa ??= {};
+        _analisisIa!['_recomendaciones'] = parsed!['_recomendaciones'];
+      }
     }
- 
+
+    await _cargarDiagnosticoExperto(idMonitoreoPropio: idMonitoreo);
+
     if (mounted) setState(() => _cargando = false);
   }
  
@@ -109,18 +116,40 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       if ((lista as List).isEmpty) return;
 
       final rec = Map<String, dynamic>.from(lista[0]);
+
+      String dosis = (rec['dosis'] ?? '').toString();
+      String frecuencia = (rec['frecuencia'] ?? '').toString();
+
+      // Intentar extraer dosis/frecuencia desde tratamientos vinculados
+      final tratamientos = rec['tratamientos'];
+      if (tratamientos is List && tratamientos.isNotEmpty) {
+        final dosisPartes = tratamientos
+            .map((t) => t['dosis']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList();
+        final freqPartes = tratamientos
+            .map((t) => t['frecuencia']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (dosis.isEmpty && dosisPartes.isNotEmpty) dosis = dosisPartes.join(', ');
+        if (frecuencia.isEmpty && freqPartes.isNotEmpty) frecuencia = freqPartes.join(', ');
+      }
+
       _diagnosticoExperto = {
         'experto': (rec['experto'] ?? '').toString(),
         'descripcion': (rec['descripcion'] ?? '').toString(),
         'prioridad': (rec['prioridad'] ?? '').toString(),
         'tratamiento': (rec['tratamiento'] ?? '').toString(),
         'fecha_limite': (rec['fecha_limite'] ?? '').toString(),
+        'dosis': dosis,
+        'frecuencia': frecuencia,
       };
     } catch (_) {}
   }
  
   Map<String, dynamic>? _parsearObservaciones(Map<String, dynamic> m) {
     final obs = (m['observaciones'] ?? '').toString().trim();
+    debugPrint('_parsearObservaciones obs: "$obs"');
     if (obs.isEmpty) return null;
  
     if (obs.contains('—')) {
@@ -136,13 +165,34 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         confianza = double.tryParse(raw) ?? 0.0;
       }
       final nombreCientifico = partes.length > 2 ? partes[2] : '';
+      String severidad = '';
+      for (final p in partes) {
+        if (p.startsWith('Severidad:')) {
+          severidad = p.replaceAll('Severidad:', '').trim();
+          break;
+        }
+      }
+      List<String> recoms = [];
+      for (final p in partes) {
+        if (p.startsWith('Recomendaciones:')) {
+          recoms = p
+              .replaceAll('Recomendaciones:', '')
+              .split('|')
+              .map((p) => p.trim())
+              .where((p) => p.isNotEmpty)
+              .toList();
+          break;
+        }
+      }
       return {
         'resultado': resultado,
         'confianza': confianza,
         'versionModelo': '1.0',
         'estadoAnalisis': {'nombreEstado': 'Completado'},
         if (nombreCientifico.isNotEmpty) 'nombreCientifico': nombreCientifico,
+        if (severidad.isNotEmpty) 'severidad': severidad,
         '_fuenteObservaciones': true,
+        if (recoms.isNotEmpty) '_recomendaciones': recoms,
       };
     }
  
@@ -271,10 +321,16 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     if (obj2 != null && obj2.toString().isNotEmpty) return obj2.toString();
  
     if (_analisisIa != null) {
+      final sev = (_analisisIa!['severidad'] ?? '').toString().toLowerCase();
+      if (sev.contains('alt')) return 'Alto';
+      if (sev.contains('med')) return 'Medio';
+      if (sev.contains('baj')) return 'Bajo';
+      if (sev.contains('ninguna')) return 'Sin riesgo';
       final resultado = (_analisisIa!['resultado'] ?? '').toString().toLowerCase();
       if (resultado.contains('alto') || resultado.contains('roya')) return 'Alto';
       if (resultado.contains('medio')) return 'Medio';
-      if (resultado.contains('bajo') || resultado.contains('sano')) return 'Bajo';
+      if (resultado.contains('bajo')) return 'Bajo';
+      if (resultado.contains('sano') || resultado.contains('sana')) return 'Sin riesgo';
     }
     return 'Sin análisis';
   }
@@ -282,6 +338,14 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   List _imagenes() {
     final imgs = _m['imagenes'];
     if (imgs is List) return imgs;
+    return [];
+  }
+
+  List _imagenesIa() {
+    return _imagenes();
+  }
+
+  List _imagenesExperto() {
     return [];
   }
  
@@ -294,11 +358,18 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   }
  
   // ── Recomendaciones de IA (mismo criterio que diagnostic_screen.dart) ─────
- 
+
   List<_RecomendacionIA> _recomendacionesIa() {
+    final backendRecs = _analisisIa?['_recomendaciones'] as List<String>?;
+    if (backendRecs != null && backendRecs.isNotEmpty) {
+      return backendRecs
+          .map((r) => _RecomendacionIA(Icons.check_circle_outlined,
+              const Color(0xFF2E7D32), r, ''))
+          .toList();
+    }
     final resultado = (_analisisIa?['resultado'] ?? '').toString().toLowerCase();
     final esRoya = resultado.contains('roya');
- 
+
     return esRoya
         ? [
             _RecomendacionIA(Icons.medication_outlined, const Color(0xFF1565C0),
@@ -373,12 +444,11 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     final municipio = _municipio();
  
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
             Container(
-              color: const Color(0xFFF4E7D6),
+              color: AppColors.headerBg(context),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 children: [
@@ -469,7 +539,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                                   Container(
                                     width: 42, height: 42,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFE8F5E9),
+                                      color: AppColors.successBg(context),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Icon(Icons.person_outline_rounded,
@@ -498,7 +568,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                             Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: AppColors.cardBg(context),
                                 borderRadius: BorderRadius.circular(30),
                                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
                               ),
@@ -561,6 +631,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     final estado      = _analisisIa!['estadoAnalisis']?['nombreEstado'] ??
                         _analisisIa!['estado_analisis']?['nombre_estado'] ?? 'Completado';
     final nombreCient = _analisisIa!['nombreCientifico'] ?? '';
+    final severidad   = _analisisIa!['severidad'] ?? '';
     final desdObs     = _analisisIa!['_fuenteObservaciones'] == true;
  
     final confianzaNum = (confianza is num) ? confianza.toDouble() : double.tryParse(confianza.toString()) ?? 0.0;
@@ -574,7 +645,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E1),
+              color: AppColors.warningBg(context),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.amber.shade300),
             ),
@@ -604,6 +675,19 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                   children: [
                     Text('Resultado', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
                     Text(resultado, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    if (severidad.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: severidad == 'Alta' ? Colors.red.withOpacity(0.1) : severidad == 'Media' ? Colors.orange.withOpacity(0.1) : AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('Severidad: $severidad',
+                            style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700,
+                                color: severidad == 'Alta' ? Colors.red : severidad == 'Media' ? Colors.orange : AppColors.primary)),
+                      ),
+                    ],
                     if (nombreCient.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(nombreCient, style: GoogleFonts.nunito(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
@@ -651,13 +735,13 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         const SizedBox(height: 10),
         _buildRecomendacionesIa(),
         const SizedBox(height: 14),
-        _seccionTitulo('Imágenes (${_imagenes().length})'),
+        _seccionTitulo('Imágenes (${_imagenesIa().length})'),
         const SizedBox(height: 10),
-        _buildImagenes(),
+        _buildImagenes(imagenes: _imagenesIa()),
       ],
     );
   }
- 
+  
   Widget _buildTabExperto() {
     if (_diagnosticoExperto == null) {
       return _sinDatos(
@@ -673,11 +757,13 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     final prioridad = (d['prioridad'] ?? '').toString();
     final tratamiento = (d['tratamiento'] ?? '').toString();
     final fechaLimite = (d['fecha_limite'] ?? '').toString();
+    final dosis = (d['dosis'] ?? '').toString();
+    final frecuencia = (d['frecuencia'] ?? '').toString();
 
     String fechaFormateada = '';
     if (fechaLimite.isNotEmpty) {
       try {
-        final dt = DateTime.parse(fechaLimite);
+        final dt = DateTime.parse(fechaLimite).toLocal();
         const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
         fechaFormateada = '${dt.day.toString().padLeft(2,'0')} ${meses[dt.month-1]} ${dt.year}';
       } catch (_) { fechaFormateada = fechaLimite; }
@@ -732,7 +818,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.inputFill(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(descripcion,
@@ -743,6 +829,14 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
               if (prioridad.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 _infoFilaColor(Icons.flag_outlined, 'Prioridad', prioridad, colorPrioridad),
+              ],
+              if (dosis.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _infoFila(Icons.science_outlined, 'Dosis', dosis),
+              ],
+              if (frecuencia.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _infoFila(Icons.replay_outlined, 'Frecuencia', frecuencia),
               ],
               if (tratamiento.isNotEmpty) ...[
                 const SizedBox(height: 10),
@@ -756,16 +850,16 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        _seccionTitulo('Imágenes (${_imagenes().length})'),
+        _seccionTitulo('Imágenes (${_imagenesExperto().length})'),
         const SizedBox(height: 10),
-        _buildImagenes(),
+        _buildImagenes(imagenes: _imagenesExperto()),
       ],
     );
   }
- 
-  Widget _buildImagenes() {
-    final imagenes = _imagenes();
-    if (imagenes.isEmpty) {
+  
+  Widget _buildImagenes({List? imagenes}) {
+    final imgs = imagenes ?? _imagenes();
+    if (imgs.isEmpty) {
       return _card(
         child: Row(
           children: [
@@ -782,13 +876,17 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10),
-      itemCount: imagenes.length,
+      itemCount: imgs.length,
       itemBuilder: (_, i) {
-        final url = imagenes[i]['rutaImagen'] ?? imagenes[i]['urlImagen'] ?? imagenes[i]['url_imagen'] ?? imagenes[i]['ruta_imagen'] ?? '';
+        final raw = imgs[i]['rutaImagen'] ?? imgs[i]['urlImagen'] ?? imgs[i]['url_imagen'] ?? imgs[i]['ruta_imagen'] ?? '';
+        String url = raw.toString();
+        if (url.isNotEmpty && !url.startsWith('http')) {
+          url = 'https://coffeelife-api.up.railway.app/$url';
+        }
         return ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: url.toString().isNotEmpty
-              ? Image.network(url.toString(), fit: BoxFit.cover,
+          child: url.isNotEmpty
+              ? Image.network(url, fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => _imagenPlaceholder())
               : _imagenPlaceholder(),
         );
@@ -827,7 +925,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
@@ -875,12 +973,12 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
   Widget _imagenPlaceholder() {
     return Container(
-      color: const Color(0xFFE8F5E9),
+      color: AppColors.successBg(context),
       child: const Center(child: Icon(Icons.eco_outlined, color: Colors.green, size: 40)),
     );
   }
 }
- 
+
 class _RecomendacionIA {
   final IconData icon;
   final Color color;

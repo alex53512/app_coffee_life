@@ -75,7 +75,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
           // ── SECCIÓN SUPERIOR VERDE CON CURVA ──
@@ -162,6 +161,7 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     TextFormField(
                       controller: _correoController,
                       keyboardType: TextInputType.emailAddress,
+                      autofillHints: const <String>[],
                       decoration: _inputDecoration(
                         hint: 'correo@ejemplo.com',
                         icon: Icons.email_outlined,
@@ -184,6 +184,7 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     TextFormField(
                       controller: _passwordController,
                       obscureText: !_verPassword,
+                      autofillHints: const <String>[],
                       decoration: _inputDecoration(
                         hint: '••••••••',
                         icon: Icons.lock_outline,

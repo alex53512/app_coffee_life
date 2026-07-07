@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
+
  
 class ClimaScreen extends StatefulWidget {
   final String nombreFinca;
@@ -56,23 +55,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
       final lon = finca?['longitud'] ?? finca?['lon'] ?? finca?['coordenadas']?['lon'];
       if (lat != null && lon != null) {
         query = '$lat,$lon';
-      } else {
-        // 2. Fallback: GPS del dispositivo
-        try {
-          bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-          if (serviceEnabled) {
-            LocationPermission permission = await Geolocator.checkPermission();
-            if (permission == LocationPermission.denied) {
-              permission = await Geolocator.requestPermission();
-            }
-            if (permission != LocationPermission.denied &&
-                permission != LocationPermission.deniedForever) {
-              final pos = await Geolocator.getCurrentPosition(
-                  desiredAccuracy: LocationAccuracy.high);
-              query = '${pos.latitude},${pos.longitude}';
-            }
-          }
-        } catch (_) {}
       }
 
       final url = 'https://api.weatherapi.com/v1/forecast.json'
@@ -93,7 +75,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
             'humedad':     current['humidity'],
             'viento':      current['wind_kph'].round(),
             'lluvia':      current['precip_mm'] > 1,
-            'icono':       _getEmojiFromCode(current['condition']['code'], current['is_day']),
+            'icono':       _getIconFromCode(current['condition']['code']),
             'pronostico':  forecastDays.asMap().entries.map((e) {
               final dias = ['Hoy', 'Mañana', 'Pasado', 'En 3 días'];
               final day  = e.value['day'];
@@ -124,7 +106,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       _ciudadActual = nombre is String && nombre.contains(',') ? nombre : '$nombre (aprox)';
       _clima = {
         'temp': 23, 'descripcion': 'Parcialmente nublado',
-        'humedad': 60, 'viento': 9, 'lluvia': false, 'icono': '⛅',
+        'humedad': 60, 'viento': 9, 'lluvia': false, 'icono': Icons.cloud_queue_rounded,
         'pronostico': [
           {'dia': 'Hoy',       'icono': Icons.cloud_rounded,   'max': 24, 'min': 17, 'lluvia': false},
           {'dia': 'Mañana',    'icono': Icons.wb_sunny_rounded, 'max': 26, 'min': 18, 'lluvia': false},
@@ -134,16 +116,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
       };
       _cargando = false;
     });
-  }
- 
-  String _getEmojiFromCode(int code, int isDay) {
-    if (code == 1000) return isDay == 1 ? '☀️' : '🌙';
-    if (code == 1003) return '⛅';
-    if (code <= 1009) return '☁️';
-    if (code <= 1030) return '🌫️';
-    if (code <= 1087) return '⛈️';
-    if (code <= 1282) return '🌧️';
-    return '⛅';
   }
  
   IconData _getIconFromCode(int code) {
@@ -171,7 +143,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         recs.add({
           'icono': Icons.coronavirus_outlined,
           'color': Colors.red,
-          'titulo': '🚨 Roya CRÍTICA en $cultivoNombre',
+          'titulo': 'Roya crítica en $cultivoNombre',
           'descripcion': 'Tu cultivo tiene alto nivel de roya. '
               '${lluvia ? "La lluvia y " : ""}${humedad > 70 ? "la humedad elevada ($humedad%) agravan la situación. " : ""}'
               'Aplica fungicida cúprico URGENTE y retira las hojas infectadas.',
@@ -180,7 +152,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         recs.add({
           'icono': Icons.coronavirus_outlined,
           'color': Colors.orange,
-          'titulo': '⚠️ Roya moderada en $cultivoNombre',
+          'titulo': 'Roya moderada en $cultivoNombre',
           'descripcion': 'Se detectó roya en nivel medio. '
               '${humedad > 70 ? "La humedad actual ($humedad%) favorece su avance. " : ""}'
               'Monitorea frecuentemente y considera fungicidas preventivos.',
@@ -189,7 +161,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         recs.add({
           'icono': Icons.coronavirus_outlined,
           'color': AppColors.primary,
-          'titulo': '✅ Roya bajo control en $cultivoNombre',
+          'titulo': 'Roya bajo control en $cultivoNombre',
           'descripcion': 'El nivel de roya es bajo. '
               '${humedad > 80 ? "Ojo: la humedad alta ($humedad%) puede aumentar el riesgo. Monitorea seguido." : "Continúa con el monitoreo periódico para mantenerlo así."}',
         });
@@ -197,7 +169,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         recs.add({
           'icono': Icons.info_outline_rounded,
           'color': Colors.grey,
-          'titulo': 'ℹ️ Sin datos de roya para $cultivoNombre',
+          'titulo': 'Sin datos de roya para $cultivoNombre',
           'descripcion': 'No hay monitoreos registrados para este cultivo. '
               'Realiza un diagnóstico para conocer su estado.',
         });
@@ -208,7 +180,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.water_drop_outlined,
         'color': Colors.red,
-        'titulo': '❌ No riegues hoy',
+        'titulo': 'No riegues hoy',
         'descripcion': 'Está lloviendo actualmente. El suelo ya tiene suficiente agua '
             'y regar podría causar hongos o pudrición en las raíces.',
       });
@@ -216,7 +188,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.water_drop_outlined,
         'color': Colors.green,
-        'titulo': '✅ Buen momento para regar',
+        'titulo': 'Buen momento para regar',
         'descripcion': 'El clima está estable y sin lluvia. '
             'La humedad actual favorece la absorción del agua.',
       });
@@ -226,7 +198,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.science_outlined,
         'color': Colors.red,
-        'titulo': '🚨 Aplica fungicida ahora',
+        'titulo': 'Aplica fungicida ahora',
         'descripcion': 'Humedad alta ($humedad%) con roya $nivelRoya detectada. '
             'Condición ideal para propagación. Aplica fungicida sin demora.',
       });
@@ -234,7 +206,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.science_outlined,
         'color': Colors.orange,
-        'titulo': '⚠️ Riesgo de hongos por humedad',
+        'titulo': 'Riesgo de hongos por humedad',
         'descripcion': 'La humedad alta ($humedad%) favorece la roya y otros hongos. '
             'Considera fungicidas preventivos y mejora la ventilación.',
       });
@@ -242,7 +214,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.science_outlined,
         'color': Colors.green,
-        'titulo': '✅ Condiciones estables',
+        'titulo': 'Condiciones estables',
         'descripcion': 'El ambiente no presenta alto riesgo de enfermedades '
             '${tieneCultivo ? "para $cultivoNombre" : ""}.',
       });
@@ -252,14 +224,14 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.agriculture_outlined,
         'color': Colors.red,
-        'titulo': '❌ Evita cosechar',
+        'titulo': 'Evita cosechar',
         'descripcion': 'La lluvia afecta la calidad del café y dificulta el secado.',
       });
     } else if (nivelRoya == 'Alto') {
       recs.add({
         'icono': Icons.agriculture_outlined,
         'color': Colors.orange,
-        'titulo': '⚠️ Cosecha con precaución',
+        'titulo': 'Cosecha con precaución',
         'descripcion': 'El clima es favorable para cosechar, pero el nivel de roya es alto. '
             'Selecciona solo frutos sanos y desecha los afectados.',
       });
@@ -267,7 +239,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.agriculture_outlined,
         'color': Colors.green,
-        'titulo': '✅ Buen clima para cosecha',
+        'titulo': 'Buen clima para cosecha',
         'descripcion': 'Las condiciones son favorables para recolectar café.',
       });
     }
@@ -276,21 +248,21 @@ class _ClimaScreenState extends State<ClimaScreen> {
       recs.add({
         'icono': Icons.thermostat_outlined,
         'color': Colors.green,
-        'titulo': '✅ Temperatura ideal',
+        'titulo': 'Temperatura ideal',
         'descripcion': 'La temperatura actual ($temp°C) es óptima para el desarrollo del cafeto.',
       });
     } else if (temp > 28) {
       recs.add({
         'icono': Icons.thermostat_outlined,
         'color': Colors.orange,
-        'titulo': '⚠️ Mucho calor ($temp°C)',
+        'titulo': 'Mucho calor ($temp°C)',
         'descripcion': 'El calor intenso puede estresar el cultivo y acelerar la propagación de plagas.',
       });
     } else if (temp < 14) {
       recs.add({
         'icono': Icons.thermostat_outlined,
         'color': Colors.blue,
-        'titulo': '⚠️ Temperatura muy baja ($temp°C)',
+        'titulo': 'Temperatura muy baja ($temp°C)',
         'descripcion': 'El frío puede afectar el desarrollo de la planta. Protege los cultivos jóvenes.',
       });
     }
@@ -305,7 +277,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
     final nivelRoya     = AppState.instance.nivelRoya;
  
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
           // ── HEADER con bordes redondeados inferiores y sombra ──
@@ -361,7 +332,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
   Widget _buildHeader(String fincaNombre, String cultivoNombre, String nivelRoya) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFFF4E7D6),
+      color: AppColors.headerBg(context),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
@@ -417,7 +388,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF7EF),
+        color: AppColors.surfaceVariantBg(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border, width: 1.2),
       ),
@@ -425,7 +396,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
         children: [
           Text(_ciudadActual, style: GoogleFonts.nunito(color: AppColors.textSecondary)),
           const SizedBox(height: 20),
-          Text(_clima['icono'] ?? '⛅', style: const TextStyle(fontSize: 60)),
+          Icon(_clima['icono'] ?? Icons.cloud_queue_rounded, color: AppColors.primary, size: 60),
           Text('${_clima['temp'] ?? '--'}°C',
               style: GoogleFonts.nunito(fontSize: 52, fontWeight: FontWeight.w800)),
           Text(_clima['descripcion'] ?? '', style: GoogleFonts.nunito()),
@@ -463,7 +434,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF7EF),
+        color: AppColors.surfaceVariantBg(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border, width: 1.2),
       ),
@@ -480,7 +451,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
               Text('${p['max']}°/${p['min']}°',
                   style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700)),
               if (p['lluvia'] == true)
-                const Text('🌧️', style: TextStyle(fontSize: 10)),
+                const Icon(Icons.water_drop_outlined, color: AppColors.primary, size: 12),
             ],
           );
         }).toList(),
@@ -520,7 +491,7 @@ class _ClimaScreenState extends State<ClimaScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFBF7EF),
+            color: AppColors.surfaceVariantBg(context),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: (rec['color'] as Color).withOpacity(0.45), width: 1.2),
           ),

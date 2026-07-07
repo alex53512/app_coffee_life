@@ -261,7 +261,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -312,7 +311,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: const Color(0xFFF4E7D6),
+      color: AppColors.headerBg(context),
       child: Row(
         children: [
           IconButton(icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20), onPressed: () => Navigator.pop(context)),
@@ -386,7 +385,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: seleccionado ? AppColors.primary : Colors.white,
+                color: seleccionado ? AppColors.primary : AppColors.cardBg(context),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: seleccionado ? AppColors.primary : Colors.grey.shade300),
               ),
@@ -426,7 +425,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     final descripcion = _seleccionado?['descripcion'] ?? 'Sin descripción';
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
+      decoration: BoxDecoration(color: AppColors.cardBg(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -446,7 +445,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     final frecuencia = _seleccionado?['frecuencia'];
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
+      decoration: BoxDecoration(color: AppColors.cardBg(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         children: [
           _rowItem(Icons.category_outlined, 'Tipo', tipo),
@@ -462,7 +461,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   Widget _buildNotasCard() {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
+      decoration: BoxDecoration(color: AppColors.cardBg(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -491,7 +490,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   String _formatFecha(dynamic fecha) {
     if (fecha == null) return 'N/A';
     try {
-      final dt = DateTime.parse(fecha.toString());
+      final dt = DateTime.parse(fecha.toString()).toLocal();
       return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
     } catch (_) {
       return fecha.toString();

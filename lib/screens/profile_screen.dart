@@ -6,9 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
-import '../services/auth_service.dart';
 import '../services/app_state.dart';
-import 'login_screen.dart';
+import '../services/auth_service.dart';
+import '../services/theme_notifier.dart';
+import 'ajustes_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> usuario;
@@ -97,13 +98,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  String _leerRol(Map<String, dynamic> u) {
-    final rol = u['rol'];
-    if (rol == null) return 'Caficultor';
-    if (rol is String) return rol;
-    if (rol is Map) return rol['nombreRol'] ?? 'Caficultor';
-    return 'Caficultor';
-  }
 
   Future<void> _cargarDatos() async {
     print('USUARIO DATA: $_usuarioData');
@@ -177,13 +171,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 8),
               ListTile(
                 leading: const Icon(Icons.camera_alt_outlined,
-                    color: AppColors.primary),
+                    color: AppColors.textPrimary),
                 title: Text('Tomar foto', style: GoogleFonts.nunito()),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined,
-                    color: AppColors.primary),
+                    color: AppColors.textPrimary),
                 title: Text('Elegir de galería', style: GoogleFonts.nunito()),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
@@ -323,11 +317,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariantBg(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           padding: EdgeInsets.only(
             left: 20, right: 20, top: 20,
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
@@ -335,11 +331,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 Text('Editar perfil',
                     style: GoogleFonts.nunito(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                        fontSize: 20, fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
                 Text('Datos personales',
                     style: GoogleFonts.nunito(
                         fontSize: 13,
@@ -371,15 +379,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed: _guardarCambios,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                     child: Text('Guardar cambios',
                         style: GoogleFonts.nunito(
-                            fontWeight: FontWeight.bold)),
+                            fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -401,122 +411,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
       controller: controller,
       keyboardType: tipo,
       enabled: enabled,
+      style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
-        filled: !enabled,
-        fillColor: enabled ? null : Colors.grey.shade100,
+        labelStyle: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary),
+        filled: true,
+        fillColor: enabled ? AppColors.inputFill(context) : AppColors.surfaceVariantBg(context),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
       ),
     );
-  }
-
-  Future<void> _cerrarSesion() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Cerrar sesión',
-            style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-        content: Text('¿Estás seguro que quieres cerrar sesión?',
-            style: GoogleFonts.nunito()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar',
-                style: GoogleFonts.nunito(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Salir'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await AuthService.logout();
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (_) => false,
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4E7D6),
       body: SafeArea(
         child: _cargando
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.primary))
-            : Column(
-                children: [
-                  _buildHeader(context),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _buildAvatarSection(),
-                          const SizedBox(height: 8),
-                          _buildInfoSection(),
-                          const SizedBox(height: 24),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: OutlinedButton.icon(
-                              onPressed: _cerrarSesion,
-                              icon: const Icon(Icons.logout, color: Colors.red),
-                              label: Text('Cerrar sesión',
-                                  style: GoogleFonts.nunito(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.w600)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.red),
-                                minimumSize: const Size(double.infinity, 50),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
+            : SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTopBar(context),
+                    const SizedBox(height: 16),
+                    _buildAvatarCard(),
+                    const SizedBox(height: 16),
+                    _buildInfoCard(),
+                    const SizedBox(height: 16),
+                    _buildSettingsCard(),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Text('App versión 1.0',
+                          style: GoogleFonts.nunito(
+                              fontSize: 11, color: AppColors.textSecondary)),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: const Color(0xFFF4E7D6),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
-            onPressed: () => Navigator.pop(context),
+  Widget _buildTopBar(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _iconCircleButton(
+          icon: Icons.arrow_back_ios_new_rounded,
+          onTap: () => Navigator.pop(context),
+        ),
+        Text('Mi perfil',
+            style: GoogleFonts.nunito(
+                fontSize: 18, fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary)),
+        const SizedBox(width: 40),
+      ],
+    );
+  }
+
+  Widget _iconCircleButton({required IconData icon, required VoidCallback onTap}) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      shape: const CircleBorder(),
+      elevation: 0,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
+            ],
           ),
-          Expanded(
-            child: Text('Mi perfil',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                    fontSize: 18, fontWeight: FontWeight.w800)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: _mostrarFormularioEditar,
-          ),
-        ],
+          child: Icon(icon, color: AppColors.textPrimary, size: 18),
+        ),
       ),
     );
   }
 
-  Widget _buildAvatarSection() {
+  Widget _buildAvatarCard() {
     final nombre   = (_usuarioData['nombre']   ?? widget.usuario['nombre']   ?? '').toString();
     final apellido = (_usuarioData['apellido'] ?? widget.usuario['apellido'] ?? '').toString();
     final correo   = (_usuarioData['correo']   ?? widget.usuario['correo']   ?? '').toString();
@@ -531,105 +522,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28),
-      color: const Color(0xFFF4E7D6),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(context),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
       child: Column(
         children: [
           Stack(
             alignment: Alignment.bottomRight,
             children: [
               CircleAvatar(
-                radius: 48,
+                radius: 44,
                 backgroundColor: AppColors.primary,
                 backgroundImage: imageProvider,
                 child: imageProvider == null
                     ? Text(inicial,
-                        style: const TextStyle(
-                            fontSize: 40,
+                        style: GoogleFonts.nunito(
+                            fontSize: 34,
                             color: Colors.white,
-                            fontWeight: FontWeight.bold))
+                            fontWeight: FontWeight.w800))
                     : null,
               ),
-              GestureDetector(
-                onTap: _seleccionarFoto,
-                child: Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+              Material(
+                color: AppColors.primary,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _seleccionarFoto,
+                  child: Container(
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
                   ),
-                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text('$nombre $apellido'.trim(),
-              style: GoogleFonts.nunito(
-                  fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(correo,
-              style: GoogleFonts.nunito(
-                  fontSize: 13, color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(20),
+          const SizedBox(height: 16),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text('$nombre $apellido'.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.nunito(
+                          fontSize: 20, fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _mostrarFormularioEditar,
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.edit_outlined, color: AppColors.textPrimary, size: 18),
+                  ),
+                ),
+              ],
             ),
-            child: Text(
-              _leerRol(_usuarioData),
-              style: GoogleFonts.nunito(
-                  color: AppColors.primary, fontWeight: FontWeight.bold),
-            ),
+          ),
+          const SizedBox(height: 2),
+          Center(
+            child: Text(correo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.nunito(
+                    fontSize: 13, color: AppColors.textSecondary)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoSection() {
+  Widget _buildInfoCard() {
     return Container(
-      color: const Color(0xFFF4E7D6),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(context),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _rowItem(
             label: 'Mi finca',
             valor: _finca?['nombreFinca']?.toString() ?? 'Sin finca registrada',
-            icono: Icons.park_outlined,
           ),
-          if (_finca?['expertoAsignado'] != null) ...[
-            _divider(),
-            _rowItem(
-              label: 'Experto asignado',
-              valor: () {
-                final e = _finca!['expertoAsignado'];
-                final nom = '${e['nombre'] ?? ''} ${e['apellido'] ?? ''}'.trim();
-                return nom.isNotEmpty ? nom : 'Experto asignado';
-              }(),
-              icono: Icons.person_outline,
-            ),
-          ],
           _divider(),
           _rowItem(
             label: 'Municipio',
             valor: _finca?['municipio']?.toString() ?? 'No registrado',
-            icono: Icons.location_on_outlined,
           ),
           _divider(),
           _rowItem(
             label: 'Departamento',
             valor: _finca?['departamento']?.toString() ?? 'No registrado',
-            icono: Icons.location_city_outlined,
           ),
           _divider(),
           _rowItem(
             label: 'Teléfono',
             valor: _usuarioData['telefono']?.toString() ?? 'No registrado',
-            icono: Icons.phone_outlined,
           ),
           _divider(),
           _rowItem(
@@ -638,7 +643,166 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final cedula = _leerCedula(_usuarioData);
               return cedula.isNotEmpty ? cedula : 'No registrada';
             }(),
-            icono: Icons.badge_outlined,
+            esUltimo: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(context),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        children: [
+          _settingsRow(
+            icono: Icons.info_outline_rounded,
+            label: 'Acerca de la app',
+            onTap: _mostrarAcercaDe,
+          ),
+          _divider(),
+          _settingsRow(
+            icono: Icons.settings_outlined,
+            label: 'Ajustes',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AjustesScreen())),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsRow({
+    required IconData icono,
+    required String label,
+    String? valor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(icono, color: AppColors.textPrimary, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label,
+                    style: GoogleFonts.nunito(
+                        fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              ),
+              if (valor != null) ...[
+                Text(valor,
+                    style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(width: 6),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarAcercaDe() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Coffee Life',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Coffee Life es una aplicación para caficultores '
+                'colombianos. Con ella puedes tomar fotos de las '
+                'hojas de café, enviarlas a análisis y recibir un '
+                'diagnóstico con recomendaciones para el cuidado '
+                'de tus cultivos, todo desde tu celular.',
+                style: GoogleFonts.nunito(
+                    color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 20),
+              Text('¿Qué puedes hacer con Coffee Life?',
+                  style: GoogleFonts.nunito(
+                      fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              const SizedBox(height: 12),
+              _itemAcerca('Diagnóstico de enfermedades',
+                  'Toma una foto de una hoja de café, la envías a análisis y recibes el resultado: si tiene roya, qué tan grave está y qué hacer.'),
+              _itemAcerca('Historial de tu cultivo',
+                  'Todas tus fotos y diagnósticos quedan guardados para que puedas ver cómo ha ido cambiando tu cultivo con el tiempo.'),
+              _itemAcerca('Recomendaciones de tratamiento',
+                  'Cada diagnóstico incluye recomendaciones de productos, dosis y frecuencia para tratar la enfermedad.'),
+              _itemAcerca('Asistente virtual',
+                  '¿Tienes una duda sobre tu cultivo? Escribe en el chat y recibes respuesta al instante.'),
+              _itemAcerca('Clima de tu finca',
+                  'Consulta el clima actual para saber cuándo es mejor aplicar los tratamientos.'),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Icon(Icons.phone_android, size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Text('Versión 1.0.0',
+                      style: GoogleFonts.nunito(
+                          fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text('© 2026 Coffee Life',
+                  style: GoogleFonts.nunito(
+                      fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary, minimumSize: const Size(0, 40)),
+            child: Text('Cerrar', style: GoogleFonts.nunito(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _itemAcerca(String titulo, String descripcion) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 5),
+            width: 6, height: 6,
+            decoration: const BoxDecoration(
+                color: AppColors.primary, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titulo,
+                    style: GoogleFonts.nunito(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(height: 2),
+                Text(descripcion,
+                    style: GoogleFonts.nunito(
+                        fontSize: 11, color: AppColors.textSecondary, height: 1.4)),
+              ],
+            ),
           ),
         ],
       ),
@@ -648,35 +812,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _rowItem({
     required String label,
     required String valor,
-    required IconData icono,
+    bool esUltimo = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icono, color: AppColors.primary, size: 22),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: GoogleFonts.nunito(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                Text(valor,
-                    style: GoogleFonts.nunito(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary)),
-              ],
-            ),
-          ),
+          Text(label,
+              style: GoogleFonts.nunito(
+                  fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 4),
+          Text(valor,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.nunito(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
         ],
       ),
     );
   }
 
   Widget _divider() {
-    return const Divider(height: 1, color: Color.fromARGB(255, 202, 200, 200));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Divider(height: 1, color: AppColors.border),
+    );
   }
 }
