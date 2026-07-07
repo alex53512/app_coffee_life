@@ -70,6 +70,7 @@ scene.add(fill);
 
 // ─────────────────────────────────────────────
 // FUNCIÓN: encuadrar cámara sobre un objeto (método estándar Three.js)
+// Se usa como fallback si no se encuentra el hueso de la cabeza.
 // ─────────────────────────────────────────────
 function encuadrarCamara(object3D, fitOffset = 1.3) {
   const box = new THREE.Box3().setFromObject(object3D);
@@ -88,6 +89,24 @@ function encuadrarCamara(object3D, fitOffset = 1.3) {
   camera.lookAt(center);
 
   return { box, size, center, distance };
+}
+
+// ─────────────────────────────────────────────
+// FUNCIÓN: centrar cámara EN PRIMER PLANO
+// para que solo se vea cabeza + torso (camisa).
+// ─────────────────────────────────────────────
+function centrarEnCabeza(distanciaBase = 5.0, offsetVertical = 0.3) {
+  if (!headBone) return false;
+
+  const headWorldPos = new THREE.Vector3();
+  headBone.getWorldPosition(headWorldPos);
+
+  camera.position.set(headWorldPos.x, headWorldPos.y, headWorldPos.z + distanciaBase);
+  camera.near = distanciaBase / 50;
+  camera.far  = distanciaBase * 50;
+  camera.lookAt(headWorldPos.x, headWorldPos.y - offsetVertical, headWorldPos.z);
+  camera.updateProjectionMatrix();
+  return true;
 }
 
 // ─────────────────────────────────────────────
@@ -116,16 +135,14 @@ function _initLoader() {
       const avatar = gltf.scene;
       scene.add(avatar);
 
+      // CRÍTICO: forzar el cálculo de las matrices de mundo del modelo
+      // recién agregado. Sin esto, getWorldPosition() de los huesos
+      // devuelve posiciones desactualizadas (pose de bind / origen),
+      // lo que hace que la cámara apunte mal y el avatar se vea
+      // pequeño y desplazado hacia abajo.
+      avatar.updateMatrixWorld(true);
+
       console.log('✅ GLB cargado. Hijos:', avatar.children.length);
-
-      const info = encuadrarCamara(avatar, 1.1);
-
-      const ajusteVertical = 1.55;
-      camera.position.y += ajusteVertical;
-      camera.lookAt(info.center.x, info.center.y + ajusteVertical, info.center.z);
-      console.log('📐 Avatar size:', info.size);
-      console.log('📐 Avatar center:', info.center);
-      console.log('📷 Camera FINAL:', camera.position);
 
       avatar.traverse(obj => {
         if (obj.isMesh) {
@@ -155,6 +172,20 @@ function _initLoader() {
           if (n.includes('head')) headBone = obj;
         }
       });
+
+      // Centrar cámara en la cabeza real. Si no hay hueso de cabeza,
+      // caemos de vuelta al encuadre de cuerpo completo.
+      // El segundo argumento (0.3) es lo que sube el avatar dentro del
+      // encuadre. Súbelo para que suba más, bájalo para que suba menos.
+      let centrado = centrarEnCabeza(1.0, 0.0);
+      if (!centrado) {
+        console.warn('⚠️ No se encontró headBone, usando encuadre de cuerpo completo');
+        encuadrarCamara(avatar, 1.21);
+      }
+      // Re-aplicar resize después de cargar para ajustar al tamaño final del WebView
+      setTimeout(onResize, 50);
+
+      console.log('📷 Camera FINAL:', camera.position);
 
       aplicarEmocion('neutral');
     },
@@ -282,13 +313,21 @@ window.addEventListener('message', (e) => {
 });
 
 // ─────────────────────────────────────────────
-// RESIZE
+// RESIZE — reencuadra el avatar al cambiar tamaño
 // ─────────────────────────────────────────────
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+function onResize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+  renderer.setSize(w, h);
+  // Re-centrar cámara en la cabeza para que el avatar siempre
+  // se vea completo y centrado sin importar el nuevo tamaño.
+  if (headBone) {
+    centrarEnCabeza(1.0, 0.0);
+  }
+}
+window.addEventListener('resize', onResize);
 </script>
 </body>
 </html>
