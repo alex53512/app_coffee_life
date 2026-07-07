@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
+</head>
+<body>
+
+<!--
+  IMPORTANTE: usamos Three.js r128 con scripts clasicos (no ES modules,
+  no import maps). Esto es MUCHO mas compatible con WebViews de Android
+  desactualizados o personalizados (ej. MIUI/Xiaomi), que a veces no
+  soportan <script type="importmap"> ni <script type="module">.
+  En Chrome de escritorio funciona exactamente igual.
+-->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+// ─────────────────────────────────────────────
+// ESTADO GLOBAL
+// ─────────────────────────────────────────────
+let morphMesh = null;
+let headBone  = null;
+let hablando  = false;
+let tiempoParpadeo = 0;
+let intervaloParpadeo = 2500 + Math.random() * 2000;
+let idleT = 0;
+let lipT  = 0;
+
+// ─────────────────────────────────────────────
+// THREE.JS BASE
+// ─────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x000000, 0);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(
+  35,
+  window.innerWidth / window.innerHeight,
+  0.01,
+  1000
+);
+camera.position.set(0, 0, 2);
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(1, 2, 2);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6);
+fill.position.set(-1, 0, 1);
+scene.add(fill);
+
+// ─────────────────────────────────────────────
+// FUNCIÓN: encuadrar cámara sobre un objeto (método estándar Three.js)
+// ─────────────────────────────────────────────
+function encuadrarCamara(object3D, fitOffset = 1.3) {
+  const box = new THREE.Box3().setFromObject(object3D);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+
+  const maxSize = Math.max(size.x, size.y, size.z);
+  const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360));
+  const fitWidthDistance  = fitHeightDistance / camera.aspect;
+  const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
+
+  camera.position.set(center.x, center.y, center.z + distance);
+  camera.near = distance / 100;
+  camera.far  = distance * 100;
+  camera.updateProjectionMatrix();
+  camera.lookAt(center);
+
+  return { box, size, center, distance };
+}
+
+// ─────────────────────────────────────────────
+// CARGAR GLB
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// CARGA DIFERIDA: espera señal de Flutter para cargar avatar.glb
+// (necesario para que Android tenga tiempo de habilitar file access)
+// ─────────────────────────────────────────────
+let _onAvatarReady = null;
+
+window._deferredLoad = function() {
+  if (_onAvatarReady) {
+    _onAvatarReady();
+    return;
+  }
+  // Si aún no se configuró, esperar un poco
+  setTimeout(window._deferredLoad, 100);
+};
+
+function _initLoader() {
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    'avatar.glb',
+    (gltf) => {
+      const avatar = gltf.scene;
+      scene.add(avatar);
+
+      console.log('✅ GLB cargado. Hijos:', avatar.children.length);
+
+      const info = encuadrarCamara(avatar, 1.1);
+
+      const ajusteVertical = 1.55;
+      camera.position.y += ajusteVertical;
+      camera.lookAt(info.center.x, info.center.y + ajusteVertical, info.center.z);
+      console.log('📐 Avatar size:', info.size);
+      console.log('📐 Avatar center:', info.center);
+      console.log('📷 Camera FINAL:', camera.position);
+
+      avatar.traverse(obj => {
+        if (obj.isMesh) {
+          console.log('🔍 Mesh:', obj.name, '| vertices:', obj.geometry?.attributes?.position?.count, '| visible:', obj.visible);
+        }
+      });
+
+      const nombresHead = ['AvatarHead', 'Wolf3D_Head', 'Wolf3D_Head_Mesh', 'Head', 'head'];
+      for (const n of nombresHead) {
+        const obj = avatar.getObjectByName(n);
+        if (obj && obj.morphTargetDictionary) { morphMesh = obj; break; }
+      }
+      if (!morphMesh) {
+        avatar.traverse(obj => {
+          if (!morphMesh && obj.isSkinnedMesh && obj.morphTargetDictionary) morphMesh = obj;
+        });
+      }
+      if (morphMesh) {
+        console.log('✅ Blendshapes en:', morphMesh.name, '→', Object.keys(morphMesh.morphTargetDictionary).length, 'shapes');
+      } else {
+        console.warn('⚠️ No se encontraron blendshapes');
+      }
+
+      avatar.traverse(obj => {
+        if (!headBone && obj.isBone) {
+          const n = (obj.name || '').toLowerCase();
+          if (n.includes('head')) headBone = obj;
+        }
+      });
+
+      aplicarEmocion('neutral');
+    },
+    (xhr) => {
+      if (xhr.total) console.log(`⏳ Cargando: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
+    },
+    (err) => console.error('❌ Error cargando avatar.glb:', err)
+  );
+}
+
+_onAvatarReady = _initLoader;
+
+// ─────────────────────────────────────────────
+// EMOCIONES — blendshapes ARKit
+// ─────────────────────────────────────────────
+const EMOCIONES = {
+  neutral:   {},
+  talking:   { jawOpen: 0.12, mouthSmileLeft: 0.08, mouthSmileRight: 0.08 },
+  happy:     { mouthSmileLeft: 0.9, mouthSmileRight: 0.9, cheekSquintLeft: 0.3, cheekSquintRight: 0.3, jawOpen: 0.05 },
+  sad:       { mouthFrownLeft: 0.8, mouthFrownRight: 0.8, browDownLeft: 0.4, browDownRight: 0.4, browInnerUp: 0.3 },
+  surprised: { jawOpen: 0.7, eyeWideLeft: 0.6, eyeWideRight: 0.6, browOuterUpLeft: 0.5, browOuterUpRight: 0.5 },
+  thinking:  { browDownLeft: 0.2, browDownRight: 0.2, eyeLookUpLeft: 0.2, eyeLookUpRight: 0.2, mouthPucker: 0.2 },
+};
+
+function setBlend(name, value) {
+  if (!morphMesh) return;
+  const idx = morphMesh.morphTargetDictionary[name];
+  if (idx !== undefined) morphMesh.morphTargetInfluences[idx] = value;
+}
+
+function aplicarEmocion(nombre) {
+  if (!morphMesh) return;
+  Object.keys(morphMesh.morphTargetDictionary).forEach(k => {
+    morphMesh.morphTargetInfluences[morphMesh.morphTargetDictionary[k]] = 0;
+  });
+  const mapa = EMOCIONES[nombre] || {};
+  Object.entries(mapa).forEach(([k, v]) => setBlend(k, v));
+}
+
+// ─────────────────────────────────────────────
+// LIPSYNC
+// ─────────────────────────────────────────────
+const VISEMES = ['jawOpen', 'mouthFunnel', 'mouthClose'];
+
+function aplicarLip(val) {
+  if (!morphMesh) return;
+  VISEMES.forEach(v => {
+    const idx = morphMesh.morphTargetDictionary[v];
+    if (idx !== undefined) morphMesh.morphTargetInfluences[idx] = val;
+  });
+}
+
+function lipSinusoidal(delta) {
+  lipT += delta / 1000;
+  const base  = 0.08 + 0.08 * Math.sin(lipT * 10);
+  const pulse = 0.22 * Math.abs(Math.sin(lipT * 6));
+  return Math.min(base + pulse, 0.7);
+}
+
+// ─────────────────────────────────────────────
+// PARPADEO
+// ─────────────────────────────────────────────
+function parpadear() {
+  if (!morphMesh) return;
+  const dict = morphMesh.morphTargetDictionary;
+  const infl = morphMesh.morphTargetInfluences;
+  const L = dict['eyeBlinkLeft'];
+  const R = dict['eyeBlinkRight'];
+  if (L !== undefined) infl[L] = 1;
+  if (R !== undefined) infl[R] = 1;
+  setTimeout(() => {
+    if (L !== undefined) infl[L] = 0;
+    if (R !== undefined) infl[R] = 0;
+  }, 110);
+}
+
+// ─────────────────────────────────────────────
+// LOOP DE ANIMACIÓN
+// ─────────────────────────────────────────────
+let last = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const delta = now - last;
+  last = now;
+
+  tiempoParpadeo += delta;
+  if (tiempoParpadeo >= intervaloParpadeo) {
+    tiempoParpadeo = 0;
+    intervaloParpadeo = 2000 + Math.random() * 2500;
+    parpadear();
+  }
+
+  if (headBone) {
+    idleT += delta / 1000;
+    headBone.rotation.y = Math.sin(idleT * 0.4) * 0.06;
+    headBone.rotation.x = Math.sin(idleT * 0.3) * 0.03;
+  }
+
+  aplicarLip(hablando ? lipSinusoidal(delta) : 0);
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─────────────────────────────────────────────
+// MENSAJES DESDE FLUTTER
+// ─────────────────────────────────────────────
+window.recibirMensaje = function(msg) {
+  if (msg === 'hablar') {
+    hablando = true;
+    lipT = 0;
+    aplicarEmocion('talking');
+  } else if (msg === 'parar') {
+    hablando = false;
+    aplicarEmocion('neutral');
+  } else if (msg.startsWith('emocion:')) {
+    aplicarEmocion(msg.split(':')[1]);
+  }
+};
+
+window.addEventListener('message', (e) => {
+  if (typeof e.data === 'string') window.recibirMensaje(e.data);
+});
+
+// ─────────────────────────────────────────────
+// RESIZE
+// ─────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
