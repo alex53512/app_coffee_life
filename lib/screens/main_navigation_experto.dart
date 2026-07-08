@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import 'home_experto_screen.dart';
 import 'diagnostico_experto_screen.dart';
-import 'clima_screen.dart';
+import '../services/app_state.dart';
+import 'fincaDetalleScreen.dart';
 import 'monitoreos_screen.dart';
 import 'perfil_experto_screen.dart';
  
@@ -43,7 +44,7 @@ class _MainNavigationExpertoState extends State<MainNavigationExperto>
   List<Widget> get _screens => [
         HomeExpertoScreen(usuario: widget.usuario),
         DiagnosticoExpertoScreen(usuario: widget.usuario),
-        const ClimaScreen(),
+        FincaDetalleScreen(finca: AppState.instance.fincaSeleccionada ?? {}),
         const MontoreosScreen(),
         PerfilExpertoScreen(usuario: widget.usuario),
       ];
@@ -165,8 +166,8 @@ class _MainNavigationExpertoState extends State<MainNavigationExperto>
               _navItem(0, Icons.home_rounded, Icons.home_outlined, 'Inicio'),
               _navItem(1, Icons.assignment_rounded,
                   Icons.assignment_outlined, 'Diagnóstico'),
-              _navItem(2, Icons.wb_cloudy_rounded,
-                  Icons.wb_cloudy_outlined, 'Clima'),
+              _navItem(2, Icons.fact_check_rounded,
+                  Icons.fact_check_outlined, 'Seguimiento'),
               _navItem(3, Icons.bar_chart_rounded,
                   Icons.bar_chart_outlined, 'Monitoreos'),
               _navItem(4, Icons.person_rounded,

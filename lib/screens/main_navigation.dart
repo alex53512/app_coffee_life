@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import '../services/app_state.dart';
 import 'home_screen.dart';
 import 'diagnostic_screen.dart';
-import 'clima_screen.dart';
+import 'fincaDetalleScreen.dart';
 import 'monitoreos_screen.dart';
 import 'aprender_screen.dart';
 import 'profile_screen.dart';
@@ -53,7 +53,7 @@ class _MainNavigationState extends State<MainNavigation>
   List<Widget> get _screens => [
         HomeScreen(usuario: widget.usuario),
         const DiagnosticScreen(),
-        const ClimaScreen(),
+        FincaDetalleScreen(finca: AppState.instance.fincaSeleccionada ?? {}),
         const MontoreosScreen(),
         const AprenderScreen(),
         ProfileScreen(usuario: widget.usuario),
@@ -128,7 +128,7 @@ class _MainNavigationState extends State<MainNavigation>
             children: [
               _navItem(0, Icons.home_rounded,             Icons.home_outlined,             'Inicio'),
               _navItem(1, Icons.document_scanner_rounded, Icons.document_scanner_outlined, 'Diagnóstico'),
-              _navItem(2, Icons.wb_cloudy_rounded,        Icons.wb_cloudy_outlined,        'Clima'),
+              _navItem(2, Icons.fact_check_rounded,        Icons.fact_check_outlined,        'Seguimiento'),
               _navItem(3, Icons.bar_chart_rounded,        Icons.bar_chart_outlined,        'Monitoreos'),
               _navItem(4, Icons.menu_book_rounded,        Icons.menu_book_outlined,        'Aprender'),
               _navItem(5, Icons.person_rounded,           Icons.person_outline_rounded,    'Perfil'),
