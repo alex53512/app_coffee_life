@@ -48,9 +48,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   Color  _severityColor  = AppColors.primary;
   List<Map<String, dynamic>> _detections = [];
   _IaClase _claseDetectada = _IaClase.desconocida;
-  List<String> _backendRecomendaciones = [];
+  List<Map<String, dynamic>> _recomendaciones = [];
 
-  // ✅ Flag para evitar doble guardado
   bool _guardando = false;
  
   String _invalidTitle      = '';
@@ -123,10 +122,28 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final top   = detections[0];
     final conf  = (top['confidence'] as num).toDouble();
     final clase = _parsearClase(top['class'] as String);
+
+    // Filtro de confianza mínima: si es menor a 0.5, tratar como desconocida
+    if (conf < 0.5) {
+      setState(() {
+        _claseDetectada   = _IaClase.desconocida;
+        _confidence       = conf;
+        _invalidTitle     = 'Baja confianza en la detección';
+        _invalidMessage   =
+            'El modelo no está seguro de lo que ve en la imagen. '
+            'La confianza es solo de ${(conf * 100).round()}%.';
+        _invalidSuggestion =
+            'Toma una foto clara de la hoja del café, de frente y con '
+            'buena iluminación, para obtener un diagnóstico preciso.';
+      });
+      return;
+    }
+
     _claseDetectada = clase;
     _confidence     = conf;
-    _backendRecomendaciones =
-        (top['recommendations'] as List?)?.cast<String>() ?? [];
+    _recomendaciones = (top['recommendations'] as List<dynamic>?)
+            ?.map((e) => {'titulo': e.toString(), 'descripcion': ''})
+            .toList() ?? [];
 
     switch (clase) {
       case _IaClase.roya:
@@ -228,7 +245,13 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
  
   Widget _buildHeader(BuildContext context) {
     return Container(
-      color: AppColors.headerBg(context),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
@@ -868,73 +891,40 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   Widget _buildRecommendationsCard() {
     final bool esRoya = _claseDetectada == _IaClase.roya;
 
-    if (_backendRecomendaciones.isNotEmpty && esRoya) {
-      final color = _severity == 'Alta'
-          ? const Color(0xFFD32F2F)
-          : _severity == 'Media'
-              ? const Color(0xFFE65100)
-              : const Color(0xFF388E3C);
-      return _card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Recomendaciones ($_severity)',
-                style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 14),
-            ..._backendRecomendaciones.asMap().entries.map((e) {
-              final isLast = e.key == _backendRecomendaciones.length - 1;
-              return Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 6, height: 6, margin: const EdgeInsets.only(top: 6, right: 10),
-                        decoration: BoxDecoration(
-                            color: color, shape: BoxShape.circle),
-                      ),
-                      Expanded(
-                        child: Text(e.value,
-                            style: GoogleFonts.nunito(
-                                fontSize: 13, color: AppColors.textPrimary)),
-                      ),
-                    ],
-                  ),
-                  if (!isLast) const SizedBox(height: 10),
-                ],
-              );
-            }),
-          ],
-        ),
-      );
-    }
-
-    final recs = esRoya
-        ? [
-            _Rec(Icons.medication_outlined, const Color(0xFF1565C0),
-                'Aplicar fungicida recomendado',
-                'Fungicida Cúprico 250g/200L agua'),
-            _Rec(Icons.air_outlined, const Color(0xFF2E7D32),
-                'Mejorar ventilación del cultivo',
-                'Poda para mayor aireación'),
-            _Rec(Icons.delete_outline_rounded, const Color(0xFFE65100),
-                'Eliminar hojas afectadas',
-                'Retirar y destruir hojas con síntomas'),
-          ]
-        : [
-            _Rec(Icons.check_circle_outline, AppColors.primary,
-                'Planta en buen estado',
-                'Continúa con el manejo habitual'),
-            _Rec(Icons.water_drop_outlined, const Color(0xFF1565C0),
-                'Mantén el riego adecuado',
-                'Riega según las condiciones del clima'),
-            _Rec(Icons.search_outlined, const Color(0xFF388E3C),
-                'Monitorea regularmente',
-                'Revisa las hojas cada 15 días'),
-          ];
+    final recs = _recomendaciones.isNotEmpty
+        ? _recomendaciones.map((r) => _Rec(
+            Icons.check_circle_outline,
+            _severity == 'Alta'
+                ? const Color(0xFFD32F2F)
+                : _severity == 'Media'
+                    ? const Color(0xFFE65100)
+                    : const Color(0xFF388E3C),
+            r['titulo'] as String? ?? '',
+            r['descripcion'] as String? ?? '',
+          )).toList()
+        : esRoya
+            ? [
+                _Rec(Icons.medication_outlined, const Color(0xFF1565C0),
+                    'Aplicar fungicida recomendado',
+                    'Fungicida Cúprico 250g/200L agua'),
+                _Rec(Icons.air_outlined, const Color(0xFF2E7D32),
+                    'Mejorar ventilación del cultivo',
+                    'Poda para mayor aireación'),
+                _Rec(Icons.delete_outline_rounded, const Color(0xFFE65100),
+                    'Eliminar hojas afectadas',
+                    'Retirar y destruir hojas con síntomas'),
+              ]
+            : [
+                _Rec(Icons.check_circle_outline, AppColors.primary,
+                    'Planta en buen estado',
+                    'Continúa con el manejo habitual'),
+                _Rec(Icons.water_drop_outlined, const Color(0xFF1565C0),
+                    'Mantén el riego adecuado',
+                    'Riega según las condiciones del clima'),
+                _Rec(Icons.search_outlined, const Color(0xFF388E3C),
+                    'Monitorea regularmente',
+                    'Revisa las hojas cada 15 días'),
+              ];
 
     return _card(
       child: Column(
@@ -1040,7 +1030,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       setState(() {
         _imagenFile  = foto;
         _imagenBytes = bytes;
-        _guardando   = false; // ✅ reset al tomar nueva foto
+        _guardando   = false; 
       });
       _startAnalysis(foto, bytes);
     }
@@ -1058,16 +1048,13 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       setState(() {
         _imagenFile  = foto;
         _imagenBytes = bytes;
-        _guardando   = false; // ✅ reset al seleccionar nueva foto
+        _guardando   = false; 
       });
       _startAnalysis(foto, bytes);
     }
   }
  
   Future<void> _startAnalysis(XFile foto, Uint8List bytes) async {
-    // Protección contra doble envío: si ya hay un análisis en curso,
-    // ignora el nuevo intento (evita crear monitoreos duplicados si el
-    // usuario toca la cámara/galería más de una vez muy rápido).
     if (_stage == 'analyzing') return;
  
     setState(() => _stage = 'analyzing');
@@ -1091,7 +1078,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         _procesarDetecciones([]);
       }
     } catch (e) {
-      debugPrint('❌ Error llamando a la IA: $e');
+      debugPrint(' Error llamando a la IA: $e');
       _procesarDetecciones([]);
     }
  
@@ -1104,8 +1091,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final bytes = _imagenBytes;
     final foto = _imagenFile;
     try {
-      final recsStr = _backendRecomendaciones.isNotEmpty
-          ? ' — Recomendaciones: ${_backendRecomendaciones.join(" | ")}'
+      final recsStr = _recomendaciones.isNotEmpty
+          ? ' — Recomendaciones: ${_recomendaciones.map((r) => r['titulo'] ?? '').join(" | ")}'
           : '';
       final observaciones =
           '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
@@ -1113,15 +1100,15 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
       int? idMonitoreo;
       try {
-        final hoy = DateTime.now();
-        final fechaStr = '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}T${hoy.hour.toString().padLeft(2, '0')}:${hoy.minute.toString().padLeft(2, '0')}:00.000-05:00';
+        final utc = DateTime.now().toUtc();
+        final fechaStr = '${utc.year.toString().padLeft(4, '0')}-${utc.month.toString().padLeft(2, '0')}-${utc.day.toString().padLeft(2, '0')}T${utc.hour.toString().padLeft(2, '0')}:${utc.minute.toString().padLeft(2, '0')}:00.000Z';
         final resMonitoreo = await ApiService.post('/monitoreos', {
           'id_cultivo':      _cultivoSeleccionado,
           'fecha_monitoreo': fechaStr,
           'observaciones':   observaciones,
         });
         idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
-        debugPrint('✅ Monitoreo creado: $idMonitoreo');
+        debugPrint(' Monitoreo creado: $idMonitoreo');
       } catch (e) {
         final msg = e.toString();
         if ((msg.contains('409') || msg.contains('ya existe')) && msg.contains('idMonitoreo')) {
@@ -1137,7 +1124,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           final idStr = buf.toString();
           if (idStr.isNotEmpty) {
             idMonitoreo = int.parse(idStr);
-            debugPrint('✅ Monitoreo existente reutilizado: $idMonitoreo');
+            debugPrint(' Monitoreo existente reutilizado: $idMonitoreo');
           }
         }
         if (idMonitoreo == null) rethrow;
@@ -1146,16 +1133,20 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
       try {
         await ApiService.post('/analisis_ia', {
+          'id_monitoreo':       idMonitoreo,
           'resultado':          _diagnosisText,
           'confianza':          '${(_confidence * 100).round()}',
           'severidad':          _severity,
           'nombre_cientifico':  _scientificName,
           'id_estado_analisis': 1,
-          'recomendaciones': _backendRecomendaciones.map((r) => {'titulo': r, 'descripcion': ''}).toList(),
+          'recomendaciones': _recomendaciones.map((r) => {
+            'titulo': r['titulo'] ?? '',
+            'descripcion': r['descripcion'] ?? '',
+          }).toList(),
         });
-        debugPrint('✅ Análisis IA guardado');
+        debugPrint(' Análisis IA guardado');
       } catch (e) {
-        debugPrint('⚠️ Error guardando análisis IA (no crítico): $e');
+        debugPrint(' Error guardando análisis IA (no crítico): $e');
       }
 
       if (idMonitoreo != null && bytes != null && foto != null) {
@@ -1165,14 +1156,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             bytes:       bytes,
             filename:    foto.name.isNotEmpty ? foto.name : 'imagen.jpg',
           );
-          debugPrint('✅ Imagen subida');
+          debugPrint(' Imagen subida');
         } catch (e) {
-          debugPrint('⚠️ Error subiendo imagen (no crítico): $e');
+          debugPrint(' Error subiendo imagen (no crítico): $e');
         }
       }
 
-      debugPrint('✅ Diagnóstico guardado en Monitoreos');
-      debugPrint('📝 Observaciones guardadas: $observaciones');
+      debugPrint(' Diagnóstico guardado en Monitoreos');
+      debugPrint(' Observaciones guardadas: $observaciones');
       setState(() {
         _guardando = false;
         _stage = 'idle';
@@ -1180,7 +1171,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         _imagenBytes = null;
       });
     } catch (e) {
-      debugPrint('⚠️ Error guardando: $e');
+      debugPrint(' Error guardando: $e');
       setState(() => _guardando = false);
     }
   }

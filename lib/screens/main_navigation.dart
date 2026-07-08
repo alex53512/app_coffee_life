@@ -30,6 +30,7 @@ class _MainNavigationState extends State<MainNavigation>
   void initState() {
     super.initState();
     AppState.instance.addListener(_onFincaCambiada);
+    AppState.instance.iniciarPolling();
     WebSocketService.instance.on('*', _onNotificacion);
     _fabController = AnimationController(
       vsync: this,
@@ -48,28 +49,55 @@ class _MainNavigationState extends State<MainNavigation>
     super.dispose();
   }
 
-  void _onFincaCambiada() => setState(() {});
+  void _onFincaCambiada() {
+    setState(() {});
+    _mostrarNuevasNotificaciones();
+  }
 
   void _onNotificacion(Map<String, dynamic> data) {
     AppState.instance.agregarNotificacion(data);
-    final titulo = data['titulo'] ?? data['title'] ?? 'Novedad';
-    final mensaje = data['mensaje'] ?? data['message'] ?? '';
-    final idMonitoreo = data['idMonitoreo'] ?? data['id_monitoreo'];
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$titulo${mensaje.isNotEmpty ? ': $mensaje' : ''}'),
-        behavior: SnackBarBehavior.floating,
-        action: idMonitoreo != null
-            ? SnackBarAction(
-                label: 'Ver',
-                onPressed: () {
-                  AppState.instance.marcarNotificacionesLeidas();
-                  setState(() => _currentIndex = 3);
-                },
-              )
-            : null,
-        duration: const Duration(seconds: 4),
+  }
+
+  void _mostrarNuevasNotificaciones() {
+    final notif = AppState.instance.ultimaNotificacionNueva;
+    final nuevas = AppState.instance.nuevasDesdeUltimoAviso;
+    if (notif == null || nuevas <= 0 || !mounted) return;
+    AppState.instance.reiniciarContadorAvisos();
+    final tipo =
+        (notif['tipoRecomendacion'] ?? notif['tipo'] ?? '').toString();
+    final esExperto = tipo.toLowerCase().contains('diagnostico');
+    final titulo = esExperto
+        ? 'Nueva notificación del experto'
+        : 'Nueva notificación';
+    final mensaje = notif['mensaje'] ?? notif['message'] ?? '';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              esExperto ? Icons.eco : Icons.notifications_outlined,
+              color: esExperto ? AppColors.primary : const Color(0xFF2196F3),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(titulo, style: const TextStyle(fontSize: 16))),
+          ],
+        ),
+        content: Text(mensaje.isNotEmpty ? mensaje : 'Tienes una nueva notificación'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              AppState.instance.marcarNotificacionesLeidas();
+              setState(() => _currentIndex = 3);
+            },
+            child: const Text('Ver'),
+          ),
+        ],
       ),
     );
   }
@@ -166,10 +194,8 @@ class _MainNavigationState extends State<MainNavigation>
 
   Widget _navItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isActive = _currentIndex == index;
-    final badge = index == 3 ? AppState.instance.notificacionesNoLeidas : 0;
     return GestureDetector(
       onTap: () {
-        if (index == 3) AppState.instance.marcarNotificacionesLeidas();
         if (index == 0) _homeRefreshKey++;
         setState(() => _currentIndex = index);
       },
@@ -179,31 +205,8 @@ class _MainNavigationState extends State<MainNavigation>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(isActive ? activeIcon : inactiveIcon,
-                    color: isActive ? AppColors.primary : AppColors.textSecondary, size: 24),
-                if (badge > 0)
-                  Positioned(
-                    right: -8,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                      child: Text(
-                        '$badge',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            Icon(isActive ? activeIcon : inactiveIcon,
+                color: isActive ? AppColors.primary : AppColors.textSecondary, size: 24),
             const SizedBox(height: 2),
             Text(label,
                 style: GoogleFonts.nunito(

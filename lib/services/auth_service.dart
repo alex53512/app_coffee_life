@@ -107,9 +107,6 @@ class AuthService {
     AppState.instance.reset();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RECUPERAR CONTRASEÑA  →  POST /recuperar-password
-  // ─────────────────────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> recuperarPassword({
     required String correo,
   }) async {
@@ -134,9 +131,6 @@ class AuthService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VERIFICAR TOKEN  →  POST /verificar-token
-  // ─────────────────────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> verificarToken({
     required String token,
   }) async {
@@ -161,9 +155,6 @@ class AuthService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RESTABLECER CONTRASEÑA  →  POST /restablecer-password
-  // ─────────────────────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> restablecerPassword({
     required String token,
     required String nuevaPassword,

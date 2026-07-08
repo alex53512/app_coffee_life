@@ -76,7 +76,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     }
   }
  
-  // ─── Helpers de datos ──────────────────────────────────────────────────
  
   List get _cultivosFincaActual {
     if (_fincas.isEmpty || _fincaSeleccionada >= _fincas.length) return [];
@@ -127,7 +126,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return 'Alto';
   }
  
-  /// Cuenta cuántos cultivos de una finca tienen nivel de roya "Alto".
   int _contarAlertasFinca(Map<String, dynamic> finca) {
     final idFinca = finca['idFinca'] ?? finca['id_finca'];
     final cultivosFinca = _cultivos.where((c) =>
@@ -140,7 +138,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return alertas;
   }
  
-  /// Total de alertas (roya alta) en todas las fincas asignadas.
   int get _totalAlertas {
     int total = 0;
     for (final f in _fincas) {
@@ -149,7 +146,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return total;
   }
  
-  // ─── Build ────────────────────────────────────────────────────────────
  
   @override
   Widget build(BuildContext context) {
@@ -200,7 +196,13 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
         child: SafeArea(
           bottom: false,
           child: Container(
-            color: AppColors.headerBg(context),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             child: Row(
               children: [
@@ -292,7 +294,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     );
   }
  
-  // ─── Mis Fincas ────────────────────────────────────────────────────────
  
   Widget _buildFincasSection() {
     final fincas = _fincasFiltradas;
@@ -400,7 +401,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Foto con badge "Activa"
           Stack(
             children: [
               ClipRRect(

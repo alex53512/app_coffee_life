@@ -38,7 +38,6 @@ class _AjustesScreenState extends State<AjustesScreen> {
     if (valor is int) await prefs.setInt(key, valor);
   }
 
-  // ── Diálogos ──
 
   void _dialogRecordatorio() {
     bool on = _recordatorioOn;
@@ -187,7 +186,6 @@ class _AjustesScreenState extends State<AjustesScreen> {
     }
   }
 
-  // ── Build ──
 
   @override
   Widget build(BuildContext context) {
@@ -227,7 +225,13 @@ class _AjustesScreenState extends State<AjustesScreen> {
         child: SafeArea(
           bottom: false,
           child: Container(
-            color: AppColors.headerBg(context),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             child: Row(
               children: [
@@ -246,6 +250,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
   }
 
   Widget _fila(IconData icono, String label, VoidCallback onTap, {bool rojo = false}) {
+    final color = rojo ? Colors.red : AppColors.textPrimary;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -255,19 +260,12 @@ class _AjustesScreenState extends State<AjustesScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
           child: Row(
             children: [
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: rojo ? Colors.red.withOpacity(0.1) : AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icono, color: rojo ? Colors.red : AppColors.textPrimary, size: 18),
-              ),
+              Icon(icono, color: color, size: 22),
               const SizedBox(width: 14),
               Text(label, style: GoogleFonts.nunito(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: rojo ? Colors.red : AppColors.textPrimary,
+                color: color,
               )),
             ],
           ),

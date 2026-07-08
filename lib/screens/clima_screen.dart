@@ -49,7 +49,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
 
       String query = 'Popayan,Cauca,Colombia';
 
-      // 1. Intentar con coordenadas de la finca seleccionada
       final finca = AppState.instance.fincaSeleccionada;
       final lat = finca?['latitud'] ?? finca?['lat'] ?? finca?['coordenadas']?['lat'];
       final lon = finca?['longitud'] ?? finca?['lon'] ?? finca?['coordenadas']?['lon'];
@@ -279,7 +278,6 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // ── HEADER con bordes redondeados inferiores y sombra ──
           DecoratedBox(
             decoration: const BoxDecoration(
               boxShadow: [
@@ -332,7 +330,13 @@ class _ClimaScreenState extends State<ClimaScreen> {
   Widget _buildHeader(String fincaNombre, String cultivoNombre, String nivelRoya) {
     return Container(
       width: double.infinity,
-      color: AppColors.headerBg(context),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [

@@ -87,8 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _cultivoSeleccionado = null;
         _cargando = false;
       });
-      // DEBUG TEMPORAL: revisa en la consola qué claves trae cada finca
-      // (busca algo como fotoFinca, foto_finca, imagenFinca, etc.)
       for (final f in _fincas) {
         print('FINCA "${f['nombreFinca'] ?? f['nombre_finca']}" -> keys: ${f.keys.toList()}');
         print('   fotoUrl = "${f['fotoUrl']}"  (tipo: ${f['fotoUrl'].runtimeType})');
@@ -163,7 +161,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Alto';
   }
 
-  // ── Selección/subida de foto de finca ──────────────────────────────────
 
   Future<XFile?> _elegirOrigenYSeleccionarImagen() async {
     ImageSource? origen;
@@ -214,8 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return _picker.pickImage(source: origen, imageQuality: 80, maxWidth: 900);
   }
 
-  /// Sube (o actualiza) la foto de una finca YA EXISTENTE.
-  /// Usa el mismo patrón multipart que `_subirFoto` en ProfileScreen.
   Future<void> _subirFotoFincaExistente(dynamic idFinca) async {
     final picked = await _elegirOrigenYSeleccionarImagen();
     if (picked == null) return;
@@ -286,7 +281,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Ingresa los datos de tu finca', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 20),
 
-            // ── Selector de foto de la finca ──
             Center(
               child: Material(
                 color: Colors.transparent,
@@ -354,7 +348,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   final idUsuario = widget.usuario['idUsuario'] ?? widget.usuario['id_usuario'] ?? widget.usuario['id'];
                   try {
                     if (imagenBytes != null) {
-                      // ── Con foto: multipart (mismo patrón que foto de perfil) ──
                       final token   = await AuthService.getToken();
                       final baseUrl = ApiService.baseUrl;
                       final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/fincas'));
@@ -372,7 +365,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         throw Exception('Error ${response.statusCode}: $body');
                       }
                     } else {
-                      // ── Sin foto: como antes, JSON normal ──
                       await ApiService.post('/fincas', {
                         'id_usuario': idUsuario, 'nombre_finca': nombreCtrl.text.trim(),
                         'municipio': municipioCtrl.text.trim(), 'departamento': deptoCtrl.text.trim(),
@@ -722,8 +714,8 @@ class _HomeScreenState extends State<HomeScreen> {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF97D340), // Verde claro
-          Color(0xFF388E3C), // Verde oscuro
+          Color(0xFF97D340), 
+          Color(0xFF388E3C), 
         ],
       ),
     ),
@@ -983,7 +975,6 @@ class _HomeScreenState extends State<HomeScreen> {
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 18, offset: const Offset(0, 6))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── Foto de la finca (si existe) con botón para cambiarla ──
         if (tieneFoto)
           Stack(
             children: [

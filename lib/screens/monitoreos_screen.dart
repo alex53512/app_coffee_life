@@ -9,13 +9,11 @@ import '../services/app_state.dart';
 import 'login_screen.dart';
 import 'monitoreo_detalle_screen.dart';
 
-// ─── Helpers generales ────────────────────────────────────────────────────────
 
 int? _toInt(dynamic v) => v == null ? null : int.tryParse(v.toString());
 double? _toDouble(dynamic v) =>
     v == null ? null : double.tryParse(v.toString());
 
-/// Amarillo usado para el riesgo "Medio" de los lotes (mapa y leyendas).
 const Color _amarilloRiesgoLote = Color(0xFFFBC02D);
 
 Color _riesgoColor(int nivel) => switch (nivel) {
@@ -32,8 +30,6 @@ String _riesgoLabel(int nivel) => switch (nivel) {
       _ => 'Sin datos',
     };
 
-// ─── Helpers de forma (Voronoi ponderado) — genera regiones irregulares ────
-// que encajan entre sí, una por lote, sin depender de coordenadas GPS.
 
 List<Offset> _generarSemillasLotes(Size size, int n) {
   if (n <= 0) return [];
@@ -115,9 +111,7 @@ List<List<Offset>> _calcularCeldasLotes(
   return cells;
 }
 
-// ─── Paleta y helpers de color por nivel de riesgo ─────────────────────────
 
-/// (color claro, color oscuro) para el degradado de relleno de cada lote.
 (Color, Color) _riesgoGradiente(int nivel, int variacion) => switch (nivel) {
       1 => (const Color(0xFF6FA82B), const Color(0xFF527D1E)),
       2 => variacion.isOdd
@@ -141,7 +135,6 @@ Color _riesgoPinStroke(int nivel) => switch (nivel) {
       _ => (const Color(0xFFEEECE4), const Color(0xFF6B675C)),
     };
 
-/// Forma de pin tipo "gota" (drop pin), igual a la del diseño de referencia.
 Path _pinPath(double r) {
   final path = Path();
   path.moveTo(0, -r * 1.3);
@@ -153,7 +146,6 @@ Path _pinPath(double r) {
   return path;
 }
 
-// ─── Painter principal: mapa profesional de lotes ──────────────────────────
 
 class _MapaProfesionalPainter extends CustomPainter {
   final List<_LoteRiesgo> lotes;
@@ -181,7 +173,6 @@ class _MapaProfesionalPainter extends CustomPainter {
     final r = grande ? 20.0 : 17.0;
     final strokeColor = _riesgoPinStroke(nivel);
 
-    // Sombra
     canvas.save();
     canvas.translate(center.dx + 2, center.dy + (grande ? 4 : 3));
     canvas.drawCircle(Offset.zero, grande ? 4 : 3,
@@ -193,7 +184,6 @@ class _MapaProfesionalPainter extends CustomPainter {
     final path = _pinPath(r);
 
     if (grande) {
-      // Pin destacado (nivel de mayor riesgo): relleno de color sólido
       canvas.drawPath(path, Paint()..color = strokeColor);
       canvas.drawPath(
         path,
@@ -298,7 +288,6 @@ class _MapaProfesionalPainter extends CustomPainter {
       centros.add(Offset(cx / poly.length, cy / poly.length));
     }
 
-    // Bordes blancos gruesos entre regiones
     final bordePaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
@@ -317,12 +306,10 @@ class _MapaProfesionalPainter extends CustomPainter {
         ..strokeWidth = 2,
     );
 
-    // Etiquetas con el nombre real de cada lote
     for (int i = 0; i < centros.length && i < lotes.length; i++) {
       _drawEtiquetaMapa(canvas, centros[i].translate(0, -30), lotes[i].nombre);
     }
 
-    // Pines: el de mayor riesgo se dibuja más grande (llama la atención)
     int? indexMasAlto;
     int maxNivel = -1;
     for (int i = 0; i < lotes.length; i++) {
@@ -344,7 +331,6 @@ class _MapaProfesionalPainter extends CustomPainter {
       old.lotes != lotes;
 }
 
-// ─── ViewModel lote ───────────────────────────────────────────────────────────
 
 class _LoteRiesgo {
   final int idCultivo;
@@ -358,7 +344,6 @@ class _LoteRiesgo {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 class MontoreosScreen extends StatefulWidget {
   const MontoreosScreen({super.key});
@@ -433,7 +418,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     super.dispose();
   }
 
-  // ── Carga monitoreos ───────────────────────────────────────────────────────
 
   Future<void> _cargarMonitoreos() async {
     setState(() {
@@ -443,26 +427,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     try {
       final idFinca = _idFincaActiva;
 
-      // NOTA: el backend (AdonisJS) todavía no soporta filtrar por
-      // "idFinca" directamente -- solo entiende "id_cultivo" o
-      // "id_experto". Por eso el filtro real por finca se sigue haciendo
-      // aquí en el cliente (más abajo). El problema es que, sin filtro
-      // server-side, el endpoint aplica su paginación por defecto
-      // (page=1, limit=10) sobre TODOS los monitoreos de la base de
-      // datos, ordenados por id_monitoreo DESC. Si hay otros usuarios o
-      // cultivos generando monitoreos en el mismo backend (por ejemplo,
-      // otros compañeros probando la app contra el mismo servidor), los
-      // tuyos pueden quedar fuera de esos primeros 10 antes de que el
-      // filtro local por finca llegue a verlos, dando la impresión de
-      // que "se borran" cuando en realidad solo quedaron fuera de la
-      // página actual.
-      //
-      // Mientras el backend no exponga un filtro real por finca, subimos
-      // el límite de paginación para traer suficientes registros y que
-      // el filtro local no se quede corto. Esto es un parche temporal:
-      // lo correcto a futuro es que el backend acepte un filtro real
-      // "id_finca" (haciendo join con cultivos) para no depender de
-      // pedir cientos de registros cada vez.
       const limiteSeguro = 200;
 
       final endpoint = idFinca != null
@@ -473,10 +437,8 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       List lista =
           data is List ? List.from(data) : List.from(data['data'] ?? []);
       debugPrint(
-          '📋 Monitoreos recibidos: ${lista.map((m) => m['idMonitoreo'] ?? m['id_monitoreo']).toList()}');
+          ' Monitoreos recibidos: ${lista.map((m) => m['idMonitoreo'] ?? m['id_monitoreo']).toList()}');
       debugPrint('idFinca usado en query: $idFinca');
-      // Filtrar monitoreos del experto (creados aparte con tag [EXPERTO])
-      // para evitar duplicados — ahora las recomendaciones se vinculan directo
       final antesExperto = lista.length;
       lista = lista.where((m) {
         final obs = (m['observaciones'] ?? '').toString();
@@ -505,7 +467,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         return idB.compareTo(idA);
       });
       debugPrint(
-          '📊 IDs ordenados: ${lista.take(20).map((m) => m['idMonitoreo'] ?? m['id_monitoreo']).toList()}...');
+          ' IDs ordenados: ${lista.take(20).map((m) => m['idMonitoreo'] ?? m['id_monitoreo']).toList()}...');
 
       setState(() {
         _monitoreos = lista;
@@ -521,7 +483,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     }
   }
 
-  // ── Carga lotes coloreados por riesgo ──────────────────────────────────────
 
   Future<void> _cargarMapa() async {
     if (_lotes.isNotEmpty) return;
@@ -587,7 +548,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     }
   }
 
-  // ── Eliminar ───────────────────────────────────────────────────────────────
 
   Future<void> _eliminarMonitoreo(dynamic m) async {
     final id = m['idMonitoreo'] ?? m['id_monitoreo'];
@@ -640,7 +600,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     if (confirmado == true) _eliminarMonitoreo(m);
   }
 
-  // ── Helpers de nivel ───────────────────────────────────────────────────────
 
   String _labelNivel(dynamic m) {
     final nivelRoyaObj = m['nivelRoya'] ?? m['nivel_roya'];
@@ -737,7 +696,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     return 'https://coffeelife-api.up.railway.app/$ruta';
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -767,69 +725,74 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.headerBg(context),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.cardBg(context).withOpacity(0.25),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.textPrimary, size: 18),
-                onPressed: () => Navigator.pop(context),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            height: 90,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_fincaActiva != null)
-                    Text(
-                      _nombreFincaActiva,
-                      style: GoogleFonts.nunito(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg(context).withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: AppColors.textPrimary, size: 18),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_fincaActiva != null)
+                        Text(
+                          _nombreFincaActiva,
+                          style: GoogleFonts.nunito(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg(context).withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.refresh_rounded,
+                        color: AppColors.textPrimary, size: 20),
+                    onPressed: _cargarMonitoreos,
+                    tooltip: 'Recargar',
+                  ),
+                ),
+              ],
             ),
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.cardBg(context).withOpacity(0.25),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.refresh_rounded,
-                    color: AppColors.textPrimary, size: 20),
-                onPressed: _cargarMonitoreos,
-                tooltip: 'Recargar',
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -920,7 +883,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     );
   }
 
-  // ── Historial ─────────────────────────────────────────────────────────────
 
   Widget _buildHistorial() {
     final lista = _monitoreosFiltrados;
@@ -1163,7 +1125,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     );
   }
 
-  // ── Tab Lotes ─────────────────────────────────────────────────────────────
 
   Widget _buildMapa() {
     if (_fincaActiva == null) {
@@ -1218,7 +1179,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Chips resumen por estado ─────────────────────────
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -1230,7 +1190,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // ── Mapa ──────────────────────────────────────────────
                 Container(
                   width: double.infinity,
                   height: 340,
@@ -1322,7 +1281,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
 
           const SizedBox(height: 16),
 
-          // ── Lista "Estado por lote" ──────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(

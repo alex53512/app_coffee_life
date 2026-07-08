@@ -127,29 +127,46 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: AppColors.headerBg(context),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
-            onPressed: () => Navigator.pop(context),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                Expanded(
+                  child: Text('Notificaciones',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                ),
+                if (_sinLeer > 0)
+                  TextButton(
+                    onPressed: _marcarTodasLeidas,
+                    child: Text('Leer todas',
+                        style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  )
+                else
+                  const SizedBox(width: 48),
+              ],
+            ),
           ),
-          Expanded(
-            child: Text('Notificaciones',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-          ),
-          if (_sinLeer > 0)
-            TextButton(
-              onPressed: _marcarTodasLeidas,
-              child: Text('Leer todas',
-                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
-            )
-          else
-            const SizedBox(width: 48),
-        ],
+        ),
       ),
     );
   }
@@ -235,7 +252,9 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final color  = _colorIcono(r);
     final badge  = _badge(r);
     final titulo = r['descripcion'] ?? r['titulo'] ?? 'Notificación';
-    final finca  = r['finca']?['nombreFinca'] ?? r['parcela']?['nombreParcela'] ?? 'Sin finca';
+    final finca  = r['finca']?['nombreFinca'] ?? r['finca']?['nombre_finca'] ??
+        r['monitoreo']?['finca']?['nombreFinca'] ?? r['monitoreo']?['finca']?['nombre_finca'] ??
+        r['parcela']?['nombreParcela'] ?? r['nombreFinca'] ?? r['nombre_finca'] ?? 'Sin finca';
     final fecha  = _fecha(r);
     final leida  = _leida(r);
 

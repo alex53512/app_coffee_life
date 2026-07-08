@@ -30,12 +30,10 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
   late Map<String, dynamic> analisis;
   bool _cargando = true;
  
-  // Estado pestaña experto
-  Map<String, dynamic>? _diagnosticoExperto; // monitoreo ya guardado
+  Map<String, dynamic>? _diagnosticoExperto; 
   bool _modoFormulario = false;
   bool _guardando = false;
  
-  // Formulario experto
   String _resultado = 'Roya confirmada';
   String _severidad = 'Media';
   final _obsCtrl = TextEditingController();
@@ -68,8 +66,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
       }
     } catch (_) {}
  
-    // Buscar si ya existe un monitoreo del experto para este cultivo
-    // (identificado por idUsuario=61 en el monitoreo del mismo cultivo)
     try {
       final idMonitoreoIA = analisis['imagen']?['idMonitoreo'] ??
           analisis['imagen']?['id_monitoreo'];
@@ -81,8 +77,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
         );
         if (monitoreoIA != null) {
           final idCultivo = monitoreoIA['idCultivo'] ?? monitoreoIA['id_cultivo'];
-          // Buscar monitoreos del experto (con observaciones que contengan [EXPERTO])
-          // vinculados al mismo cultivo
           final res = await ApiService.get('/experto/monitoreos');
           final lista = res is List ? res : (res['data'] ?? res['items'] ?? []);
           final diagExperto = lista.firstWhere((m) {
@@ -101,7 +95,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     setState(() => _cargando = false);
   }
  
-  // ─── Helpers ───────────────────────────────────────────────────────────
  
   Map<String, dynamic>? get _monitoreoIA {
     final idMonitoreo = analisis['imagen']?['idMonitoreo'] ??
@@ -171,9 +164,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     return AppTheme.formatFechaColombia(fecha);
   }
  
-  // ─── Guardar diagnóstico del experto ───────────────────────────────────
  
-  // ─── Usar IA como apoyo ─────────────────────────────────────────────────
  
   void _usarIAComoApoyo() {
     Navigator.push(
@@ -190,14 +181,12 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
 
     setState(() => _guardando = true);
     try {
-      // Crear recomendación directamente vinculada al monitoreo original
       if (_recCtrl.text.trim().isNotEmpty) {
         final resRec = await ApiService.post('/recomendaciones', {
           'descripcion': _recCtrl.text.trim(),
           'id_monitoreo': idMonitoreoOriginal,
         });
 
-        // Vincular tratamiento si seleccionó uno
         final idTratamiento = _tratamientoSeleccionado?['idTratamiento'] ??
             _tratamientoSeleccionado?['id_tratamiento'];
         if (idTratamiento != null) {
@@ -212,7 +201,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
         }
       }
 
-      // Actualizar estado local
       final ahora = DateTime.now();
       final observaciones =
           '[EXPERTO] $_resultado - Severidad $_severidad - ${_obsCtrl.text.trim()}';
@@ -246,7 +234,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     }
   }
  
-  // ─── Build ────────────────────────────────────────────────────────────
  
   @override
   Widget build(BuildContext context) {
@@ -254,9 +241,14 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
       body: Column(
         children: [
           _buildHeader(context),
-          // ── Toggle IA / Experto ──────────────────────────────────────
           Container(
-            color: AppColors.headerBg(context),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Container(
               decoration: BoxDecoration(
@@ -314,7 +306,13 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
         child: SafeArea(
           bottom: false,
           child: Container(
-            color: AppColors.headerBg(context),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             child: Row(
               children: [
@@ -351,7 +349,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     );
   }
  
-  // ─── Pestaña IA ────────────────────────────────────────────────────────
  
   Widget _buildTabIA() {
     final monitoreoIA = _monitoreoIA;
@@ -369,7 +366,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Foto del caficultor ──────────────────────────────────
           if (_imagenUrl.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
@@ -400,7 +396,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
             _imagenPlaceholder(color),
           const SizedBox(height: 16),
  
-          // ── Resultado IA ─────────────────────────────────────────
           _buildCard(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -444,7 +439,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           )),
           const SizedBox(height: 14),
  
-          // ── Confianza ─────────────────────────────────────────────
           _buildCard(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -483,7 +477,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           )),
           const SizedBox(height: 14),
  
-          // ── Observaciones del caficultor ──────────────────────────
           if (monitoreoIA != null && (monitoreoIA['observaciones'] ?? '').toString().isNotEmpty)
             _buildCard(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,7 +510,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     );
   }
  
-  // ─── Pestaña Experto ───────────────────────────────────────────────────
  
   Widget _buildTabExperto() {
     if (_diagnosticoExperto != null && !_modoFormulario) {
@@ -531,7 +523,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
  
   Widget _buildDiagnosticoExpertoGuardado() {
     final obs = (_diagnosticoExperto!['observaciones'] ?? '').toString();
-    // Parsear observaciones: "[EXPERTO] Resultado - Severidad X - Texto"
     String resultado = '';
     String severidad = '';
     String observaciones = obs;
@@ -654,7 +645,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Contexto
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -676,7 +666,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           ),
           const SizedBox(height: 20),
  
-          // Botón usar IA como apoyo
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -699,7 +688,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           ),
           const SizedBox(height: 20),
  
-          // Resultado
           Text('Tu diagnóstico',
               style: GoogleFonts.nunito(
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -727,7 +715,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           ),
           const SizedBox(height: 16),
  
-          // Severidad
           Text('Severidad',
               style: GoogleFonts.nunito(
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -758,7 +745,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           ),
           const SizedBox(height: 16),
  
-          // Observaciones
           Text('Observaciones',
               style: GoogleFonts.nunito(
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -781,7 +767,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           ),
           const SizedBox(height: 16),
 
-          // Recomendación
           Text('Tu recomendación',
               style: GoogleFonts.nunito(
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -804,7 +789,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
           ),
           const SizedBox(height: 16),
 
-          // Tratamiento
           Text('Tratamiento sugerido (opcional)',
               style: GoogleFonts.nunito(
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -844,7 +828,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
             ),
           const SizedBox(height: 28),
  
-          // Botón guardar
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -880,7 +863,6 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     );
   }
  
-  // ─── Widgets reutilizables ─────────────────────────────────────────────
  
   Widget _buildCard({required Widget child}) {
     return Container(

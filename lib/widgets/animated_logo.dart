@@ -126,7 +126,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Ring 1
           AnimatedBuilder(
             animation: _ringController,
             builder: (_, __) {
@@ -152,7 +151,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
               );
             },
           ),
-          // Ring 2 (offset delay)
           AnimatedBuilder(
             animation: _ringController,
             builder: (_, __) {
@@ -178,7 +176,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
               );
             },
           ),
-          // Icon bg
           Container(
             width: 110 * s,
             height: 110 * s,
@@ -189,7 +186,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
             clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
-                // Scan line
                 AnimatedBuilder(
                   animation: _scanController,
                   builder: (_, __) {
@@ -213,7 +209,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                     );
                   },
                 ),
-                // Corners
                 AnimatedBuilder(
                   animation: _cornersController,
                   builder: (_, __) {
@@ -232,7 +227,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                     );
                   },
                 ),
-                // Leaf SVG
                 Center(
                   child: SizedBox(
                     width: 68 * s,
@@ -242,7 +236,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                     ),
                   ),
                 ),
-                // Roya dots
                 AnimatedBuilder(
                   animation: _dotsController,
                   builder: (_, __) {
@@ -256,7 +249,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                     );
                   },
                 ),
-                // Reticle
                 AnimatedBuilder(
                   animation: _reticleController,
                   builder: (_, __) {
@@ -301,7 +293,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // "CoffeLife" text
             Text.rich(
               TextSpan(
                 style: TextStyle(
@@ -321,7 +312,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                 ],
               ),
             ),
-            // Accent bar
             AnimatedBuilder(
               animation: _textController,
               builder: (_, __) {
@@ -338,7 +328,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
                 );
               },
             ),
-            // Tagline
             if (widget.showTagline)
               Text(
                 'Cuida tu cultivo, hoja a hoja',
@@ -421,7 +410,6 @@ class _AnimatedLogoState extends State<AnimatedLogo>
   }
 }
 
-// ── Leaf painter ──
 class _LeafPainter extends CustomPainter {
   final double s;
   _LeafPainter(this.s);
@@ -430,7 +418,6 @@ class _LeafPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
 
-    // Outer leaf
     final outerPaint = Paint()..color = const Color(0xFF2E7D32);
     final outerPath = Path()
       ..moveTo(w * 0.5, 4 * s)
@@ -441,7 +428,6 @@ class _LeafPainter extends CustomPainter {
       ..close();
     canvas.drawPath(outerPath, outerPaint);
 
-    // Inner leaf
     final innerPaint = Paint()..color = const Color(0xFF388E3C);
     final innerPath = Path()
       ..moveTo(w * 0.5, 12 * s)
@@ -458,14 +444,12 @@ class _LeafPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // Central vein
     canvas.drawLine(
       Offset(w * 0.5, 8 * s),
       Offset(w * 0.5, 74 * s),
       veinPaint,
     );
 
-    // Side veins
     final sideVeinPaint = Paint()
       ..color = const Color(0xFF1B5E20)
       ..strokeWidth = 1.2 * s
@@ -490,7 +474,6 @@ class _LeafPainter extends CustomPainter {
   bool shouldRepaint(_LeafPainter old) => old.s != s;
 }
 
-// ── Reticle painter ──
 class _ReticlePainter extends CustomPainter {
   final double s;
   _ReticlePainter(this.s);
@@ -513,7 +496,6 @@ class _ReticlePainter extends CustomPainter {
       ..strokeWidth = 1.2 * s
       ..strokeCap = StrokeCap.round;
 
-    // Crosshair lines
     canvas.drawLine(Offset(cx, cy - 12 * s), Offset(cx, cy - 8 * s), linePaint);
     canvas.drawLine(Offset(cx, cy + 8 * s), Offset(cx, cy + 12 * s), linePaint);
     canvas.drawLine(Offset(cx - 12 * s, cy), Offset(cx - 8 * s, cy), linePaint);
@@ -524,7 +506,6 @@ class _ReticlePainter extends CustomPainter {
   bool shouldRepaint(_ReticlePainter old) => old.s != s;
 }
 
-// ── Corner painter ──
 class _CornerPainter extends CustomPainter {
   final Alignment align;
   final double s;

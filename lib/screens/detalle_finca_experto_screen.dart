@@ -5,8 +5,8 @@ import '../services/app_state.dart';
  
 class DetalleFincaExpertoScreen extends StatefulWidget {
   final Map<String, dynamic> finca;
-  final List cultivos; // cultivos de TODAS las fincas (se filtra dentro)
-  final List monitoreos; // monitoreos de TODAS las fincas (se filtra dentro)
+  final List cultivos; 
+  final List monitoreos; 
  
   const DetalleFincaExpertoScreen({
     super.key,
@@ -22,7 +22,6 @@ class DetalleFincaExpertoScreen extends StatefulWidget {
 class _DetalleFincaExpertoScreenState extends State<DetalleFincaExpertoScreen> {
   int? _cultivoSeleccionadoId;
  
-  // ─── Helpers de datos ──────────────────────────────────────────────────
  
   List get _cultivosDeFinca {
     final idFinca = widget.finca['idFinca'] ?? widget.finca['id_finca'];
@@ -103,7 +102,6 @@ class _DetalleFincaExpertoScreenState extends State<DetalleFincaExpertoScreen> {
     return 'Alto';
   }
  
-  // ─── Build ────────────────────────────────────────────────────────────
  
   @override
   Widget build(BuildContext context) {
@@ -176,7 +174,13 @@ class _DetalleFincaExpertoScreenState extends State<DetalleFincaExpertoScreen> {
         child: SafeArea(
           bottom: false,
           child: Container(
-            color: AppColors.headerBg(context),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             child: Row(
               children: [

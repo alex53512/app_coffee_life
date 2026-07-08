@@ -108,8 +108,6 @@ class ApiService {
     throw Exception('Error ${response.statusCode}: ${response.body}');
   }
 
-  /// Sube una imagen al backend vinculada a un monitoreo.
-  /// Devuelve el idImagen creado, o null si falla.
   static Future<int?> uploadImagen({
     required int idMonitoreo,
     required Uint8List bytes,

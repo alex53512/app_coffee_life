@@ -174,7 +174,13 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
           bottom: false,
           child: Container(
             width: double.infinity,
-            color: AppColors.headerBg(context),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
               children: [

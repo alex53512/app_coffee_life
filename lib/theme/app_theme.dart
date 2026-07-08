@@ -3,87 +3,46 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
 
-  // =========================================================
-  // COLORES PRINCIPALES
-  // =========================================================
 
-  /// Fondo principal de la app
-  /// Ideal para Scaffold y pantallas completas
   static const Color blancoCalido = Color(0xFFFFFEFB);
 
-  /// Base clara secundaria
-  /// Úsalo en cards, contenedores o secciones suaves
   static const Color marfilSuave = Color(0xFFFBF7EF);
 
-  /// Degradado superior
-  /// Perfecto para headers y fondos elegantes
   static const Color beigeCrema = Color(0xFFF4E7D6);
 
-  /// Ondas inferiores o decoraciones
-  /// Bueno para formas curvas o fondos inferiores
   static const Color arenaClaro = Color(0xFFEFDCC2);
 
-  /// Capas transparentes o overlays suaves
-  /// Útil para sombras ligeras o efectos glass
   static const Color duraznoSuave = Color(0xFFF7E9DA);
 
-  /// Sombras suaves y profundidad
-  /// Excelente para bordes y elevaciones suaves
   static const Color beigeRosado = Color(0xFFF2DDC4);
 
-  /// Detalles cálidos mínimos
-  /// Para íconos, líneas decorativas o pequeños detalles
   static const Color cafeClaro = Color(0xFFD8B98F);
 
-  // =========================================================
-  // COLORES VERDES
-  // =========================================================
 
-  /// Verde principal
-  /// Botones, textos importantes y acciones principales
   static const Color verdeOscuro = Color(0xFF4F8F1F);
 
-  /// Verde secundario
-  /// Indicadores, estados activos y detalles visuales
   static const Color verdeClaro = Color(0xFFB5D75C);
 
-  // =========================================================
-  // ALIASES SEMÁNTICOS (para uso en toda la app)
-  // =========================================================
 
-  // VERDE PRINCIPAL
   static const Color primary = verdeOscuro;
 
-  // VERDE OSCURO
   static const Color primaryDark = verdeOscuro;
 
-  // VERDE CLARO
   static const Color primaryLight = verdeClaro;
 
-  // VERDE ACTIVO
   static const Color primaryActive = verdeOscuro;
 
-  // =========================================================
-  // FONDOS
-  // =========================================================
 
-  // FONDO PRINCIPAL
   static const Color background = blancoCalido;
 
-  // OLAS DECORATIVAS
   static const Color wave = arenaClaro;
 
   static const Color waveLight = duraznoSuave;
 
-  // TARJETAS
   static const Color card = marfilSuave;
 
-  // INPUTS
   static const Color input = Colors.white;
 
-  // =========================================================
-  // TEXTOS
-  // =========================================================
 
   static const Color textPrimary = Color(0xFF1A1A1A);
 
@@ -93,21 +52,12 @@ class AppColors {
 
   static const Color textOnPrimary = Colors.white;
 
-  // =========================================================
-  // BORDES
-  // =========================================================
 
   static const Color border = beigeRosado;
 
-  // =========================================================
-  // SOMBRAS
-  // =========================================================
 
   static const Color shadow = Color(0x14000000);
 
-  // =========================================================
-  // ALERTAS
-  // =========================================================
 
   static const Color success = Color(0xFF4CAF50);
 
@@ -115,9 +65,6 @@ class AppColors {
 
   static const Color error = Color(0xFFD97566);
 
-  // =========================================================
-  // COMPATIBILIDAD
-  // =========================================================
 
   static const Color surface = Colors.white;
 
@@ -125,7 +72,6 @@ class AppColors {
 
   static const Color white = Colors.white;
 
-  // ── Theme-aware helpers ──
 
   static Color cardBg(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
@@ -178,9 +124,6 @@ class AppColors {
 
 class AppTheme {
 
-  // =========================================================
-  // COMPATIBILIDAD CON TU APP
-  // =========================================================
 
   static const Color verdePrincipal = AppColors.primary;
 
@@ -196,13 +139,7 @@ class AppTheme {
 
   static const Color error = AppColors.error;
 
-  // =========================================================
-  // THEME
-  // =========================================================
 
-  // =========================================================
-  // DARK THEME
-  // =========================================================
 
   static ThemeData get darkTheme {
     const scaffoldBg = Color(0xFF1C1612);
@@ -315,9 +252,6 @@ class AppTheme {
       scaffoldBackgroundColor:
           AppColors.background,
 
-      // =====================================================
-      // COLOR SCHEME
-      // =====================================================
 
       colorScheme: ColorScheme.fromSeed(
 
@@ -340,16 +274,10 @@ class AppTheme {
             Brightness.light,
       ),
 
-      // =====================================================
-      // TIPOGRAFÍA
-      // =====================================================
 
       textTheme:
           GoogleFonts.nunitoTextTheme(),
 
-      // =====================================================
-      // APP BAR
-      // =====================================================
 
       appBarTheme: AppBarTheme(
 
@@ -384,9 +312,6 @@ class AppTheme {
         ),
       ),
 
-      // =====================================================
-      // BOTONES
-      // =====================================================
 
       elevatedButtonTheme:
           ElevatedButtonThemeData(
@@ -427,9 +352,6 @@ class AppTheme {
         ),
       ),
 
-      // =====================================================
-      // OUTLINED BUTTON
-      // =====================================================
 
       outlinedButtonTheme:
           OutlinedButtonThemeData(
@@ -472,9 +394,6 @@ class AppTheme {
         ),
       ),
 
-      // =====================================================
-      // INPUTS
-      // =====================================================
 
       inputDecorationTheme:
           InputDecorationTheme(
@@ -558,9 +477,6 @@ class AppTheme {
         ),
       ),
 
-      // =====================================================
-      // CARDS
-      // =====================================================
 
       cardTheme: CardThemeData(
 
@@ -595,9 +511,6 @@ class AppTheme {
         ),
       ),
 
-      // =====================================================
-      // NAVBAR
-      // =====================================================
 
       bottomNavigationBarTheme:
           const BottomNavigationBarThemeData(
@@ -617,9 +530,6 @@ class AppTheme {
             BottomNavigationBarType.fixed,
       ),
 
-      // =====================================================
-      // ICONOS
-      // =====================================================
 
       iconTheme:
           const IconThemeData(
@@ -627,49 +537,29 @@ class AppTheme {
             AppColors.primary,
       ),
 
-      // =====================================================
-      // DIVIDERS
-      // =====================================================
 
       dividerColor:
           AppColors.border,
     );
   }
 
-  // ── Helper de fecha con timezone Colombia (UTC-5) ────────
   static String formatFechaColombia(dynamic fechaStr, {bool withTime = true}) {
     final raw = fechaStr?.toString() ?? '';
     if (raw.isEmpty) return 'Sin fecha';
 
-    final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})').firstMatch(raw);
-    debugPrint('raw="$raw" match=${m?.group(0)}');
-    if (m == null) return raw;
-
-    int h = int.parse(m[4]!);
-    final int min = int.parse(m[5]!);
-    int d = int.parse(m[3]!);
-    final int mes = int.parse(m[2]!);
-    final int anio = int.parse(m[1]!);
-
-    if (raw.endsWith('Z')) {
-      h -= 5;
-    } else {
-      final tz = RegExp(r'([+-])(\d{2}):(\d{2})$').firstMatch(raw);
-      if (tz != null) {
-        final signo = tz[1]!;
-        final tzH = int.parse(tz[2]!);
-        final tzM = int.parse(tz[3]!);
-        if (signo == '+') { h -= tzH; } else { h += tzH; }
-        if (tzM > 0) h -= 1;
-      }
+    DateTime? dt;
+    try {
+      dt = DateTime.parse(raw).toUtc().add(const Duration(hours: -5));
+    } catch (_) {
+      debugPrint('formatFechaColombia: no se pudo parsear "$raw"');
+      return raw;
     }
 
-    if (h >= 24) { h -= 24; d += 1; } else if (h < 0) { h += 24; d -= 1; }
-
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    final dAjustado = d.clamp(1, 31);
-    final fecha = '${dAjustado.toString().padLeft(2,'0')} ${meses[mes-1]} $anio';
+    final fecha = '${dt.day.toString().padLeft(2,'0')} ${meses[dt.month-1]} ${dt.year}';
     if (!withTime) return fecha;
-    return '$fecha · ${h.toString().padLeft(2,'0')}:${min.toString().padLeft(2,'0')}';
+    final ampm = dt.hour < 12 ? 'AM' : 'PM';
+    final h12 = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+    return '$fecha · ${h12.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')} $ampm';
   }
 }

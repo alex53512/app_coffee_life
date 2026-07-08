@@ -77,7 +77,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
     return Scaffold(
       body: Column(
         children: [
-          // ── SECCIÓN SUPERIOR VERDE CON CURVA ──
           ClipPath(
             clipper: _OvalBottomClipper(),
             child: Container(
@@ -128,7 +127,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
             ),
           ),
  
-          // ── SECCIÓN INFERIOR ──
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
@@ -155,7 +153,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 24),
  
-                    // EMAIL
                     _fieldLabel('CORREO ELECTRÓNICO'),
                     const SizedBox(height: 8),
                     TextFormField(
@@ -178,7 +175,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 20),
  
-                    // PASSWORD
                     _fieldLabel('CONTRASEÑA'),
                     const SizedBox(height: 8),
                     TextFormField(
@@ -211,7 +207,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                       },
                     ),
  
-                    // ERROR
                     if (_errorGeneral != null) ...[
                       const SizedBox(height: 16),
                       Container(
@@ -232,7 +227,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                       ),
                     ],
  
-                    // ── OLVIDASTE CONTRASEÑA ──
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -256,7 +250,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 8),
  
-                    // BOTÓN LOGIN
                     SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -291,7 +284,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 24),
  
-                    // REGISTER
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -382,7 +374,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
   }
 }
  
-// ── CURVA OVAL HACIA ABAJO ──
 class _OvalBottomClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

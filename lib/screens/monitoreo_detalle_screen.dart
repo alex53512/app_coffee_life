@@ -25,8 +25,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   Map<String, dynamic>? _monitoreoCompleto;
   Map<String, dynamic>? _analisisIa;
 
-  // Datos del diagnóstico del experto, consultados directamente desde
-  // GET /recomendaciones?id_monitoreo={idMonitoreoPropio}
   Map<String, dynamic>? _diagnosticoExperto;
 
   Map<String, dynamic> get _m => _monitoreoCompleto ?? widget.monitoreo;
@@ -96,18 +94,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return _parsearObservaciones(fuente);
   }
  
-  // ── Diagnóstico del experto ─────────────────────────────────────────────
-  //
-  // Se consulta directamente desde el endpoint /recomendaciones usando el
-  // id_monitoreo del escaneo original. El backend devuelve:
-  //
-  //   data: [{
-  //     id_recomendacion, id_monitoreo, descripcion,
-  //     id_experto_emisor, experto, prioridad, tratamiento, fecha_limite
-  //   }]
-  //
-  // Si no hay recomendación del experto, data es [] y _diagnosticoExperto
-  // se queda como null (la UI muestra el estado vacío correspondiente).
 
   Future<void> _cargarDiagnosticoExperto({required dynamic idMonitoreoPropio}) async {
     try {
@@ -117,23 +103,24 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
 
       final rec = Map<String, dynamic>.from(lista[0]);
 
-      String dosis = (rec['dosis'] ?? '').toString();
-      String frecuencia = (rec['frecuencia'] ?? '').toString();
+      String dosis = '';
+      String frecuencia = '';
 
-      // Intentar extraer dosis/frecuencia desde tratamientos vinculados
-      final tratamientos = rec['tratamientos'];
-      if (tratamientos is List && tratamientos.isNotEmpty) {
-        final dosisPartes = tratamientos
-            .map((t) => t['dosis']?.toString() ?? '')
-            .where((s) => s.isNotEmpty)
-            .toList();
-        final freqPartes = tratamientos
-            .map((t) => t['frecuencia']?.toString() ?? '')
-            .where((s) => s.isNotEmpty)
-            .toList();
-        if (dosis.isEmpty && dosisPartes.isNotEmpty) dosis = dosisPartes.join(', ');
-        if (frecuencia.isEmpty && freqPartes.isNotEmpty) frecuencia = freqPartes.join(', ');
+      final posiblesTratamientos = [
+        if (rec['tratamientos'] is List) ...rec['tratamientos'] as List,
+        if (rec['tratamiento'] is List) ...rec['tratamiento'] as List,
+        if (rec['tratamiento'] is Map) rec['tratamiento'],
+      ];
+      for (final t in posiblesTratamientos) {
+        if (t is Map) {
+          final d = t['dosis']?.toString() ?? t['dosis_recomendada']?.toString() ?? '';
+          final f = t['frecuencia']?.toString() ?? t['frecuencia_aplicacion']?.toString() ?? '';
+          if (d.isNotEmpty && dosis.isEmpty) dosis = d;
+          if (f.isNotEmpty && frecuencia.isEmpty) frecuencia = f;
+        }
       }
+      if (dosis.isEmpty) dosis = (rec['dosis'] ?? rec['dosis_recomendada'] ?? '').toString();
+      if (frecuencia.isEmpty) frecuencia = (rec['frecuencia'] ?? rec['frecuencia_aplicacion'] ?? '').toString();
 
       _diagnosticoExperto = {
         'experto': (rec['experto'] ?? '').toString(),
@@ -205,6 +192,16 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     };
   }
  
+  String _limpiarResultado(String raw) {
+    final t = raw.toLowerCase().trim();
+    if (t.startsWith('http://') || t.startsWith('https://')) {
+      if (t.contains('roya')) return 'Roya detectada';
+      if (t.contains('sana')) return 'Planta sana';
+      return 'Resultado del análisis';
+    }
+    return raw;
+  }
+
   String _fecha() {
     final f = _m['fechaMonitoreo'] ?? _m['fecha_monitoreo'];
     return AppTheme.formatFechaColombia(f);
@@ -221,26 +218,22 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   String _finca() {
     final cultivo = _m['cultivo'];
  
-    // Nivel 1: cultivo.finca con nombre
     if (cultivo is Map) {
       final finca = cultivo['finca'];
       if (finca is Map) {
         final nombre = finca['nombreFinca'] ?? finca['nombre_finca'] ?? finca['nombre'];
         if (nombre != null && nombre.toString().isNotEmpty) return nombre.toString();
       }
-      // Nivel 2: nombreFinca directo en cultivo
       final nombreFinca = cultivo['nombreFinca'] ?? cultivo['nombre_finca'];
       if (nombreFinca != null && nombreFinca.toString().isNotEmpty) return nombreFinca.toString();
     }
  
-    // Nivel 3: finca directo en el monitoreo
     final fincaRaiz = _m['finca'];
     if (fincaRaiz is Map) {
       final nombre = fincaRaiz['nombreFinca'] ?? fincaRaiz['nombre_finca'] ?? fincaRaiz['nombre'];
       if (nombre != null && nombre.toString().isNotEmpty) return nombre.toString();
     }
  
-    // Nivel 4: buscar en AppState por idFinca
     if (cultivo is Map) {
       final idFinca = cultivo['idFinca'] ?? cultivo['id_finca'];
       if (idFinca != null) {
@@ -255,7 +248,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       }
     }
  
-    // Nivel 5: buscar en widget.monitoreo original
     final fincaOriginal = widget.monitoreo['finca'];
     if (fincaOriginal is Map) {
       final nombre = fincaOriginal['nombreFinca'] ?? fincaOriginal['nombre_finca'] ?? fincaOriginal['nombre'];
@@ -341,12 +333,16 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return [];
   }
 
-  List _imagenesIa() {
-    return _imagenes();
+  String? get _imagenUrlIa {
+    if (_analisisIa == null) return null;
+    final ruta = _analisisIa!['imagen']?['rutaImagen'] ?? '';
+    if (ruta.toString().isEmpty) return null;
+    if (ruta.toString().startsWith('http')) return ruta.toString();
+    return 'https://coffeelife-api.up.railway.app/$ruta';
   }
 
   List _imagenesExperto() {
-    return [];
+    return _imagenes();
   }
  
   Color _colorNivel() {
@@ -357,7 +353,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     return AppColors.primary;
   }
  
-  // ── Recomendaciones de IA (mismo criterio que diagnostic_screen.dart) ─────
 
   List<_RecomendacionIA> _recomendacionesIa() {
     final backendRecs = _analisisIa?['_recomendaciones'] as List<String>?;
@@ -444,31 +439,47 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     final municipio = _municipio();
  
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              color: AppColors.headerBg(context),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary, size: 20),
-                    onPressed: () => Navigator.pop(context),
+      body: Column(
+        children: [
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+              child: SafeArea(
+                bottom: false,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+                    ),
                   ),
-                  Expanded(
-                    child: Text('Detalle del monitoreo',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.nunito(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: AppColors.textPrimary, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      Expanded(
+                        child: Text('Detalle del monitoreo',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.nunito(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary)),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
                   ),
-                  const SizedBox(width: 48),
-                ],
+                ),
               ),
             ),
+          ),
             Expanded(
               child: _cargando
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -584,17 +595,17 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                             const SizedBox(height: 20),
                           ],
                         ),
-                      ),
                     ),
+                  ),
             ),
           ],
         ),
-      ),
     );
   }
- 
+
   Widget _tabItem(String label, int index) {
     final isActive = _tabIndex == index;
+    final String? pctStr = index == 0 ? _obtenerPctIa() : null;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _tabIndex = index),
@@ -605,17 +616,37 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
             color: isActive ? AppColors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(26),
           ),
-          child: Text(label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: isActive ? Colors.white : AppColors.textSecondary)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(label,
+                  style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isActive ? Colors.white : AppColors.textSecondary)),
+              if (pctStr != null) ...[
+                const SizedBox(width: 4),
+                Text(pctStr,
+                    style: GoogleFonts.nunito(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: isActive ? Colors.white : Colors.red)),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
  
+  String? _obtenerPctIa() {
+    if (_analisisIa == null) return null;
+    final c = _analisisIa!['confianza'] ?? _analisisIa!['porcentajeConfianza'] ?? 0;
+    final n = (c is num) ? c.toDouble() : double.tryParse(c.toString()) ?? 0.0;
+    final pct = n > 1 ? n / 100 : n;
+    return '${(pct * 100).round()}%';
+  }
+
   Widget _buildTabIa() {
     if (_analisisIa == null) {
       return _sinDatos(
@@ -632,32 +663,50 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                         _analisisIa!['estado_analisis']?['nombre_estado'] ?? 'Completado';
     final nombreCient = _analisisIa!['nombreCientifico'] ?? '';
     final severidad   = _analisisIa!['severidad'] ?? '';
-    final desdObs     = _analisisIa!['_fuenteObservaciones'] == true;
- 
+    final resultadoLimpio = _limpiarResultado(resultado);
+    final esRoya      = resultadoLimpio.toLowerCase().contains('roya');
+
     final confianzaNum = (confianza is num) ? confianza.toDouble() : double.tryParse(confianza.toString()) ?? 0.0;
     final confianzaPct = confianzaNum > 1 ? confianzaNum / 100 : confianzaNum;
- 
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (desdObs)
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.warningBg(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber.shade300),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: Colors.amber.shade700),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('Análisis extraído de las observaciones del monitoreo.',
-                      style: GoogleFonts.nunito(fontSize: 12, color: Colors.amber.shade800)),
-                ),
-              ],
+        if (_imagenUrlIa != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                children: [
+                  Image.network(
+                    _imagenUrlIa!,
+                    width: double.infinity,
+                    height: 220,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(child: Icon(Icons.image_not_supported_outlined, size: 40, color: AppColors.textSecondary)),
+                    ),
+                  ),
+                  Positioned(
+                    top: 12, right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: esRoya ? Colors.red : severidad == 'Media' ? Colors.orange : AppColors.primary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(esRoya ? 'Roya detectada' : resultadoLimpio,
+                          style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         _card(
@@ -674,18 +723,18 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Resultado', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
-                    Text(resultado, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    Text(resultadoLimpio, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                     if (severidad.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
-                          color: severidad == 'Alta' ? Colors.red.withOpacity(0.1) : severidad == 'Media' ? Colors.orange.withOpacity(0.1) : AppColors.primaryLight,
+                          color: esRoya ? Colors.red.withOpacity(0.1) : severidad == 'Media' ? Colors.orange.withOpacity(0.1) : AppColors.primaryLight,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text('Severidad: $severidad',
                             style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700,
-                                color: severidad == 'Alta' ? Colors.red : severidad == 'Media' ? Colors.orange : AppColors.primary)),
+                                color: esRoya ? Colors.red : severidad == 'Media' ? Colors.orange : AppColors.primary)),
                       ),
                     ],
                     if (nombreCient.isNotEmpty) ...[
@@ -708,8 +757,8 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                 children: [
                   Text('Confianza del modelo',
                       style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  Text(confianzaPct > 0 ? '${(confianzaPct * 100).round()}%' : 'N/A',
-                      style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  Text('${(confianzaPct * 100).round()}%',
+                      style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.red)),
                 ],
               ),
               if (confianzaPct > 0) ...[
@@ -719,7 +768,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                   child: LinearProgressIndicator(
                     value: confianzaPct,
                     backgroundColor: AppColors.border,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
                     minHeight: 10,
                   ),
                 ),
@@ -734,10 +783,6 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         _seccionTitulo('Recomendaciones'),
         const SizedBox(height: 10),
         _buildRecomendacionesIa(),
-        const SizedBox(height: 14),
-        _seccionTitulo('Imágenes (${_imagenesIa().length})'),
-        const SizedBox(height: 10),
-        _buildImagenes(imagenes: _imagenesIa()),
       ],
     );
   }

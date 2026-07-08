@@ -18,7 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _correoController          = TextEditingController();
   final _passwordController        = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _cedulaController          = TextEditingController(); // ← NUEVO
+  final _cedulaController          = TextEditingController(); 
 
   bool _verPassword  = false;
   bool _verConfirm   = false;
@@ -35,7 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _correoController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _cedulaController.dispose(); // ← NUEVO
+    _cedulaController.dispose(); 
     super.dispose();
   }
 
@@ -83,7 +83,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // ── FONDO VERDE ──
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -100,16 +99,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
 
-          // ── CONTENIDO ──
           SafeArea(
             child: Column(
               children: [
-                // CABECERA VERDE
                 SizedBox(
                   height: 220,
                   child: Stack(
                     children: [
-                      // BOTÓN ATRÁS
                       Positioned(
                         top: 0,
                         left: 8,
@@ -122,7 +118,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onPressed: () => Navigator.pop(context),
                         ),
                       ),
-                      // LOGO Y TÍTULO
                       Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -166,7 +161,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
 
-                // ── TARJETA BLANCA CON ÓVALO ARRIBA ──
                 Expanded(
                   child: ClipPath(
                     clipper: _OvalTopClipper(),
@@ -197,7 +191,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 22),
 
-                              // TIPO DOCUMENTO
                               _fieldLabel('TIPO DE DOCUMENTO'),
                               const SizedBox(height: 8),
                               DropdownButtonFormField<String>(
@@ -221,7 +214,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // ── NÚMERO DE DOCUMENTO (NUEVO) ──
                               _fieldLabel('NÚMERO DE DOCUMENTO'),
                               const SizedBox(height: 8),
                               TextFormField(
@@ -241,7 +233,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // NOMBRE
                               _fieldLabel('NOMBRE'),
                               const SizedBox(height: 8),
                               TextFormField(
@@ -253,7 +244,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // APELLIDO
                               _fieldLabel('APELLIDO'),
                               const SizedBox(height: 8),
                               TextFormField(
@@ -265,7 +255,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // TELÉFONO
                               _fieldLabel('TELÉFONO'),
                               const SizedBox(height: 8),
                               TextFormField(
@@ -278,7 +267,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // CORREO
                               _fieldLabel('CORREO ELECTRÓNICO'),
                               const SizedBox(height: 8),
                               TextFormField(
@@ -295,7 +283,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // CONTRASEÑA
                               _fieldLabel('CONTRASEÑA'),
                               const SizedBox(height: 8),
                               TextFormField(
@@ -325,7 +312,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // CONFIRMAR CONTRASEÑA
                               _fieldLabel('CONFIRMAR CONTRASEÑA'),
                               const SizedBox(height: 8),
                               TextFormField(
@@ -350,7 +336,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     v != _passwordController.text ? 'Las contraseñas no coinciden' : null,
                               ),
 
-                              // ERROR GENERAL
                               if (_errorGeneral != null) ...[
                                 const SizedBox(height: 16),
                                 Container(
@@ -378,7 +363,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                               const SizedBox(height: 16),
 
-                              // TÉRMINOS
                               Row(
                                 children: [
                                   Checkbox(
@@ -415,7 +399,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                               const SizedBox(height: 24),
 
-                              // BOTÓN REGISTRAR
                               SizedBox(
                                 width: double.infinity,
                                 height: 56,
@@ -451,7 +434,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                               const SizedBox(height: 16),
 
-                              // YA TENGO CUENTA
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -540,7 +522,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-// ── ÓVALO CONVEXO HACIA ARRIBA ──
 class _OvalTopClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

@@ -437,49 +437,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: _cargando
-            ? const Center(
-                child: CircularProgressIndicator(color: AppColors.primary))
-            : SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTopBar(context),
-                    const SizedBox(height: 16),
-                    _buildAvatarCard(),
-                    const SizedBox(height: 16),
-                    _buildInfoCard(),
-                    const SizedBox(height: 16),
-                    _buildSettingsCard(),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: Text('App versión 1.0',
-                          style: GoogleFonts.nunito(
-                              fontSize: 11, color: AppColors.textSecondary)),
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
+          : Column(
+              children: [
+                DecoratedBox(
+                  decoration: const BoxDecoration(
+                    boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                        child: _buildTopBar(context),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-      ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildAvatarCard(),
+                        const SizedBox(height: 16),
+                        _buildInfoCard(),
+                        const SizedBox(height: 16),
+                        _buildSettingsCard(),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Text('App versión 1.0',
+                              style: GoogleFonts.nunito(
+                                  fontSize: 11, color: AppColors.textSecondary)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
   Widget _buildTopBar(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _iconCircleButton(
           icon: Icons.arrow_back_ios_new_rounded,
           onTap: () => Navigator.pop(context),
         ),
+        const SizedBox(width: 4),
         Text('Mi perfil',
             style: GoogleFonts.nunito(
                 fontSize: 18, fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary)),
-        const SizedBox(width: 40),
       ],
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../services/app_state.dart';
 import 'home_experto_screen.dart';
 import 'diagnostico_experto_screen.dart';
 import 'clima_screen.dart';
@@ -25,6 +26,8 @@ class _MainNavigationExpertoState extends State<MainNavigationExperto>
   @override
   void initState() {
     super.initState();
+    AppState.instance.addListener(_onAppStateChanged);
+    AppState.instance.iniciarPolling();
     _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -33,11 +36,62 @@ class _MainNavigationExpertoState extends State<MainNavigationExperto>
       CurvedAnimation(parent: _fabController, curve: Curves.easeInOut),
     );
   }
- 
+
   @override
   void dispose() {
+    AppState.instance.removeListener(_onAppStateChanged);
     _fabController.dispose();
     super.dispose();
+  }
+
+  void _onAppStateChanged() {
+    setState(() {});
+    _mostrarNuevasNotificaciones();
+  }
+
+  void _mostrarNuevasNotificaciones() {
+    final notif = AppState.instance.ultimaNotificacionNueva;
+    final nuevas = AppState.instance.nuevasDesdeUltimoAviso;
+    if (notif == null || nuevas <= 0 || !mounted) return;
+    AppState.instance.reiniciarContadorAvisos();
+    final tipo =
+        (notif['tipoRecomendacion'] ?? notif['tipo'] ?? '').toString();
+    final esExperto = tipo.toLowerCase().contains('diagnostico');
+    final titulo = esExperto
+        ? 'Nueva notificación del experto'
+        : 'Nueva notificación';
+    final mensaje = notif['mensaje'] ?? notif['message'] ?? '';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              esExperto ? Icons.eco : Icons.notifications_outlined,
+              color: esExperto ? AppColors.primary : const Color(0xFF2196F3),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(titulo, style: const TextStyle(fontSize: 16))),
+          ],
+        ),
+        content: Text(
+            mensaje.isNotEmpty ? mensaje : 'Tienes una nueva notificación'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              AppState.instance.marcarNotificacionesLeidas();
+              setState(() => _currentIndex = 3);
+            },
+            child: const Text('Ver'),
+          ),
+        ],
+      ),
+    );
   }
  
   List<Widget> get _screens => [
@@ -106,7 +160,6 @@ class _MainNavigationExpertoState extends State<MainNavigationExperto>
         children: _screens,
       ),
  
-      // ── Botón flotante asistente ──────────────────────────────────────
       floatingActionButton: GestureDetector(
         onTapDown: (_) => _fabController.forward(),
         onTapUp: (_) {
