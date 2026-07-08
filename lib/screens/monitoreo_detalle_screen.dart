@@ -55,12 +55,11 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
 
     _analisisIa = await _cargarAnalisisIa(idMonitoreo);
 
-    if (_analisisIa?['_recomendaciones'] == null) {
+    if (_analisisIa != null && _analisisIa!['recomendaciones'] == null) {
       final fuente = _monitoreoCompleto ?? widget.monitoreo;
       final parsed = _parsearObservaciones(fuente);
       if (parsed?['_recomendaciones'] != null) {
-        _analisisIa ??= {};
-        _analisisIa!['_recomendaciones'] = parsed!['_recomendaciones'];
+        _analisisIa!['recomendaciones'] = parsed!['_recomendaciones'];
       }
     }
 
@@ -179,7 +178,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         if (nombreCientifico.isNotEmpty) 'nombreCientifico': nombreCientifico,
         if (severidad.isNotEmpty) 'severidad': severidad,
         '_fuenteObservaciones': true,
-        if (recoms.isNotEmpty) '_recomendaciones': recoms,
+        if (recoms.isNotEmpty) 'recomendaciones': recoms,
       };
     }
  
@@ -193,13 +192,9 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   }
  
   String _limpiarResultado(String raw) {
-    final t = raw.toLowerCase().trim();
-    if (t.startsWith('http://') || t.startsWith('https://')) {
-      if (t.contains('roya')) return 'Roya detectada';
-      if (t.contains('sana')) return 'Planta sana';
-      return 'Resultado del análisis';
-    }
-    return raw;
+    final t = raw.trim();
+    if (t.isEmpty) return 'Sin resultado';
+    return t;
   }
 
   String _fecha() {
@@ -334,10 +329,12 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
   }
 
   String? get _imagenUrlIa {
-    if (_analisisIa == null) return null;
-    final ruta = _analisisIa!['imagen']?['rutaImagen'] ?? '';
-    if (ruta.toString().isEmpty) return null;
-    if (ruta.toString().startsWith('http')) return ruta.toString();
+    final imgs = _imagenes();
+    if (imgs.isEmpty) return null;
+    final raw = imgs[0]['rutaImagen'] ?? imgs[0]['urlImagen'] ?? imgs[0]['url_imagen'] ?? imgs[0]['ruta_imagen'] ?? '';
+    final ruta = raw.toString();
+    if (ruta.isEmpty) return null;
+    if (ruta.startsWith('http')) return ruta;
     return 'https://coffeelife-api.up.railway.app/$ruta';
   }
 
@@ -355,12 +352,21 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
 
   List<_RecomendacionIA> _recomendacionesIa() {
-    final backendRecs = _analisisIa?['_recomendaciones'] as List<String>?;
-    if (backendRecs != null && backendRecs.isNotEmpty) {
-      return backendRecs
-          .map((r) => _RecomendacionIA(Icons.check_circle_outlined,
-              const Color(0xFF2E7D32), r, ''))
-          .toList();
+    if (_analisisIa != null) {
+      final backendRecs = _analisisIa!['recomendaciones'] as List?;
+      if (backendRecs != null && backendRecs.isNotEmpty) {
+        return backendRecs.map((r) {
+          if (r is String) {
+            return _RecomendacionIA(
+                Icons.check_circle_outlined, const Color(0xFF2E7D32), r, '');
+          }
+          final titulo = (r['titulo'] ?? r['title'] ?? '').toString();
+          final desc = (r['descripcion'] ?? r['description'] ?? '').toString();
+          return _RecomendacionIA(
+              Icons.check_circle_outlined, const Color(0xFF2E7D32),
+              titulo.isNotEmpty ? titulo : desc, desc);
+        }).toList();
+      }
     }
     final resultado = (_analisisIa?['resultado'] ?? '').toString().toLowerCase();
     final esRoya = resultado.contains('roya');

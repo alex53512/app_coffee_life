@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
+import 'app_state.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -89,6 +90,19 @@ class FcmService {
   }
 
   static Future<void> _onForegroundMessage(RemoteMessage message) async {
+    final data = message.data;
+    final esExperto = (data['tipoRecomendacion'] ?? data['tipo'] ?? '')
+        .toString()
+        .toLowerCase()
+        .contains('diagnostico');
+    AppState.instance.agregarNotificacion({
+      'titulo': message.notification?.title ?? 'Notificación',
+      'mensaje': message.notification?.body ?? '',
+      'tipoRecomendacion': esExperto ? 'diagnostico_experto' : (data['tipo'] ?? 'notificacion'),
+      'idMonitoreo': data['idMonitoreo'] ?? data['id_monitoreo'],
+      'id_monitoreo': data['idMonitoreo'] ?? data['id_monitoreo'],
+      'leida': false,
+    });
     final notification = message.notification;
     if (notification == null) return;
 
@@ -110,8 +124,8 @@ class FcmService {
         android: androidDetails,
         iOS: iosDetails,
       ),
-      payload: message.data['idMonitoreo']?.toString() ??
-          message.data['id_monitoreo']?.toString(),
+      payload: data['idMonitoreo']?.toString() ??
+          data['id_monitoreo']?.toString(),
     );
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'auth_service.dart';
@@ -12,6 +13,8 @@ class WebSocketService extends ChangeNotifier {
 
   bool get connected => _connected;
 
+  Timer? _reconnectTimer;
+
   Future<void> connect() async {
     if (_connected) return;
 
@@ -23,12 +26,16 @@ class WebSocketService extends ChangeNotifier {
       'https://backend-coffe-lifee-production-191b.up.railway.app',
       io.OptionBuilder()
           .setTransports(['websocket'])
-          .disableAutoConnect()
+          .enableReconnection()
+          .setReconnectionAttempts(20)
+          .setReconnectionDelay(3000)
           .build(),
     );
 
     _socket!.onConnect((_) {
       _connected = true;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
       _socket!.emit('unirse', _idUsuario);
       debugPrint('Socket.IO conectado como usuario $_idUsuario');
       notifyListeners();
@@ -43,13 +50,38 @@ class WebSocketService extends ChangeNotifier {
       _connected = false;
       debugPrint('Socket.IO desconectado');
       notifyListeners();
+      _intentarReconexion();
     });
 
     _socket!.onError((error) {
       debugPrint('Socket.IO error: $error');
+      _intentarReconexion();
+    });
+
+    _socket!.onReconnect((_) {
+      _connected = true;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      if (_idUsuario != null) {
+        _socket!.emit('unirse', _idUsuario);
+      }
+      debugPrint('Socket.IO reconectado');
+      notifyListeners();
     });
 
     _socket!.connect();
+  }
+
+  void _intentarReconexion() {
+    if (_connected || _reconnectTimer != null) return;
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_connected) {
+        timer.cancel();
+        return;
+      }
+      debugPrint('Socket.IO reintentando conexión...');
+      _socket?.connect();
+    });
   }
 
   void _onNotificacion(dynamic data) {
@@ -76,6 +108,8 @@ class WebSocketService extends ChangeNotifier {
   }
 
   void disconnect() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
