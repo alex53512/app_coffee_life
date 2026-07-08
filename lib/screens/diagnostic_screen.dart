@@ -1022,8 +1022,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     if (_stage == 'analyzing') return;
     final XFile? foto = await _picker.pickImage(
       source: ImageSource.camera,
-      maxWidth: 800,
-      imageQuality: 80,
+      maxWidth: 1920,
+      imageQuality: 95,
     );
     if (foto != null) {
       final bytes = await foto.readAsBytes();
@@ -1035,13 +1035,13 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       _startAnalysis(foto, bytes);
     }
   }
- 
+
   void _onSelectGallery() async {
     if (_stage == 'analyzing') return;
     final XFile? foto = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 800,
-      imageQuality: 80,
+      maxWidth: 1920,
+      imageQuality: 95,
     );
     if (foto != null) {
       final bytes = await foto.readAsBytes();
