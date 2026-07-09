@@ -27,14 +27,12 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
   List _recomendaciones = [];
   List _tratamientos = [];
  
-  // Finca/cultivo activos para el formulario de "nuevo diagnóstico".
   Map<String, dynamic>? _fincaSeleccionada;
   Map<String, dynamic>? _cultivoSeleccionado;
  
-  // Búsqueda y filtros
   final _searchCtrl = TextEditingController();
   String _busqueda = '';
-  String _filtroResultado = 'Todos'; // Todos / Roya / Sana
+  String _filtroResultado = 'Todos'; 
   String? _filtroCultivo;
   DateTime? _filtroFechaDesde;
   DateTime? _filtroFechaHasta;
@@ -86,8 +84,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
         _recomendaciones = _list(results[4]);
         _tratamientos = _list(results[5]);
  
-        // Prioriza lo que ya esté seleccionado en Home (AppState);
-        // si no hay nada seleccionado ahí, usa la primera finca.
         _fincaSeleccionada = AppState.instance.fincaSeleccionada ??
             (_fincas.isNotEmpty ? _fincas[0] : null);
         _cultivoSeleccionado = AppState.instance.cultivoSeleccionado;
@@ -101,7 +97,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
  
   List _aplicarFiltros(List items) {
     return items.where((d) {
-      // Filtro por resultado
       if (_filtroResultado != 'Todos') {
         final res = (d['resultado'] ?? '').toString().toLowerCase();
         if (_filtroResultado == 'Roya' && !res.contains('roya')) return false;
@@ -110,24 +105,21 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
             !res.contains('hoja_sana')) return false;
       }
  
-      // Filtro por cultivo (via idMonitoreo → monitoreo → idCultivo)
       if (_filtroCultivo != null) {
         final idMonitoreo = d['imagen']?['idMonitoreo'] ?? d['imagen']?['id_monitoreo'];
         final idCultivoAnalisis = _idCultivoDeMonitoreo(idMonitoreo);
         if (idCultivoAnalisis == null || idCultivoAnalisis != _filtroCultivo) return false;
       }
  
-      // Filtro por fecha
       final fechaStr = d['fechaRegistro'] ?? d['fecha_registro'];
       if (fechaStr != null) {
         try {
-          final fecha = DateTime.parse(fechaStr.toString());
+          final fecha = DateTime.parse(fechaStr.toString()).toLocal();
           if (_filtroFechaDesde != null && fecha.isBefore(_filtroFechaDesde!)) return false;
           if (_filtroFechaHasta != null && fecha.isAfter(_filtroFechaHasta!.add(const Duration(days: 1)))) return false;
         } catch (_) {}
       }
  
-      // Filtro por texto
       if (_busqueda.isNotEmpty) {
         final q = _busqueda.toLowerCase();
         final res = (d['resultado'] ?? '').toString().toLowerCase();
@@ -186,7 +178,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
         .toList();
   }
  
-  /// IDs de cultivo que pertenecen a la finca actualmente seleccionada.
   Set<String> get _idsCultivosFincaSeleccionada {
     if (_fincaSeleccionada == null) return {};
     return _cultivosDeFinca(_fincaSeleccionada!)
@@ -194,8 +185,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
         .toSet();
   }
  
-  /// Dado un idMonitoreo, busca ese monitoreo en `_monitoreos` y devuelve
-  /// su idCultivo (o null si no se encuentra).
   String? _idCultivoDeMonitoreo(dynamic idMonitoreo) {
     if (idMonitoreo == null) return null;
     final monitoreo = _monitoreos.firstWhere(
@@ -207,15 +196,13 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     return idCultivo?.toString();
   }
  
-  /// Filtra monitoreos (que sí tienen idCultivo directo) por finca/cultivo
-  /// seleccionados en Home.
   List _filtrarMonitoreosPorSeleccion(List items) {
     if (_fincaSeleccionada == null) return items;
     final idsCultivosFinca = _idsCultivosFincaSeleccionada;
  
     return items.where((item) {
       final idCultivoItem = (item['idCultivo'] ?? item['id_cultivo'])?.toString();
-      if (idCultivoItem == null) return true; // sin dato, no se oculta
+      if (idCultivoItem == null) return true; 
  
       if (_cultivoSeleccionado != null) {
         final idCultivoSel =
@@ -226,11 +213,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     }).toList();
   }
  
-  /// Filtra análisis de IA por finca/cultivo seleccionados en Home.
-  /// La estructura real de /experto/analisis_ia NO trae idCultivo/idFinca
-  /// directo: solo trae `imagen.idMonitoreo`. Hay que cruzar ese
-  /// idMonitoreo contra `_monitoreos` (que sí tiene idCultivo) para saber
-  /// a qué cultivo pertenece cada análisis.
   List _filtrarAnalisisIAPorSeleccion(List items) {
     if (_fincaSeleccionada == null) return items;
     final idsCultivosFinca = _idsCultivosFincaSeleccionada;
@@ -240,8 +222,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
           analisis['imagen']?['id_monitoreo'];
       final idCultivoAnalisis = _idCultivoDeMonitoreo(idMonitoreo);
  
-      // Si no se pudo resolver el cultivo (monitoreo no encontrado en la
-      // lista actual), no se oculta el análisis: se deja visible.
       if (idCultivoAnalisis == null) return true;
  
       if (_cultivoSeleccionado != null) {
@@ -253,7 +233,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     }).toList();
   }
  
-  // ─── Nuevo diagnóstico manual ─────────────────────────────────────────────
  
   void _abrirNuevoDiagnostico() {
     if (_fincas.isEmpty) {
@@ -273,7 +252,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     String severidad  = 'Media';
     bool guardando    = false;
  
-    // Lista de recomendaciones a agregar
     final List<Map<String, dynamic>> recsLocales = [];
  
     showModalBottomSheet(
@@ -292,7 +270,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
             ),
             child: Column(
               children: [
-                // Handle
                 const SizedBox(height: 12),
                 Container(
                   width: 40, height: 4,
@@ -327,13 +304,12 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Finca ──────────────────────────────────────
                         _labelForm('Finca'),
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.cardBg(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppColors.border),
                           ),
@@ -355,13 +331,12 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                         ),
                         const SizedBox(height: 16),
  
-                        // ── Cultivo ─────────────────────────────────────
                         _labelForm('Cultivo'),
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.cardBg(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppColors.border),
                           ),
@@ -386,7 +361,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                         ),
                         const SizedBox(height: 16),
  
-                        // ── Fecha ───────────────────────────────────────
                         _labelForm('Fecha'),
                         const SizedBox(height: 8),
                         TextField(
@@ -395,7 +369,7 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                             hintText: 'YYYY-MM-DD',
                             prefixIcon: const Icon(Icons.calendar_today_outlined,
                                 color: AppColors.primary, size: 20),
-                            filled: true, fillColor: Colors.white,
+                            filled: true, fillColor: AppColors.inputFill(context),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -408,7 +382,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                         ),
                         const SizedBox(height: 16),
  
-                        // ── Enfermedad ──────────────────────────────────
                         _labelForm('Enfermedad detectada'),
                         const SizedBox(height: 8),
                         Wrap(
@@ -435,7 +408,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                         ),
                         const SizedBox(height: 16),
  
-                        // ── Severidad ───────────────────────────────────
                         _labelForm('Severidad'),
                         const SizedBox(height: 8),
                         Wrap(
@@ -465,7 +437,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                         ),
                         const SizedBox(height: 16),
  
-                        // ── Observaciones ───────────────────────────────
                         _labelForm('Observaciones'),
                         const SizedBox(height: 8),
                         TextField(
@@ -473,7 +444,7 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                           maxLines: 3,
                           decoration: InputDecoration(
                             hintText: 'Describe lo que observaste en el cultivo...',
-                            filled: true, fillColor: Colors.white,
+                            filled: true, fillColor: AppColors.inputFill(context),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -486,7 +457,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                         ),
                         const SizedBox(height: 20),
  
-                        // ── Recomendaciones ─────────────────────────────
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -531,9 +501,9 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.border),
+                              color: AppColors.cardBg(context),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,7 +552,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                           }),
                         const SizedBox(height: 24),
  
-                        // ── Botón guardar ───────────────────────────────
                         SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -615,7 +584,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                           ),
                         ),
  
-                        // ── Botón usar IA ───────────────────────────────
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
@@ -648,7 +616,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     );
   }
  
-  // ─── Agregar recomendación con tratamientos ───────────────────────────────
  
   void _agregarRecomendacionLocal(
       BuildContext ctx,
@@ -737,7 +704,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     );
   }
  
-  // ─── Guardar diagnóstico completo en backend ──────────────────────────────
  
   Future<void> _guardarDiagnosticoCompleto({
     required Map<String, dynamic> cultivo,
@@ -748,7 +714,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     try {
       final idCultivo = cultivo['idCultivo'] ?? cultivo['id_cultivo'];
  
-      // 1. Crear monitoreo
       final resMonitoreo = await ApiService.post('/monitoreos', {
         'id_cultivo':      idCultivo,
         'fecha_monitoreo': fecha,
@@ -756,7 +721,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
       });
       final idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
  
-      // 2. Crear recomendaciones con sus tratamientos
       for (final rec in recomendaciones) {
         final resRec = await ApiService.post('/recomendaciones', {
           'descripcion':  rec['descripcion'],
@@ -765,7 +729,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
  
         final idRecomendacion = resRec['data']?['idRecomendacion'] as int?;
  
-        // 3. Vincular tratamientos a la recomendación
         if (idRecomendacion != null) {
           for (final t in (rec['tratamientos'] as List)) {
             final idTratamiento = t['idTratamiento'] ?? t['id_tratamiento'];
@@ -800,40 +763,47 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     }
   }
  
-  // ─── Build ────────────────────────────────────────────────────────────────
  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            TabBar(
-              controller: _tabController,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primary,
-              labelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14),
-              tabs: const [
-                Tab(text: 'Diagnósticos IA'),
-                Tab(text: 'Mis visitas'),
-              ],
+      body: Column(
+        children: [
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
             ),
-            Expanded(
-              child: _cargando
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildDiagnosticosIA(),
-                        _buildMisDiagnosticos(),
-                      ],
-                    ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+              child: SafeArea(
+                bottom: false,
+                child: _buildHeader(),
+              ),
             ),
-          ],
-        ),
+          ),
+          TabBar(
+            controller: _tabController,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.primary,
+            labelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 14),
+            tabs: const [
+              Tab(text: 'Diagnósticos IA'),
+              Tab(text: 'Mis visitas'),
+            ],
+          ),
+          Expanded(
+            child: _cargando
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildDiagnosticosIA(),
+                      _buildMisDiagnosticos(),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -845,10 +815,16 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
         _cultivoSeleccionado?['nombre_cultivo'];
  
     return Container(
-      color: const Color(0xFFF4E7D6),
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+        ),
+      ),
       child: Column(
         children: [
-          // Título
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 8, 8),
             child: Row(
@@ -888,7 +864,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
             ),
           ),
  
-          // Barra de búsqueda
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: TextField(
@@ -909,7 +884,7 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                       )
                     : null,
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: AppColors.inputFill(context),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: AppColors.border)),
@@ -926,7 +901,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     );
   }
  
-  // ─── Tab 1: Diagnósticos IA (filtrados por finca/cultivo de Home) ────────
  
   Widget _buildDiagnosticosIA() {
     final filtradosPorFinca = _filtrarAnalisisIAPorSeleccion(_diagnosticosIA);
@@ -998,7 +972,7 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withOpacity(0.2)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
@@ -1042,10 +1016,8 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     );
   }
  
-  // ─── Tab 2: Mis visitas (diagnósticos del experto) ───────────────────
  
   Widget _buildMisDiagnosticos() {
-    // Monitoreos del experto: identificados por [EXPERTO] en observaciones
     final misVisitas = _filtrarMonitoreosPorSeleccion(
       _monitoreos.where((m) {
         final obs = (m['observaciones'] ?? '').toString();
@@ -1088,7 +1060,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     final obs = (m['observaciones'] ?? '').toString();
     final fecha = _formatFecha(m['fechaMonitoreo'] ?? m['fecha_monitoreo']);
  
-    // Parsear "[EXPERTO] Resultado - Severidad X - texto"
     String resultado = 'Ver detalle';
     String severidad = '';
     String observaciones = '';
@@ -1106,7 +1077,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
         : severidad == 'Media' ? Colors.orange
         : AppColors.primary;
  
-    // Buscar nombre del cultivo
     final idCultivo = (m['idCultivo'] ?? m['id_cultivo'])?.toString();
     final cultivo = idCultivo != null
         ? _cultivos.firstWhere(
@@ -1120,7 +1090,7 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
       ),
@@ -1189,11 +1159,6 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
   }
  
   String _formatFecha(dynamic fecha) {
-    if (fecha == null) return 'Sin fecha';
-    try {
-      final dt = DateTime.parse(fecha.toString());
-      const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-      return '${dt.day.toString().padLeft(2,'0')} ${meses[dt.month-1]} ${dt.year}';
-    } catch (_) { return fecha.toString(); }
+    return AppTheme.formatFechaColombia(fecha, withTime: false);
   }
 }

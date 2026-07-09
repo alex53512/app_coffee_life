@@ -9,7 +9,6 @@ class DashboardService {
         ApiService.get('/recomendaciones'),
       ]);
 
-      // El backend devuelve el array directo, sin wrapper 'data'
       final fincas = results[0] is List ? results[0] : 
                      (results[0]['data'] ?? []);
       final monitoreos = results[1] is List ? results[1] : 

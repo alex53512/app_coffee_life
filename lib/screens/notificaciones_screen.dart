@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../services/app_state.dart';
+import 'fincaDetalleScreen.dart';
 
 class NotificacionesScreen extends StatefulWidget {
   const NotificacionesScreen({super.key});
@@ -70,7 +72,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final f = r['fechaLimite'] ?? r['fecha_limite'] ?? r['fechaRegistro'] ?? '';
     if (f.toString().isEmpty) return '';
     try {
-      final dt = DateTime.parse(f.toString());
+      final dt = DateTime.parse(f.toString()).toLocal();
       const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
       final hora = dt.hour.toString().padLeft(2, '0');
       final min  = dt.minute.toString().padLeft(2, '0');
@@ -91,10 +93,45 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     setState(() { for (final n in _notificaciones) n['leida'] = true; });
   }
 
+  Future<void> _onNotificacionTap(int index) async {
+    final r = _notificaciones[index];
+    final finca = r['finca'] as Map<String, dynamic>?;
+
+    _marcarLeida(index);
+
+    if (finca == null || !mounted) return;
+
+    final idFinca = finca['idFinca'] ?? finca['id_finca'];
+    if (idFinca == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+    );
+
+    try {
+      final cultivosRes = await ApiService.get('/cultivos?idFinca=$idFinca');
+      final cultivos = cultivosRes is List ? cultivosRes : (cultivosRes['data'] ?? []);
+      AppState.instance.setFinca(Map<String, dynamic>.from(finca), cultivos);
+    } catch (_) {
+      AppState.instance.setFinca(Map<String, dynamic>.from(finca), []);
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FincaDetalleScreen(finca: finca),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8F5),
       body: SafeArea(
         child: Column(
           children: [
@@ -108,81 +145,49 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-  return Container(
-    width: double.infinity,
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF97D340),
-          Color(0xFF388E3C),
-        ],
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
       ),
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(28),
-        bottomRight: Radius.circular(28),
-      ),
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-    child: SafeArea(
-      bottom: false,
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Color(0xFF262A24),
-                size: 18,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              'Notificaciones',
-              style: GoogleFonts.nunito(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF262A24),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
               ),
             ),
-          ),
-          if (_sinLeer > 0)
-            Material(
-              color: Colors.white.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: _marcarTodasLeidas,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Text(
-                    'Leer todas',
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF262A24),
-                    ),
-                  ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+                  onPressed: () => Navigator.pop(context),
                 ),
-              ),
-            )
-          else
-            const SizedBox(width: 42),
-        ],
+                Expanded(
+                  child: Text('Notificaciones',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                ),
+                if (_sinLeer > 0)
+                  TextButton(
+                    onPressed: _marcarTodasLeidas,
+                    child: Text('Leer todas',
+                        style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  )
+                else
+                  const SizedBox(width: 48),
+              ],
+            ),
+          ),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildBannerSinLeer() {
     return Container(
@@ -265,17 +270,19 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final color  = _colorIcono(r);
     final badge  = _badge(r);
     final titulo = r['descripcion'] ?? r['titulo'] ?? 'Notificación';
-    final finca  = r['finca']?['nombreFinca'] ?? r['parcela']?['nombreParcela'] ?? 'Sin finca';
+    final finca  = r['finca']?['nombreFinca'] ?? r['finca']?['nombre_finca'] ??
+        r['monitoreo']?['finca']?['nombreFinca'] ?? r['monitoreo']?['finca']?['nombre_finca'] ??
+        r['parcela']?['nombreParcela'] ?? r['nombreFinca'] ?? r['nombre_finca'] ?? 'Sin finca';
     final fecha  = _fecha(r);
     final leida  = _leida(r);
 
     return GestureDetector(
-      onTap: () => _marcarLeida(index),
+      onTap: () => _onNotificacionTap(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surfaceVariantBg(context),
           borderRadius: BorderRadius.circular(14),
           border: leida ? null : Border.all(color: color.withOpacity(0.3), width: 1.2),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(leida ? 0.04 : 0.08), blurRadius: 10, offset: const Offset(0, 2))],

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
+import '../services/websocket_service.dart';
 import 'home_screen.dart';
 import 'diagnostic_screen.dart';
 import 'fincaDetalleScreen.dart';
 import 'monitoreos_screen.dart';
-import 'aprender_screen.dart';
 import 'profile_screen.dart';
 import 'asistente_screen.dart';
 
@@ -21,6 +21,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  int _homeRefreshKey = 0;
 
   late AnimationController _fabController;
   late Animation<double> _fabScale;
@@ -29,6 +30,8 @@ class _MainNavigationState extends State<MainNavigation>
   void initState() {
     super.initState();
     AppState.instance.addListener(_onFincaCambiada);
+    AppState.instance.iniciarPolling();
+    WebSocketService.instance.on('*', _onNotificacion);
     _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -41,21 +44,72 @@ class _MainNavigationState extends State<MainNavigation>
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
+    WebSocketService.instance.off('*', _onNotificacion);
     _fabController.dispose();
     super.dispose();
   }
 
-  void _onFincaCambiada() => setState(() {});
+  void _onFincaCambiada() {
+    setState(() {});
+    _mostrarNuevasNotificaciones();
+  }
+
+  void _onNotificacion(Map<String, dynamic> data) {
+    AppState.instance.agregarNotificacion(data);
+  }
+
+  void _mostrarNuevasNotificaciones() {
+    final notif = AppState.instance.ultimaNotificacionNueva;
+    final nuevas = AppState.instance.nuevasDesdeUltimoAviso;
+    if (notif == null || nuevas <= 0 || !mounted) return;
+    AppState.instance.reiniciarContadorAvisos();
+    final tipo =
+        (notif['tipoRecomendacion'] ?? notif['tipo'] ?? '').toString();
+    final esExperto = tipo.toLowerCase().contains('diagnostico');
+    final titulo = esExperto
+        ? 'Nueva notificación del experto'
+        : 'Nueva notificación';
+    final mensaje = notif['mensaje'] ?? notif['message'] ?? '';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              esExperto ? Icons.eco : Icons.notifications_outlined,
+              color: esExperto ? AppColors.primary : const Color(0xFF2196F3),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(titulo, style: const TextStyle(fontSize: 16))),
+          ],
+        ),
+        content: Text(mensaje.isNotEmpty ? mensaje : 'Tienes una nueva notificación'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              AppState.instance.marcarNotificacionesLeidas();
+              setState(() => _currentIndex = 3);
+            },
+            child: const Text('Ver'),
+          ),
+        ],
+      ),
+    );
+  }
 
   String get _nombreFincaActual =>
       AppState.instance.fincaSeleccionada?['nombreFinca'] ?? 'Mi Finca';
 
   List<Widget> get _screens => [
-        HomeScreen(usuario: widget.usuario),
+        HomeScreen(usuario: widget.usuario, key: ValueKey('home$_homeRefreshKey')),
         const DiagnosticScreen(),
         FincaDetalleScreen(finca: AppState.instance.fincaSeleccionada ?? {}),
         const MontoreosScreen(),
-        const AprenderScreen(),
         ProfileScreen(usuario: widget.usuario),
       ];
 
@@ -115,7 +169,7 @@ class _MainNavigationState extends State<MainNavigation>
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, -2)),
         ],
@@ -130,8 +184,7 @@ class _MainNavigationState extends State<MainNavigation>
               _navItem(1, Icons.document_scanner_rounded, Icons.document_scanner_outlined, 'Diagnóstico'),
               _navItem(2, Icons.fact_check_rounded,        Icons.fact_check_outlined,        'Seguimiento'),
               _navItem(3, Icons.bar_chart_rounded,        Icons.bar_chart_outlined,        'Monitoreos'),
-              _navItem(4, Icons.menu_book_rounded,        Icons.menu_book_outlined,        'Aprender'),
-              _navItem(5, Icons.person_rounded,           Icons.person_outline_rounded,    'Perfil'),
+              _navItem(4, Icons.person_rounded,           Icons.person_outline_rounded,    'Perfil'),
             ],
           ),
         ),
@@ -142,7 +195,10 @@ class _MainNavigationState extends State<MainNavigation>
   Widget _navItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        if (index == 0) _homeRefreshKey++;
+        setState(() => _currentIndex = index);
+      },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 56,

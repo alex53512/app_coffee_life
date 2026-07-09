@@ -4,7 +4,6 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'main_navigation.dart';
-import 'main_navigation_experto.dart';
 import 'forgot_password_screen.dart';
  
 class LoginScreen extends StatefulWidget {
@@ -51,12 +50,10 @@ class _LoginScreenState extends State<LoginScreen> {
 final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowerCase() ?? 'cafetero';
  
         if (rol == 'experto' || rol == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => MainNavigationExperto(usuario: result['data']),
-            ),
-          );
+          setState(() {
+            _errorGeneral =
+                'Los usuarios expertos y administradores deben iniciar sesión desde la plataforma web.';
+          });
         } else {
           Navigator.pushReplacement(
             context,
@@ -78,10 +75,8 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
-          // ── SECCIÓN SUPERIOR VERDE CON CURVA ──
           ClipPath(
             clipper: _OvalBottomClipper(),
             child: Container(
@@ -132,7 +127,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
             ),
           ),
  
-          // ── SECCIÓN INFERIOR ──
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
@@ -159,12 +153,12 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 24),
  
-                    // EMAIL
                     _fieldLabel('CORREO ELECTRÓNICO'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _correoController,
                       keyboardType: TextInputType.emailAddress,
+                      autofillHints: const <String>[],
                       decoration: _inputDecoration(
                         hint: 'correo@ejemplo.com',
                         icon: Icons.email_outlined,
@@ -181,12 +175,12 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 20),
  
-                    // PASSWORD
                     _fieldLabel('CONTRASEÑA'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: !_verPassword,
+                      autofillHints: const <String>[],
                       decoration: _inputDecoration(
                         hint: '••••••••',
                         icon: Icons.lock_outline,
@@ -213,7 +207,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                       },
                     ),
  
-                    // ERROR
                     if (_errorGeneral != null) ...[
                       const SizedBox(height: 16),
                       Container(
@@ -234,7 +227,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                       ),
                     ],
  
-                    // ── OLVIDASTE CONTRASEÑA ──
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -258,7 +250,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 8),
  
-                    // BOTÓN LOGIN
                     SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -293,7 +284,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                     ),
                     const SizedBox(height: 24),
  
-                    // REGISTER
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -384,7 +374,6 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
   }
 }
  
-// ── CURVA OVAL HACIA ABAJO ──
 class _OvalBottomClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

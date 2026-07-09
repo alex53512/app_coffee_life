@@ -11,14 +11,12 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  // 0 = ingresar correo, 1 = verificar código, 2 = nueva contraseña
   int _paso = 0;
 
   bool _cargando = false;
   String? _error;
   String _correoEnviado = '';
 
-  // Controladores
   final _correoController       = TextEditingController();
   final _codigoController       = TextEditingController();
   final _nuevaPassController    = TextEditingController();
@@ -36,7 +34,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  // ── PASO 1: enviar correo ──────────────────────────────────────────────────
   Future<void> _enviarCodigo() async {
     final correo = _correoController.text.trim();
     if (correo.isEmpty || !correo.contains('@')) {
@@ -60,7 +57,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
-  // ── PASO 2: verificar código ───────────────────────────────────────────────
   Future<void> _verificarCodigo() async {
     final codigo = _codigoController.text.trim();
     if (codigo.length != 6) {
@@ -81,7 +77,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
-  // ── PASO 3: restablecer contraseña ─────────────────────────────────────────
   Future<void> _restablecerPassword() async {
     final nueva    = _nuevaPassController.text;
     final confirma = _confirmarPassController.text;
@@ -112,7 +107,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context); // volver al login
+        Navigator.pop(context); 
       }
     } else {
       setState(() => _error = result['message']);
@@ -122,10 +117,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: Column(
         children: [
-          // ── CABECERA VERDE ─────────────────────────────────────────────────
           ClipPath(
             clipper: _OvalBottomClipper(),
             child: Container(
@@ -145,7 +138,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               child: SafeArea(
                 child: Stack(
                   children: [
-                    // Botón atrás
                     Positioned(
                       top: 0,
                       left: 4,
@@ -161,7 +153,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         },
                       ),
                     ),
-                    // Ícono + título
                     Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -194,7 +185,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
 
-          // ── INDICADOR DE PASOS ─────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
             child: Row(
@@ -208,7 +198,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
 
-          // ── CONTENIDO DEL PASO ACTUAL ──────────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
@@ -219,7 +208,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   if (_paso == 1) _buildPaso1(),
                   if (_paso == 2) _buildPaso2(),
 
-                  // Error general
                   if (_error != null) ...[
                     const SizedBox(height: 16),
                     Container(
@@ -247,7 +235,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Botón principal
                   SizedBox(
                     width: double.infinity,
                     height: 56,
@@ -286,7 +273,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // ── PASO 0: ingresar correo ────────────────────────────────────────────────
   Widget _buildPaso0() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,7 +300,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // ── PASO 1: verificar código ───────────────────────────────────────────────
   Widget _buildPaso1() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,7 +370,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // ── PASO 2: nueva contraseña ───────────────────────────────────────────────
   Widget _buildPaso2() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +439,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
-  // ── WIDGETS AUXILIARES ─────────────────────────────────────────────────────
   Widget _indicadorPaso(int numeroPaso, String etiqueta) {
     final activo   = _paso == numeroPaso;
     final completo = _paso > numeroPaso;
@@ -554,7 +537,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 }
 
-// ── CURVA OVAL HACIA ABAJO ─────────────────────────────────────────────────
 class _OvalBottomClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

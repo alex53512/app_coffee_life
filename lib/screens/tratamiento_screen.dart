@@ -46,7 +46,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     super.dispose();
   }
  
-  // ─── Clasificación de tratamientos por severidad (lista fija en código) ──
   static const Map<String, String> _severidadPorNombre = {
     'Fungicida triazol': 'Alta',
     'Fungicida a base de azoxistrobina': 'Alta',
@@ -172,10 +171,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     }
   }
  
-  /// El monitoreo ya se creó automáticamente en DiagnosticScreen cuando se
-  /// analizó la foto (junto con la imagen y el análisis IA). Esta función
-  /// ya NO vuelve a crear otro registro — solo confirma visualmente y
-  /// notifica a AppState para refrescar otras pantallas.
   Future<void> _guardarMonitoreo() async {
     if (_guardado || _guardando) return;
     setState(() => _guardando = true);
@@ -261,7 +256,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -310,18 +304,35 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   }
  
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: const Color(0xFFF4E7D6),
-      child: Row(
-        children: [
-          IconButton(icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20), onPressed: () => Navigator.pop(context)),
-          Expanded(
-            child: Text('Tratamientos', textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Row(
+              children: [
+                IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20), onPressed: () => Navigator.pop(context)),
+                Expanded(
+                  child: Text('Tratamientos', textAlign: TextAlign.center,
+                      style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                ),
+                const SizedBox(width: 48),
+              ],
+            ),
           ),
-          const SizedBox(width: 48),
-        ],
+        ),
       ),
     );
   }
@@ -386,7 +397,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: seleccionado ? AppColors.primary : Colors.white,
+                color: seleccionado ? AppColors.primary : AppColors.cardBg(context),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: seleccionado ? AppColors.primary : Colors.grey.shade300),
               ),
@@ -426,7 +437,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     final descripcion = _seleccionado?['descripcion'] ?? 'Sin descripción';
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
+      decoration: BoxDecoration(color: AppColors.cardBg(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -446,7 +457,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
     final frecuencia = _seleccionado?['frecuencia'];
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
+      decoration: BoxDecoration(color: AppColors.cardBg(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         children: [
           _rowItem(Icons.category_outlined, 'Tipo', tipo),
@@ -462,7 +473,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   Widget _buildNotasCard() {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
+      decoration: BoxDecoration(color: AppColors.cardBg(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -491,7 +502,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
   String _formatFecha(dynamic fecha) {
     if (fecha == null) return 'N/A';
     try {
-      final dt = DateTime.parse(fecha.toString());
+      final dt = DateTime.parse(fecha.toString()).toLocal();
       return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
     } catch (_) {
       return fecha.toString();

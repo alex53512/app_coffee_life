@@ -76,7 +76,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     }
   }
  
-  // ─── Helpers de datos ──────────────────────────────────────────────────
  
   List get _cultivosFincaActual {
     if (_fincas.isEmpty || _fincaSeleccionada >= _fincas.length) return [];
@@ -127,7 +126,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return 'Alto';
   }
  
-  /// Cuenta cuántos cultivos de una finca tienen nivel de roya "Alto".
   int _contarAlertasFinca(Map<String, dynamic> finca) {
     final idFinca = finca['idFinca'] ?? finca['id_finca'];
     final cultivosFinca = _cultivos.where((c) =>
@@ -140,7 +138,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return alertas;
   }
  
-  /// Total de alertas (roya alta) en todas las fincas asignadas.
   int get _totalAlertas {
     int total = 0;
     for (final f in _fincas) {
@@ -149,14 +146,12 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return total;
   }
  
-  // ─── Build ────────────────────────────────────────────────────────────
  
   @override
   Widget build(BuildContext context) {
     final nombre = widget.usuario['nombre'] ?? 'Experto';
  
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _error != null
@@ -201,7 +196,13 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
         child: SafeArea(
           bottom: false,
           child: Container(
-            color: const Color(0xFFF4E7D6),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             child: Row(
               children: [
@@ -225,7 +226,7 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Hola, $nombre',
-                          style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF1A1A1A))),
+                          style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                       Text('Panel del Experto',
                           style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
                     ],
@@ -275,7 +276,7 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
               )
             : null,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.inputFill(context),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -293,7 +294,6 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     );
   }
  
-  // ─── Mis Fincas ────────────────────────────────────────────────────────
  
   Widget _buildFincasSection() {
     final fincas = _fincasFiltradas;
@@ -318,12 +318,12 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
-            ),
-            child: Center(
-              child: Text(
+            color: AppColors.cardBg(context),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+          ),
+          child: Center(
+            child: Text(
                 _busqueda.isNotEmpty
                     ? 'No se encontraron fincas con "$_busqueda"'
                     : 'No tienes fincas asignadas aún',
@@ -394,14 +394,13 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Foto con badge "Activa"
           Stack(
             children: [
               ClipRRect(
@@ -422,7 +421,7 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.cardBg(context),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
                     ),
@@ -532,7 +531,7 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: AppColors.inputFill(context),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(texto,

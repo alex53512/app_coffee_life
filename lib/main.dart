@@ -5,21 +5,36 @@ import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_navigation.dart';
 import 'services/auth_service.dart';
+import 'services/api_service.dart';
+import 'services/theme_notifier.dart';
 
 void main() {
-  runApp(const CoffeeLifeApp());
+  runApp(CoffeeLifeApp(themeNotifier: ThemeNotifier()));
 }
 
 class CoffeeLifeApp extends StatelessWidget {
-  const CoffeeLifeApp({super.key});
+  final ThemeNotifier themeNotifier;
+
+  const CoffeeLifeApp({super.key, required this.themeNotifier});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Coffee Life',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const SplashRouter(),
+    return ListenableBuilder(
+      listenable: themeNotifier,
+      builder: (context, _) {
+        return ThemeProvider(
+          notifier: themeNotifier,
+          child: MaterialApp(
+            navigatorKey: ApiService.navigatorKey,
+            title: 'Coffee Life',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeNotifier.oscuro ? ThemeMode.dark : ThemeMode.light,
+            home: const SplashRouter(),
+          ),
+        );
+      },
     );
   }
 }
@@ -33,15 +48,12 @@ class SplashRouter extends StatefulWidget {
 
 class _SplashRouterState extends State<SplashRouter>
     with TickerProviderStateMixin {
-  // Entrada (fade + scale inicial del logo)
   late AnimationController _entryController;
   late Animation<double> _opacityAnimation;
   late Animation<double> _entryScaleAnimation;
 
-  // Barra de progreso (0.0 -> 1.0 en 5 segundos)
   late AnimationController _progressController;
 
-  // Fade-out de toda la pantalla antes de navegar
   late AnimationController _exitController;
   late Animation<double> _exitOpacityAnimation;
 
@@ -51,7 +63,6 @@ class _SplashRouterState extends State<SplashRouter>
   void initState() {
     super.initState();
 
-    // --- Entrada del logo ---
     _entryController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -72,13 +83,11 @@ class _SplashRouterState extends State<SplashRouter>
       ),
     );
 
-    // --- Barra de progreso ---
     _progressController = AnimationController(
       vsync: this,
       duration: _splashDuration,
     );
 
-    // --- Fade-out final ---
     _exitController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -89,9 +98,6 @@ class _SplashRouterState extends State<SplashRouter>
       curve: Curves.easeOut,
     );
 
-    // Precargamos el logo ANTES de iniciar el fade-in, así el logo y el
-    // nombre de la app aparecen exactamente juntos, sin que el logo
-    // "llegue tarde" mientras el texto ya se ve.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await precacheImage(
         const AssetImage('assets/images/logo_cafe.png'),
@@ -113,7 +119,6 @@ class _SplashRouterState extends State<SplashRouter>
 
     if (!mounted) return;
 
-    // Hacemos el fade-out de toda la pantalla
     await _exitController.forward();
 
     if (!mounted) return;
@@ -181,7 +186,6 @@ class _SplashRouterState extends State<SplashRouter>
           ),
           child: Stack(
             children: [
-              // --- Hojas decorativas transparentes en las esquinas ---
               _buildHoja(
                 top: -30,
                 left: -30,
@@ -211,11 +215,9 @@ class _SplashRouterState extends State<SplashRouter>
                 opacity: 0.10,
               ),
 
-              // --- Contenido principal ---
               SafeArea(
                 child: Stack(
                   children: [
-                    // Logo + nombre, perfectamente centrados en toda la pantalla
                     Center(
                       child: FadeTransition(
                         opacity: _opacityAnimation,
@@ -229,9 +231,6 @@ class _SplashRouterState extends State<SplashRouter>
                                 width: 200,
                                 height: 200,
                               ),
-                              // Subimos el bloque de texto para compensar el
-                              // espacio transparente que trae el PNG del logo.
-                              // Ajusta el valor (-55) para subir más o menos.
                               Transform.translate(
                                 offset: const Offset(0, -55),
                                 child: Column(
@@ -245,17 +244,7 @@ class _SplashRouterState extends State<SplashRouter>
                                         letterSpacing: 1.5,
                                       ),
                                     ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      'Tecnología para el cultivo del café',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.playfairDisplay(
-                                        color: Colors.white70,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w400,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
+                                    const SizedBox(height: 4),
                                   ],
                                 ),
                               ),
@@ -265,7 +254,6 @@ class _SplashRouterState extends State<SplashRouter>
                       ),
                     ),
 
-                    // Granos de café + versión, anclados abajo
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
@@ -303,19 +291,15 @@ class _SplashRouterState extends State<SplashRouter>
     );
   }
 
-  /// Fila de granos de café que se "encienden" en secuencia
-  /// conforme avanza el progreso (0.0 -> 1.0).
   Widget _buildGranosCafe(double progress) {
     const int totalGranos = 5;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(totalGranos, (index) {
-        // Cada grano tiene su propio "tramo" dentro del progreso total.
         final double inicio = index / totalGranos;
         final double fin = (index + 1) / totalGranos;
 
-        // Qué tan "encendido" está este grano (0.0 a 1.0) según el progreso.
         double encendido =
             ((progress - inicio) / (fin - inicio)).clamp(0.0, 1.0);
 
@@ -363,7 +347,6 @@ class _SplashRouterState extends State<SplashRouter>
     );
   }
 
-  /// Hoja decorativa muy transparente para decorar las esquinas.
   Widget _buildHoja({
     double? top,
     double? bottom,

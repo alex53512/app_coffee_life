@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "33809771538",
+    "project_id": "coffeelife-894ad",
+    "storage_bucket": "coffeelife-894ad.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:33809771538:android:2339101945488fcbc7bccb",
+        "android_client_info": {
+          "package_name": "com.example.app_coffee_life"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBolStQQYh_CbIasOwNzxC-Z0F_uozQqTo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -134,7 +134,6 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
         : widget.usuario['nombre'] ?? 'Experto';
  
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEFB),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : SingleChildScrollView(
@@ -175,7 +174,13 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
           bottom: false,
           child: Container(
             width: double.infinity,
-            color: const Color(0xFFF4E7D6),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
               children: [
@@ -223,7 +228,7 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
@@ -261,7 +266,7 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
@@ -334,7 +339,7 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
   Widget _buildAccionesCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
