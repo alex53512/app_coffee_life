@@ -19,7 +19,7 @@ class AppColors {
   static const Color cafeClaro = Color(0xFFD8B98F);
 
 
-  static const Color verdeOscuro = Color(0xFF4F8F1F);
+  static const Color verdeOscuro = Color(0xFF1B5E20);
 
   static const Color verdeClaro = Color(0xFFB5D75C);
 
@@ -105,8 +105,8 @@ class AppColors {
 
   static Color headerBg(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF2C241E)
-        : const Color(0xFFF4E7D6);
+        ? const Color(0xFF1B5E20)
+        : const Color(0xFF1B5E20);
   }
 
   static Color inputFill(BuildContext context) {
@@ -164,17 +164,17 @@ class AppTheme {
         displayColor: textPrimary,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: surfaceBg,
-        foregroundColor: textPrimary,
+        backgroundColor: AppColors.verdeOscuro,
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        iconTheme: IconThemeData(color: textPrimary),
+        iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: GoogleFonts.nunito(
           fontSize: 20,
           fontWeight: FontWeight.w800,
-          color: textPrimary,
+          color: Colors.white,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -282,10 +282,10 @@ class AppTheme {
       appBarTheme: AppBarTheme(
 
         backgroundColor:
-            AppColors.blancoCalido,
+            AppColors.verdeOscuro,
 
         foregroundColor:
-            AppColors.textPrimary,
+            Colors.white,
 
         elevation: 0,
 
@@ -299,7 +299,7 @@ class AppTheme {
         iconTheme:
             const IconThemeData(
           color:
-              AppColors.textPrimary,
+              Colors.white,
         ),
 
         titleTextStyle:
@@ -308,7 +308,7 @@ class AppTheme {
           fontWeight:
               FontWeight.w800,
           color:
-              AppColors.textPrimary,
+              Colors.white,
         ),
       ),
 

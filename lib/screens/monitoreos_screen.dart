@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
+import '../widgets/app_header.dart';
 import 'login_screen.dart';
 import 'monitoreo_detalle_screen.dart';
 
@@ -390,8 +391,6 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       _fincaActiva?['nombre_finca'] ??
       'Finca';
 
-  dynamic _ultimoIdFinca;
-
   @override
   void initState() {
     super.initState();
@@ -400,15 +399,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
 
   void _onAppStateChanged() {
-    final nuevoId = _idFincaActiva;
-    if (nuevoId != _ultimoIdFinca) {
-      _ultimoIdFinca = nuevoId;
-      setState(() {
-        _busqueda = '';
-        _lotes = [];
-        _loteSeleccionado = null;
-      });
-    }
+    if (!mounted) return;
     _cargarMonitoreos();
   }
 
@@ -420,6 +411,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
 
 
   Future<void> _cargarMonitoreos() async {
+    if (!mounted) return;
     setState(() {
       _cargando = true;
       _error = null;
@@ -434,6 +426,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
           : '/monitoreos?limit=$limiteSeguro';
 
       final data = await ApiService.get(endpoint);
+      if (!mounted) return;
       List lista =
           data is List ? List.from(data) : List.from(data['data'] ?? []);
       debugPrint(
@@ -469,6 +462,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       debugPrint(
           ' IDs ordenados: ${lista.take(20).map((m) => m['idMonitoreo'] ?? m['id_monitoreo']).toList()}...');
 
+      if (!mounted) return;
       setState(() {
         _monitoreos = lista;
         _cargando = false;
@@ -476,6 +470,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       debugPrint(
           '_monitoreos.length=${_monitoreos.length}, _monitoreosFiltrados.length=${_monitoreosFiltrados.length}, _busqueda="$_busqueda"');
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _cargando = false;
@@ -703,7 +698,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            AppHeader.back(context, _nombreFincaActiva, height: 52),
             const SizedBox(height: 12),
             _buildTabs(),
             const SizedBox(height: 8),
@@ -714,85 +709,9 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                           color: AppColors.primary))
                   : _error != null
                       ? _buildError()
-                      : _tabIndex == 0
-                          ? _buildHistorial()
-                          : _buildMapa(),
+                      : _buildHistorial(),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
-        child: SafeArea(
-          bottom: false,
-          child: Container(
-            height: 90,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg(context).withOpacity(0.25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary, size: 18),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_fincaActiva != null)
-                        Text(
-                          _nombreFincaActiva,
-                          style: GoogleFonts.nunito(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg(context).withOpacity(0.25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.refresh_rounded,
-                        color: AppColors.textPrimary, size: 20),
-                    onPressed: _cargarMonitoreos,
-                    tooltip: 'Recargar',
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -802,7 +721,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
           color: AppColors.cardBg(context),
           borderRadius: BorderRadius.circular(30),
@@ -811,36 +730,12 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                 color: Colors.black.withOpacity(0.06), blurRadius: 8),
           ],
         ),
-        child: Row(children: [
-          _tabItem('Historial', 0),
-          _tabItem('Lotes', 1),
-        ]),
-      ),
-    );
-  }
-
-  Widget _tabItem(String label, int index) {
-    final isActive = _tabIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() => _tabIndex = index);
-          if (index == 1) _cargarMapa();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(26),
-          ),
-          child: Text(label,
-              textAlign: TextAlign.center,
+        child: Center(
+          child: Text('Historial',
               style: GoogleFonts.nunito(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color:
-                      isActive ? Colors.white : AppColors.textSecondary)),
+                  color: AppColors.primary)),
         ),
       ),
     );

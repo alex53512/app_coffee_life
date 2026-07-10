@@ -76,7 +76,8 @@ class SyncService {
 
   static String _fechaActual() {
     final hoy = DateTime.now();
-    return '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
+    return '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}'
+        'T${hoy.hour.toString().padLeft(2, '0')}:${hoy.minute.toString().padLeft(2, '0')}:00.000Z';
   }
 
   static Future<int?> _uploadImagen({

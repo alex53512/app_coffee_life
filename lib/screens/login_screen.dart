@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../widgets/animated_logo.dart';
 import 'register_screen.dart';
 import 'main_navigation.dart';
 import 'forgot_password_screen.dart';
@@ -83,42 +84,18 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
               width: double.infinity,
               height: 300,
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF4F8F1F),
-                    Color(0xFF4F8F1F),
-                    Color.fromARGB(255, 24, 66, 30),
-                  ],
-                ),
+                color: Color(0xFF1B5E20),
               ),
               child: Stack(
                 children: [
                   SafeArea(
                     child: Align(
                       alignment: const Alignment(0, -0.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Image.asset(
-                            'assets/images/logo_cafe.png',
-                            height: 150,
-                            fit: BoxFit.contain,
-                          ),
-                          Transform.translate(
-                            offset: const Offset(0, -40),
-                            child: Text(
-                              'Coffee Life',
-                              style: GoogleFonts.playfairDisplay(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: const AnimatedLogo(
+                        size: AnimatedLogoSize.lg,
+                        showTagline: false,
+                        textColor: Colors.white,
+                        textAccentColor: Color(0xFF81C784),
                       ),
                     ),
                   ),
@@ -256,7 +233,7 @@ final rol = (rolData is Map ? rolData['nombreRol'] : rolData)?.toString().toLowe
                       child: ElevatedButton(
                         onPressed: _cargando ? null : _iniciarSesion,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4F8F1F),
+                          backgroundColor: const Color(0xFF1B5E20),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),

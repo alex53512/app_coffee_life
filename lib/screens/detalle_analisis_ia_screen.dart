@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../widgets/app_header.dart';
 import 'diagnostic_screen.dart';
  
 class DetalleAnalisisIAScreen extends StatefulWidget {
@@ -207,7 +208,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
       setState(() {
         _diagnosticoExperto = {
           'observaciones': observaciones,
-          'fechaMonitoreo': '${ahora.year}-${ahora.month.toString().padLeft(2,'0')}-${ahora.day.toString().padLeft(2,'0')}',
+          'fechaMonitoreo': '${ahora.year}-${ahora.month.toString().padLeft(2,'0')}-${ahora.day.toString().padLeft(2,'0')}T${ahora.hour.toString().padLeft(2,'0')}:${ahora.minute.toString().padLeft(2,'0')}:00.000Z',
           'recomendacion': _recCtrl.text.trim(),
           'tratamiento': _tratamientoSeleccionado?['nombre'] ?? '',
         };
@@ -240,14 +241,16 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     return Scaffold(
       body: Column(
         children: [
-          _buildHeader(context),
+          AppHeader.back(context, 'Detalle del diagnóstico',
+            subtitle: [
+              _finca?['nombreFinca'],
+              _cultivo?['nombreCultivo'] ?? _cultivo?['nombre_cultivo'],
+            ].where((e) => e != null).join(' · '),
+            height: 64, rounded: false,
+          ),
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
+              color: AppColors.verdeOscuro,
             ),
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Container(
@@ -291,65 +294,7 @@ class _DetalleAnalisisIAScreenState extends State<DetalleAnalisisIAScreen>
     );
   }
  
-  Widget _buildHeader(BuildContext context) {
-    final cultivo = _cultivo;
-    final finca = _finca;
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(0),
-          bottomRight: Radius.circular(0),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.textPrimary, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Detalle del diagnóstico',
-                          style: GoogleFonts.nunito(
-                              fontSize: 18, fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary)),
-                      if (cultivo != null || finca != null)
-                        Text(
-                          [
-                            finca?['nombreFinca'],
-                            cultivo?['nombreCultivo'] ?? cultivo?['nombre_cultivo'],
-                          ].where((e) => e != null).join(' · '),
-                          style: GoogleFonts.nunito(
-                              fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
- 
- 
+  
   Widget _buildTabIA() {
     final monitoreoIA = _monitoreoIA;
     final confianza = analisis['porcentajeConfianza'];

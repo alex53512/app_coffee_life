@@ -82,6 +82,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return valor?.toString() ?? '';
   }
 
+  String get _expertoAsignado {
+    final exp = AppState.instance.fincaSeleccionada?['expertoAsignado'];
+    if (exp is Map) {
+      final nombre = '${exp['nombre'] ?? ''} ${exp['apellido'] ?? ''}'.trim();
+      if (nombre.isNotEmpty) return nombre;
+    }
+    return 'Sin experto asignado';
+  }
+
   @override
   void dispose() {
     AppState.instance.removeListener(_onFincaCambiada);
@@ -452,11 +461,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       bottom: false,
                       child: Container(
                         decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-                          ),
+                          color: AppColors.verdeOscuro,
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                         child: _buildTopBar(context),
@@ -498,18 +503,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: Icons.arrow_back_ios_new_rounded,
           onTap: () => Navigator.pop(context),
         ),
-        const SizedBox(width: 4),
-        Text('Mi perfil',
-            style: GoogleFonts.nunito(
-                fontSize: 18, fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
+        Expanded(
+          child: Text('Mi perfil',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.nunito(
+                  fontSize: 16, fontWeight: FontWeight.w800,
+                  color: Colors.white)),
+        ),
       ],
     );
   }
 
   Widget _iconCircleButton({required IconData icon, required VoidCallback onTap}) {
     return Material(
-      color: Theme.of(context).colorScheme.surface,
+      color: Colors.white,
       shape: const CircleBorder(),
       elevation: 0,
       child: InkWell(
@@ -653,6 +660,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _rowItem(
             label: 'Departamento',
             valor: _finca?['departamento']?.toString() ?? 'No registrado',
+          ),
+          _divider(),
+          _rowItem(
+            label: 'Experto asignado',
+            valor: _expertoAsignado,
           ),
           _divider(),
           _rowItem(

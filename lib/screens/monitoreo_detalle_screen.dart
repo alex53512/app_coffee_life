@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
+import '../services/notification_service.dart';
  
 class MonitoreoDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> monitoreo;
@@ -53,14 +55,26 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     } catch (_) {}
     print('IMAGENES: ${_monitoreoCompleto?['imagenes']}');
 
+    final fuente = _monitoreoCompleto ?? widget.monitoreo;
     _analisisIa = await _cargarAnalisisIa(idMonitoreo);
 
-    if (_analisisIa?['_recomendaciones'] == null) {
-      final fuente = _monitoreoCompleto ?? widget.monitoreo;
-      final parsed = _parsearObservaciones(fuente);
-      if (parsed?['_recomendaciones'] != null) {
-        _analisisIa ??= {};
-        _analisisIa!['_recomendaciones'] = parsed!['_recomendaciones'];
+    final parsed = _parsearObservaciones(fuente);
+    if (parsed != null) {
+      _analisisIa ??= {};
+      if (parsed['_recomendaciones'] != null) {
+        _analisisIa!['_recomendaciones'] = parsed['_recomendaciones'];
+      }
+      if (parsed['confianza'] != null && (parsed['confianza'] as num) > 0) {
+        _analisisIa!['confianza'] = parsed['confianza'];
+      }
+      if (parsed['resultado'] != null) {
+        _analisisIa!['resultado'] = parsed['resultado'];
+      }
+      if (parsed['nombreCientifico'] != null) {
+        _analisisIa!['nombreCientifico'] = parsed['nombreCientifico'];
+      }
+      if (parsed['severidad'] != null) {
+        _analisisIa!['severidad'] = parsed['severidad'];
       }
     }
 
@@ -93,7 +107,12 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
     final fuente = _monitoreoCompleto ?? widget.monitoreo;
     return _parsearObservaciones(fuente);
   }
- 
+
+  int? get _idCultivoDeMonitoreo {
+    final c = _m['cultivo'];
+    if (c is Map) return int.tryParse((c['idCultivo'] ?? c['id_cultivo'] ?? '').toString());
+    return int.tryParse((_m['idCultivo'] ?? _m['id_cultivo'] ?? '').toString());
+  }
 
   Future<void> _cargarDiagnosticoExperto({required dynamic idMonitoreoPropio}) async {
     try {
@@ -122,6 +141,37 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       if (dosis.isEmpty) dosis = (rec['dosis'] ?? rec['dosis_recomendada'] ?? '').toString();
       if (frecuencia.isEmpty) frecuencia = (rec['frecuencia'] ?? rec['frecuencia_aplicacion'] ?? '').toString();
 
+      // Si siguen vacías, buscar desde el tratamiento por separado
+      int? duracionDias;
+      if (dosis.isEmpty || frecuencia.isEmpty) {
+        final idTrat = rec['idTratamiento'] ?? rec['id_tratamiento'];
+        if (idTrat != null) {
+          try {
+            final tratData = await ApiService.get('/tratamientos/$idTrat');
+            final trat = tratData is Map ? tratData : (tratData['data'] ?? {});
+            if (dosis.isEmpty) dosis = (trat['dosis'] ?? '').toString();
+            if (frecuencia.isEmpty) frecuencia = (trat['frecuencia'] ?? '').toString();
+            final raw = trat['duracionDias'];
+            if (raw != null) duracionDias = int.tryParse(raw.toString());
+          } catch (_) {}
+        }
+      }
+
+      // Calcular duración desde fecha_limite si no vino del tratamiento
+      if (duracionDias == null) {
+        final fl = rec['fecha_limite']?.toString();
+        if (fl != null && fl.isNotEmpty) {
+          try {
+            final fMon = _m['fechaMonitoreo'] ?? _m['fecha_monitoreo'];
+            final dtMon = DateTime.tryParse(fMon.toString());
+            final dtLim = DateTime.tryParse(fl);
+            if (dtMon != null && dtLim != null) {
+              duracionDias = dtLim.difference(dtMon).inDays + 1;
+            }
+          } catch (_) {}
+        }
+      }
+
       _diagnosticoExperto = {
         'experto': (rec['experto'] ?? '').toString(),
         'descripcion': (rec['descripcion'] ?? '').toString(),
@@ -130,6 +180,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
         'fecha_limite': (rec['fecha_limite'] ?? '').toString(),
         'dosis': dosis,
         'frecuencia': frecuencia,
+        if (duracionDias != null) 'duracion_dias': duracionDias,
       };
     } catch (_) {}
   }
@@ -141,17 +192,17 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
  
     if (obs.contains('—')) {
       final partes = obs.split('—').map((p) => p.trim()).toList();
-      final resultado = partes.isNotEmpty ? partes[0] : 'Sin resultado';
+      final resultado = partes.length > 1 ? partes[1] : 'Sin resultado';
       double confianza = 0.0;
-      if (partes.length > 1) {
-        final raw = partes[1]
+      if (partes.length > 2) {
+        final raw = partes[2]
             .replaceAll('%', '')
             .replaceAll('Confianza:', '')
             .replaceAll('confianza:', '')
             .trim();
         confianza = double.tryParse(raw) ?? 0.0;
       }
-      final nombreCientifico = partes.length > 2 ? partes[2] : '';
+      final nombreCientifico = partes.length > 3 ? partes[3] : '';
       String severidad = '';
       for (final p in partes) {
         if (p.startsWith('Severidad:')) {
@@ -451,18 +502,14 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                 bottom: false,
                 child: Container(
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-                    ),
+                    color: AppColors.verdeOscuro,
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   child: Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: AppColors.textPrimary, size: 20),
+                            color: Colors.white, size: 20),
                         onPressed: () => Navigator.pop(context),
                       ),
                       Expanded(
@@ -471,7 +518,7 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                             style: GoogleFonts.nunito(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary)),
+                                color: Colors.white)),
                       ),
                       const SizedBox(width: 48),
                     ],
@@ -891,6 +938,21 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
                 const SizedBox(height: 10),
                 _infoFila(Icons.calendar_today_outlined, 'Fecha límite', fechaFormateada),
               ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _aceptarTratamiento(tratamiento, dosis, frecuencia),
+                  icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+                  label: Text('Aceptar tratamiento',
+                      style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -901,7 +963,44 @@ class _MonitoreoDetalleScreenState extends State<MonitoreoDetalleScreen> {
       ],
     );
   }
-  
+
+  Future<void> _aceptarTratamiento(String tratamiento, String dosis, String frecuencia) async {
+    final idCultivo = _idCultivoDeMonitoreo;
+    if (idCultivo == null) return;
+
+    final d = _diagnosticoExperto;
+    final duracion = d?['duracion_dias'] ?? 15;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('trat_aceptado_$idCultivo', true);
+    await prefs.setInt('trat_duracion_$idCultivo', duracion as int);
+    await prefs.setString('trat_nombre_$idCultivo', tratamiento);
+    await prefs.setString('trat_dosis_$idCultivo', dosis);
+    await prefs.setString('trat_frecuencia_$idCultivo', frecuencia);
+    await prefs.setString('trat_fecha_inicio_$idCultivo', DateTime.now().toIso8601String());
+
+    final nombreCultivo = _cultivo();
+    await NotificationService.instance.scheduleDailyNotifications(
+      id: idCultivo,
+      titulo: 'Aplicar tratamiento',
+      cuerpo: 'Hoy debes aplicar "$tratamiento" en $nombreCultivo',
+      hour: 8,
+      minute: 0,
+    );
+
+    AppState.instance.notifyMonitoreoGuardado();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tratamiento aceptado — ve a Seguimiento para registrar los días',
+              style: GoogleFonts.nunito()),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    }
+  }
+
   Widget _buildImagenes({List? imagenes}) {
     final imgs = imagenes ?? _imagenes();
     if (imgs.isEmpty) {

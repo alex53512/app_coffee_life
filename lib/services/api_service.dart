@@ -10,13 +10,18 @@ class ApiService {
   static final ValueNotifier<bool> isOffline = ValueNotifier(false);
   static const String baseUrl = 'https://backend-coffe-lifee-production-191b.up.railway.app';
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static bool _loggingOut = false;
 
   static Future<void> _onUnauthorized() async {
+    debugPrint('API 401 - Cerrando sesion');
+    if (_loggingOut) return;
+    _loggingOut = true;
     await AuthService.logout();
     navigatorKey.currentState?.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
     );
+    _loggingOut = false;
   }
 
   static Future<Map<String, String>> _headers() async {
@@ -28,8 +33,9 @@ class ApiService {
     };
   }
 
-  static Future<dynamic> _handleResponse(http.Response response) async {
+  static Future<dynamic> _handleResponse(http.Response response, [String? endpoint]) async {
     if (response.statusCode == 401) {
+      debugPrint('⚠️  401 en $endpoint');
       await _onUnauthorized();
       throw Exception('Sesión expirada');
     }
@@ -45,7 +51,7 @@ class ApiService {
       Uri.parse('$baseUrl$endpoint'),
       headers: headers,
     );
-    return _handleResponse(response);
+    return _handleResponse(response, endpoint);
   }
 
   static Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
@@ -55,7 +61,7 @@ class ApiService {
       headers: headers,
       body: jsonEncode(body),
     );
-    return _handleResponse(response);
+    return _handleResponse(response, endpoint);
   }
 
   static Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
@@ -66,6 +72,7 @@ class ApiService {
       body: jsonEncode(body),
     );
     if (response.statusCode == 401) {
+      debugPrint('⚠️  401 en $endpoint');
       await _onUnauthorized();
       throw Exception('Sesión expirada');
     }
@@ -83,6 +90,7 @@ class ApiService {
       body: jsonEncode(body),
     );
     if (response.statusCode == 401) {
+      debugPrint('⚠️  401 en $endpoint');
       await _onUnauthorized();
       throw Exception('Sesión expirada');
     }
@@ -99,6 +107,7 @@ class ApiService {
       headers: headers,
     );
     if (response.statusCode == 401) {
+      debugPrint('⚠️  401 en $endpoint');
       await _onUnauthorized();
       throw Exception('Sesión expirada');
     }
@@ -134,6 +143,7 @@ class ApiService {
     final res = await http.Response.fromStream(streamed);
 
     if (res.statusCode == 401) {
+      debugPrint('⚠️  401 en /imagenes (upload)');
       await _onUnauthorized();
       return null;
     }

@@ -4,19 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../widgets/app_header.dart';
 import '../services/app_state.dart';
 
 /// Pantalla de detalle de una finca: muestra las recomendaciones que el
 /// experto le dio a cada lote/cultivo, y permite llevar el seguimiento
-/// d├¡a por d├¡a de si el tratamiento recetado (ej. un fungicida durante
-/// 15 d├¡as) se aplic├│ o no en cada lote.
-///
-/// NOTA IMPORTANTE: el backend todav├¡a no tiene un endpoint para guardar
-/// este seguimiento diario, as├¡ que por ahora se guarda LOCALMENTE en el
-/// celular (con `shared_preferences`). Cuando el backend est├® listo, solo
-/// hay que cambiar `_cargarProgreso` / `_guardarProgreso` para que lean y
-/// escriban contra la API en vez de SharedPreferences ÔÇö el resto de la
-/// pantalla no cambia.
+/// d├¡a por d├¡a de si el tratamiento recetado se aplic├│ o no en cada lote.
 class FincaDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> finca;
 
@@ -44,9 +37,8 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
   // ids de cultivo cuyo tratamiento ya fue aceptado por el caficultor.
   final Set<int> _aceptadoPorCultivo = {};
 
-  // Duraci├│n por defecto de un tratamiento, mientras el backend no indique
-  // una duraci├│n real.
-  static const int _duracionDiasPorDefecto = 15;
+  // Duraci├│n del tratamiento por cultivo (viene del backend o 15 por defecto).
+  final Map<int, int> _duracionPorCultivo = {};
 
   int? get _idFinca =>
       int.tryParse((widget.finca['idFinca'] ?? widget.finca['id_finca'] ?? '').toString());
@@ -78,6 +70,8 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
       _lastFincaId = nueva;
       _limpiarDatos();
       _cargarTodo();
+    } else {
+      _cargarTodo();
     }
   }
 
@@ -106,8 +100,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
         if (idCultivo == null) continue;
 
         await _cargarRecomendacionYTratamiento(idCultivo);
-        await _cargarAceptado(idCultivo);
-        await _cargarProgreso(idCultivo);
+        await _cargarProgresoYAceptado(idCultivo);
       }
 
       if (mounted) setState(() => _cargando = false);
@@ -139,57 +132,96 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
     }
 
     // ÔöÇÔöÇ Tratamiento recetado (solo si viene embebido en la recomendaci├│n) ÔöÇÔöÇ
+    Map<String, dynamic>? trat;
     try {
       final rec = _recomendacionPorCultivo[idCultivo];
       final tratamientosEmbebidos = rec?['tratamientos'] as List?;
       if (tratamientosEmbebidos != null && tratamientosEmbebidos.isNotEmpty) {
-        _tratamientoPorCultivo[idCultivo] =
-            Map<String, dynamic>.from(tratamientosEmbebidos[0]);
-      } else {
-        _tratamientoPorCultivo[idCultivo] = null;
+        trat = Map<String, dynamic>.from(tratamientosEmbebidos[0]);
       }
-    } catch (_) {
-      _tratamientoPorCultivo[idCultivo] = null;
+    } catch (_) {}
+
+    // Si no vino embebido, buscar desde SharedPreferences
+    if (trat == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final nombre = prefs.getString('trat_nombre_$idCultivo');
+      final dosis = prefs.getString('trat_dosis_$idCultivo');
+      final frecuencia = prefs.getString('trat_frecuencia_$idCultivo');
+      if (nombre != null) {
+        trat = <String, dynamic>{
+          'nombre': nombre,
+          if (dosis != null) 'dosisRecomendada': dosis,
+          if (frecuencia != null) 'frecuencia': frecuencia,
+        };
+      }
     }
+
+    _tratamientoPorCultivo[idCultivo] = trat;
   }
 
-  // ÔöÇÔöÇ Progreso local (SharedPreferences) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-  //
-  // Clave usada: 'trat_progreso_<idCultivo>' ÔåÆ JSON con {"1": true, "2": false, ...}
-  // (d├¡a -> aplicado). El d├¡a 1 se considera el d├¡a en que se registr├│ la
-  // recomendaci├│n (o "hoy" si no hay fecha).
+  // ÔöÇÔöÇ Progreso + aceptado desde backend ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // Si el backend no responde, cae en SharedPreferences como respaldo.
 
   String _claveProgreso(int idCultivo) => 'trat_progreso_$idCultivo';
+  String _claveAceptado(int idCultivo) => 'trat_aceptado_$idCultivo';
+  String _claveDuracion(int idCultivo) => 'trat_duracion_$idCultivo';
+  String _claveFechaInicio(int idCultivo) => 'trat_fecha_inicio_$idCultivo';
 
-  Future<void> _cargarProgreso(int idCultivo) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_claveProgreso(idCultivo));
+  Future<void> _cargarProgresoYAceptado(int idCultivo) async {
     final mapa = <int, bool>{};
-    if (raw != null) {
-      try {
-        final decoded = jsonDecode(raw) as Map<String, dynamic>;
-        decoded.forEach((k, v) => mapa[int.parse(k)] = v == true);
-      } catch (_) {}
+    bool aceptado = false;
+    int duracion = 15;
+
+    // Cargar progreso desde almacenamiento local
+    {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_claveProgreso(idCultivo));
+      if (raw != null) {
+        try {
+          final decoded = jsonDecode(raw) as Map<String, dynamic>;
+          decoded.forEach((k, v) => mapa[int.parse(k)] = v == true);
+        } catch (_) {}
+      }
+      final aceptadoLocal = prefs.getBool(_claveAceptado(idCultivo));
+      if (aceptadoLocal == true) aceptado = true;
+      final duracionLocal = prefs.getInt(_claveDuracion(idCultivo));
+      if (duracionLocal != null) duracion = duracionLocal;
     }
+
+    // Auto-marcar con X días pasados no marcados
+    if (aceptado) {
+      final prefs = await SharedPreferences.getInstance();
+      final fechaInicioStr = prefs.getString(_claveFechaInicio(idCultivo));
+      if (fechaInicioStr != null) {
+        final fechaInicio = DateTime.tryParse(fechaInicioStr);
+        if (fechaInicio != null) {
+          final hoy = DateTime.now();
+          bool huboCambio = false;
+          for (int dia = 1; dia <= duracion; dia++) {
+            final diaFecha = DateTime(fechaInicio.year, fechaInicio.month, fechaInicio.day + (dia - 1));
+            if (diaFecha.isBefore(DateTime(hoy.year, hoy.month, hoy.day)) && !mapa.containsKey(dia)) {
+              mapa[dia] = false;
+              huboCambio = true;
+            }
+          }
+          if (huboCambio) {
+            final encoded = jsonEncode(mapa.map((k, v) => MapEntry(k.toString(), v)));
+            await prefs.setString(_claveProgreso(idCultivo), encoded);
+          }
+        }
+      }
+    }
+
     _progresoPorCultivo[idCultivo] = mapa;
+    _duracionPorCultivo[idCultivo] = duracion;
+    if (aceptado) _aceptadoPorCultivo.add(idCultivo);
   }
 
   Future<void> _guardarProgreso(int idCultivo) async {
-    final prefs = await SharedPreferences.getInstance();
     final mapa = _progresoPorCultivo[idCultivo] ?? {};
+    final prefs = await SharedPreferences.getInstance();
     final encoded = jsonEncode(mapa.map((k, v) => MapEntry(k.toString(), v)));
     await prefs.setString(_claveProgreso(idCultivo), encoded);
-  }
-
-  // ÔöÇÔöÇ Aceptaci├│n del tratamiento ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-
-  String _claveAceptado(int idCultivo) => 'trat_aceptado_$idCultivo';
-
-  Future<void> _cargarAceptado(int idCultivo) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_claveAceptado(idCultivo)) == true) {
-      _aceptadoPorCultivo.add(idCultivo);
-    }
   }
 
   Future<void> _aceptarTratamiento(int idCultivo) async {
@@ -223,7 +255,10 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
       backgroundColor: const Color(0xFFF7F8F5),
       body: Column(
         children: [
-          _buildHeader(context),
+          AppHeader.back(context, _nombreFinca,
+            subtitle: _municipioFinca.isNotEmpty ? _municipioFinca : null,
+            height: 64,
+          ),
           Expanded(
             child: _cargando
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -242,6 +277,11 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
                                 _sinFincaSeleccionada()
                               else if (_cultivos.isEmpty)
                                 _sinDatos()
+                              else if (_cultivos.every((c) {
+                                final id = int.tryParse((c['idCultivo'] ?? c['id_cultivo'] ?? '').toString());
+                                return id == null || !_aceptadoPorCultivo.contains(id);
+                              }))
+                                _sinAceptados()
                               else
                                 ..._cultivos.map((c) => _buildLoteSection(c)),
                             ],
@@ -250,63 +290,6 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
                       ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: Color(0xFF262A24), size: 18),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_nombreFinca,
-                      style: GoogleFonts.nunito(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF262A24))),
-                  if (_municipioFinca.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(_municipioFinca,
-                        style: GoogleFonts.nunito(
-                            fontSize: 12, color: const Color(0xFF262A24).withOpacity(0.75))),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -377,11 +360,40 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
     );
   }
 
+  Widget _sinAceptados() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72, height: 72,
+              decoration: const BoxDecoration(color: AppColors.primaryLight, shape: BoxShape.circle),
+              child: const Icon(Icons.assignment_turned_in_outlined, color: AppColors.primary, size: 34),
+            ),
+            const SizedBox(height: 16),
+            Text('No hay tratamientos aceptados',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                    fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+            const SizedBox(height: 6),
+            Text('Ve a Monitoreos, abre un monitoreo con recomendación y toca "Aceptar tratamiento"',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoteSection(dynamic c) {
     final idCultivo = int.tryParse((c['idCultivo'] ?? c['id_cultivo'] ?? '').toString());
+    if (idCultivo == null || !_aceptadoPorCultivo.contains(idCultivo)) {
+      return const SizedBox.shrink();
+    }
     final nombreLote = _nombreCultivo(c);
-    final rec = idCultivo != null ? _recomendacionPorCultivo[idCultivo] : null;
-    final trat = idCultivo != null ? _tratamientoPorCultivo[idCultivo] : null;
+    final trat = _tratamientoPorCultivo[idCultivo];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -404,16 +416,9 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
           ),
           const SizedBox(height: 12),
 
-          // ÔöÇÔöÇ Recomendaci├│n del experto ÔöÇÔöÇ
-          if (rec != null) _buildRecomendacionCard(rec) else _buildSinRecomendacion(),
-
-          // ÔöÇÔöÇ Tratamiento recetado ÔöÇÔöÇ
-          if (trat != null && idCultivo != null) ...[
-            const SizedBox(height: 12),
-            if (_aceptadoPorCultivo.contains(idCultivo))
-              _buildSeguimientoCard(idCultivo, trat)
-            else
-              _buildAceptarCard(idCultivo, trat),
+          // ── Tratamiento recetado ──
+          if (trat != null) ...[
+            _buildSeguimientoCard(idCultivo, trat),
           ],
         ],
       ),
@@ -558,7 +563,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
             child: ElevatedButton.icon(
               onPressed: () => _aceptarTratamiento(idCultivo),
               icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-              label: Text('Aceptar tratamiento',
+              label: Text('Seguir tratamiento',
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700, color: Colors.white)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -579,6 +584,8 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
 
     final progreso = _progresoPorCultivo[idCultivo] ?? {};
     final aplicados = progreso.values.where((v) => v == true).length;
+
+    final totalDias = _duracionPorCultivo[idCultivo] ?? 15;
 
     return Container(
       width: double.infinity,
@@ -613,7 +620,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
                   ],
                 ),
               ),
-              Text('$aplicados/$_duracionDiasPorDefecto d├¡as',
+              Text('$aplicados/$totalDias d├¡as',
                   style: GoogleFonts.nunito(
                       fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
             ],
@@ -627,7 +634,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: List.generate(_duracionDiasPorDefecto, (i) {
+            children: List.generate(totalDias, (i) {
               final dia = i + 1;
               final estado = progreso[dia];
               Color bg;

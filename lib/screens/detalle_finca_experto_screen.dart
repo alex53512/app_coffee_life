@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/app_state.dart';
+import '../widgets/app_header.dart';
  
 class DetalleFincaExpertoScreen extends StatefulWidget {
   final Map<String, dynamic> finca;
@@ -112,7 +113,10 @@ class _DetalleFincaExpertoScreenState extends State<DetalleFincaExpertoScreen> {
     return Scaffold(
       body: Column(
         children: [
-          _buildHeader(context, nombre, municipio),
+          AppHeader.back(context, nombre,
+            subtitle: municipio,
+            height: 64,
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -161,56 +165,7 @@ class _DetalleFincaExpertoScreenState extends State<DetalleFincaExpertoScreen> {
     );
   }
  
-  Widget _buildHeader(BuildContext context, String nombre, String municipio) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.textPrimary, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(nombre,
-                          style: GoogleFonts.nunito(
-                              fontSize: 18, fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary)),
-                      Text(municipio,
-                          style: GoogleFonts.nunito(
-                              fontSize: 12, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
- 
+  
   Widget _buildSaludCard() {
     final salud = _getSaludActual();
     final cultivoNombre = _cultivoSeleccionadoId != null

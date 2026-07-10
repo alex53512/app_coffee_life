@@ -197,11 +197,7 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
           bottom: false,
           child: Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
+              color: AppColors.verdeOscuro,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             child: Row(
@@ -209,8 +205,8 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
                 Container(
                   width: 48,
                   height: 48,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -226,20 +222,20 @@ class _HomeExpertoScreenState extends State<HomeExpertoScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Hola, $nombre',
-                          style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                          style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
                       Text('Panel del Experto',
-                          style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary)),
+                          style: GoogleFonts.nunito(fontSize: 12, color: Colors.white70)),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text('Experto',
-                      style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ],
             ),

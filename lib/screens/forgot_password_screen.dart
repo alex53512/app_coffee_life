@@ -125,15 +125,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               width: double.infinity,
               height: 220,
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF4F8F1F),
-                    Color(0xFF4F8F1F),
-                    Color.fromARGB(255, 24, 66, 30),
-                  ],
-                ),
+                color: Color(0xFF1B5E20),
               ),
               child: SafeArea(
                 child: Stack(
@@ -241,7 +233,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     child: ElevatedButton(
                       onPressed: _cargando ? null : _accionPaso,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F8F1F),
+                        backgroundColor: const Color(0xFF1B5E20),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),

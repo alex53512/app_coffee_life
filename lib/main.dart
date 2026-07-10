@@ -7,8 +7,12 @@ import 'screens/main_navigation.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
 import 'services/theme_notifier.dart';
+import 'services/notification_service.dart';
+import 'widgets/animated_logo.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.init();
   runApp(CoffeeLifeApp(themeNotifier: ThemeNotifier()));
 }
 
@@ -175,14 +179,7 @@ class _SplashRouterState extends State<SplashRouter>
           width: double.infinity,
           height: double.infinity,
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF97D340),
-                Color(0xFF2E7D32),
-              ],
-            ),
+            color: Color(0xFF1B5E20),
           ),
           child: Stack(
             children: [
@@ -218,37 +215,18 @@ class _SplashRouterState extends State<SplashRouter>
               SafeArea(
                 child: Stack(
                   children: [
-                    Center(
+                    Align(
+                      alignment: const Alignment(0, -0.7),
                       child: FadeTransition(
                         opacity: _opacityAnimation,
                         child: ScaleTransition(
                           scale: _entryScaleAnimation,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
-                                'assets/images/logo_cafe.png',
-                                width: 200,
-                                height: 200,
-                              ),
-                              Transform.translate(
-                                offset: const Offset(0, -55),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'Coffee Life',
-                                      style: GoogleFonts.playfairDisplay(
-                                        color: Colors.white,
-                                        fontSize: 42,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          child: const AnimatedLogo(
+                            size: AnimatedLogoSize.xl,
+                            showTagline: false,
+                            showText: false,
+                            textColor: Colors.white,
+                            textAccentColor: Color(0xFF81C784),
                           ),
                         ),
                       ),

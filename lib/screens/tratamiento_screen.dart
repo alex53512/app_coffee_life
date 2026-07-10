@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
+import '../widgets/app_header.dart';
  
 class TratamientoScreen extends StatefulWidget {
   final int cultivoId;
@@ -259,7 +260,7 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            AppHeader.back(context, 'Tratamientos', height: 52),
             _buildBannerSeveridad(),
             Expanded(
               child: _cargando
@@ -299,40 +300,6 @@ class _TratamientoScreenState extends State<TratamientoScreen> {
         backgroundColor: AppColors.primary,
         onPressed: _abrirModalCrear,
         child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
- 
-  Widget _buildHeader(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
-        child: SafeArea(
-          bottom: false,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              children: [
-                IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20), onPressed: () => Navigator.pop(context)),
-                Expanded(
-                  child: Text('Tratamientos', textAlign: TextAlign.center,
-                      style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                ),
-                const SizedBox(width: 48),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

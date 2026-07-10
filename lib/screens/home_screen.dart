@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -98,6 +99,20 @@ class _HomeScreenState extends State<HomeScreen> {
       print('ERROR: $e');
       if (mounted) setState(() { _error = e.toString(); _cargando = false; });
     }
+  }
+
+  List get _recomendacionesFiltradas {
+    if (_fincas.isEmpty || _fincaSeleccionada >= _fincas.length) return [];
+    final idFinca = _fincas[_fincaSeleccionada]['idFinca'] ?? _fincas[_fincaSeleccionada]['id_finca'];
+    if (idFinca == null) return [];
+    return _recomendaciones.where((r) {
+      try {
+        final id = r['finca']?['idFinca'] ?? r['finca']?['id_finca'] ?? r['idFinca'] ?? r['id_finca'];
+        return id != null && id.toString() == idFinca.toString();
+      } catch (_) {
+        return false;
+      }
+    }).toList();
   }
 
   List get _cultivosFincaActual {
@@ -216,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (picked == null) return;
 
     final bytes = await picked.readAsBytes();
+    final fileName = picked.name;
 
     setState(() => _cargando = true);
     try {
@@ -227,32 +243,58 @@ class _HomeScreenState extends State<HomeScreen> {
         Uri.parse('$baseUrl/fincas/$idFinca'),
       );
       request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Accept']        = 'application/json';
       request.files.add(http.MultipartFile.fromBytes(
-        'foto_finca',
-        bytes,
-        filename: picked.name,
+        'fotoUrl', bytes, filename: fileName,
       ));
 
       final response = await request.send();
-      final body      = await response.stream.bytesToString();
+      final body = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
         await _cargarDatos();
+        if (mounted) setState(() {});
+
+        try {
+          final decoded = jsonDecode(body);
+          final fotoUrl = decoded['data']?['fotoUrl'] ??
+              decoded['data']?['foto_url'] ??
+              decoded['fotoUrl'] ??
+              decoded['foto_url'] ??
+              decoded['foto']?.toString();
+          if (fotoUrl != null && fotoUrl.toString().isNotEmpty) {
+            final idx = _fincas.indexWhere((f) {
+              final fid = f['idFinca'] ?? f['id_finca'];
+              return fid.toString() == idFinca.toString();
+            });
+            if (idx >= 0) {
+              _fincas[idx] = Map<String, dynamic>.from(_fincas[idx]);
+              _fincas[idx]['fotoUrl'] = fotoUrl.toString();
+              if (mounted) setState(() {});
+            }
+          }
+        } catch (_) {}
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Foto de la finca actualizada'), backgroundColor: Colors.green),
           );
         }
       } else {
-        throw Exception('Error ${response.statusCode}: $body');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $body'), backgroundColor: Colors.red),
+          );
+        }
       }
     } catch (e) {
-      setState(() => _cargando = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al subir foto: $e'), backgroundColor: Colors.red),
         );
       }
+    } finally {
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
@@ -347,33 +389,81 @@ class _HomeScreenState extends State<HomeScreen> {
                   setModal(() => guardando = true);
                   final idUsuario = widget.usuario['idUsuario'] ?? widget.usuario['id_usuario'] ?? widget.usuario['id'];
                   try {
-                    if (imagenBytes != null) {
-                      final token   = await AuthService.getToken();
-                      final baseUrl = ApiService.baseUrl;
-                      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/fincas'));
-                      request.headers['Authorization'] = 'Bearer $token';
-                      request.fields['id_usuario']    = idUsuario.toString();
-                      request.fields['nombre_finca']  = nombreCtrl.text.trim();
-                      request.fields['municipio']     = municipioCtrl.text.trim();
-                      request.fields['departamento']  = deptoCtrl.text.trim();
-                      request.files.add(http.MultipartFile.fromBytes(
-                        'foto_finca', imagenBytes!, filename: imagenSeleccionada!.name,
-                      ));
-                      final response = await request.send();
-                      final body     = await response.stream.bytesToString();
-                      if (response.statusCode != 200 && response.statusCode != 201) {
-                        throw Exception('Error ${response.statusCode}: $body');
-                      }
-                    } else {
-                      await ApiService.post('/fincas', {
-                        'id_usuario': idUsuario, 'nombre_finca': nombreCtrl.text.trim(),
-                        'municipio': municipioCtrl.text.trim(), 'departamento': deptoCtrl.text.trim(),
-                      });
-                    }
+                    final res = await ApiService.post('/fincas', {
+                      'id_usuario': idUsuario, 'nombre_finca': nombreCtrl.text.trim(),
+                      'municipio': municipioCtrl.text.trim(), 'departamento': deptoCtrl.text.trim(),
+                    });
                     if (ctx.mounted) Navigator.pop(ctx);
+                    String? fotoSubida;
+                    if (imagenBytes != null) {
+                      final idFinca = res['data']?['idFinca'] ?? res['data']?['id_finca'] ?? res['idFinca'] ?? res['id_finca'];
+                      if (idFinca != null) {
+                        try {
+                          final token   = await AuthService.getToken();
+                          final baseUrl = ApiService.baseUrl;
+                          final req = http.MultipartRequest('PUT', Uri.parse('$baseUrl/fincas/$idFinca'));
+                          req.headers['Authorization'] = 'Bearer $token';
+                          req.headers['Accept']        = 'application/json';
+                          req.files.add(http.MultipartFile.fromBytes(
+                            'fotoUrl', imagenBytes!, filename: imagenSeleccionada!.name,
+                          ));
+                          final resp = await req.send();
+                          if (resp.statusCode == 200) {
+                            final body = await resp.stream.bytesToString();
+                            final dec = jsonDecode(body);
+                            fotoSubida = dec['data']?['fotoUrl'] ??
+                                dec['data']?['foto_url'] ??
+                                dec['fotoUrl'] ??
+                                dec['foto_url'] ??
+                                dec['foto']?.toString();
+                          }
+                        } catch (e) {
+                          debugPrint('Error subiendo foto: $e');
+                        }
+                      }
+                    }
                     await _cargarDatos();
+                    if (fotoSubida != null && fotoSubida.isNotEmpty && mounted) {
+                      final idx = _fincas.indexWhere((f) {
+                        final fid = f['idFinca'] ?? f['id_finca'];
+                        return fid.toString() == (res['data']?['idFinca'] ?? res['data']?['id_finca'] ?? res['idFinca'] ?? res['id_finca']).toString();
+                      });
+                      if (idx >= 0) {
+                        _fincas[idx] = Map<String, dynamic>.from(_fincas[idx]);
+                        _fincas[idx]['fotoUrl'] = fotoSubida;
+                        setState(() {});
+                      }
+                    }
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Finca creada correctamente', style: GoogleFonts.nunito()), backgroundColor: AppColors.primary));
+                    if (mounted && _cultivosFincaActual.isEmpty) {
+                      final idFinca = _fincas[_fincaSeleccionada]['idFinca'] ?? _fincas[_fincaSeleccionada]['id_finca'];
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: Text('Crea tu primer lote', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                          content: Text('Tu finca ha sido creada correctamente. Para empezar a monitorear tus cultivos necesitas crear al menos un lote.',
+                              style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textSecondary)),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: Text('Ahora no', style: GoogleFonts.nunito(color: Colors.grey)),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _mostrarFormLote(idFinca);
+                              },
+                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                              child: Text('Crear lote', style: GoogleFonts.nunito(color: Colors.white, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   } catch (e) {
                     setModal(() => guardando = false);
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -710,14 +800,7 @@ class _HomeScreenState extends State<HomeScreen> {
   return Container(
     width: double.infinity,
     decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF97D340), 
-          Color(0xFF388E3C), 
-        ],
-      ),
+      color: AppColors.verdeOscuro,
     ),
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
     child: Row(
@@ -750,7 +833,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: GoogleFonts.nunito(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF262A24),
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 2),
@@ -758,7 +841,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Bienvenido de nuevo',
                 style: GoogleFonts.nunito(
                   fontSize: 12,
-                  color: AppColors.textSecondary,
+                  color: Colors.white70,
                 ),
               ),
             ],
@@ -777,11 +860,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(8),
                 child: const Icon(
                   BootstrapIcons.bell,
-                  color: AppColors.textPrimary,
+                  color: Colors.white,
                   size: 28,
                 ),
               ),
-              if (_recomendaciones.isNotEmpty)
+              if (_recomendacionesFiltradas.isNotEmpty)
                 Positioned(
                   right: 6,
                   top: 6,
@@ -794,7 +877,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        '${_recomendaciones.length > 9 ? "9+" : _recomendaciones.length}',
+                        '${_recomendacionesFiltradas.length > 9 ? "9+" : _recomendacionesFiltradas.length}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,

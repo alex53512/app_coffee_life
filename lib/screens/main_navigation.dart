@@ -56,6 +56,10 @@ class _MainNavigationState extends State<MainNavigation>
 
   void _onNotificacion(Map<String, dynamic> data) {
     AppState.instance.agregarNotificacion(data);
+    final tipo = (data['tipoRecomendacion'] ?? data['tipo'] ?? data['type'] ?? '').toString();
+    if (tipo.toLowerCase().contains('experto')) {
+      AppState.instance.refrescarFincaActual();
+    }
   }
 
   void _mostrarNuevasNotificaciones() {

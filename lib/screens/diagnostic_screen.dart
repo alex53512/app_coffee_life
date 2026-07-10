@@ -2,11 +2,13 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../config/env_config.dart';
 import '../services/api_service.dart';
+import '../widgets/app_header.dart';
 import '../services/app_state.dart';
  
 enum _IaClase { roya, hojaSana, arbolCafe, desconocida }
@@ -56,12 +58,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   String _invalidMessage    = '';
   String _invalidSuggestion = '';
  
-  int? _ultimoIdFinca;
-
   @override
   void initState() {
     super.initState();
-    _ultimoIdFinca = _idFincaActiva;
     _cargarDesdeAppState();
     AppState.instance.addListener(_onFincaCambiada);
   }
@@ -72,19 +71,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     super.dispose();
   }
 
-  int? get _idFincaActiva {
-    final f = AppState.instance.fincaSeleccionada;
-    return f == null
-        ? null
-        : (f['idFinca'] ?? f['id_finca'] as int?);
-  }
-
   void _onFincaCambiada() {
-    final nuevoId = _idFincaActiva;
-    if (nuevoId != _ultimoIdFinca) {
-      _ultimoIdFinca = nuevoId;
-      _cargarDesdeAppState();
-    }
+    _cargarDesdeAppState();
   }
 
   void _cargarDesdeAppState() {
@@ -205,26 +193,26 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     return Scaffold(
       body: Column(
         children: [
-          DecoratedBox(
-            decoration: const BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x18000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
+          AppHeader.back(context, 'Diagnóstico',
+            subtitle: _nombreFinca,
+            onBack: () {
+              if (_stage != 'idle') {
+                setState(() {
+                  _stage       = 'idle';
+                  _imagenFile  = null;
+                  _imagenBytes = null;
+                });
+              } else {
+                Navigator.pop(context);
+              }
+            },
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.info_outline_rounded, color: Colors.white70, size: 22),
+                onPressed: () => _showModelInfoDialog(context),
               ),
-              child: SafeArea(
-                bottom: false,
-                child: _buildHeader(context),
-              ),
-            ),
+            ],
+            height: 64,
           ),
           Expanded(
             child: AnimatedSwitcher(
@@ -243,60 +231,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     );
   }
  
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: AppColors.textPrimary, size: 20),
-            onPressed: () {
-              if (_stage != 'idle') {
-                setState(() {
-                  _stage       = 'idle';
-                  _imagenFile  = null;
-                  _imagenBytes = null;
-                });
-              } else {
-                Navigator.pop(context);
-              }
-            },
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text('Diagnóstico',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.nunito(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary)),
-                Text(_nombreFinca,
-                    style: GoogleFonts.nunito(
-                        fontSize: 11,
-                        color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline_rounded,
-                color: AppColors.textSecondary, size: 22),
-            onPressed: () => _showModelInfoDialog(context),
-          ),
-        ],
-      ),
-    );
-  }
- 
+  
   Widget _buildIdleView() {
     return SingleChildScrollView(
       key: const ValueKey('idle'),
@@ -1094,14 +1029,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       final recsStr = _recomendaciones.isNotEmpty
           ? ' — Recomendaciones: ${_recomendaciones.map((r) => r['titulo'] ?? '').join(" | ")}'
           : '';
-      final observaciones =
-          '$_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
-          '— $_scientificName — Severidad: $_severity$recsStr';
-
       int? idMonitoreo;
       try {
         final utc = DateTime.now().toUtc();
         final fechaStr = '${utc.year.toString().padLeft(4, '0')}-${utc.month.toString().padLeft(2, '0')}-${utc.day.toString().padLeft(2, '0')}T${utc.hour.toString().padLeft(2, '0')}:${utc.minute.toString().padLeft(2, '0')}:00.000Z';
+        final fechaHoraStr = AppTheme.formatFechaColombia(fechaStr);
+        final observaciones =
+            '$fechaHoraStr — $_diagnosisText — Confianza: ${(_confidence * 100).round()}% '
+            '— $_scientificName — Severidad: $_severity$recsStr';
         final resMonitoreo = await ApiService.post('/monitoreos', {
           'id_cultivo':      _cultivoSeleccionado,
           'fecha_monitoreo': fechaStr,
@@ -1163,17 +1098,54 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       }
 
       debugPrint(' Diagnóstico guardado en Monitoreos');
-      debugPrint(' Observaciones guardadas: $observaciones');
       setState(() {
         _guardando = false;
         _stage = 'idle';
         _imagenFile = null;
         _imagenBytes = null;
       });
+
+      if (mounted) _mostrarAlertaExperto();
     } catch (e) {
       debugPrint(' Error guardando: $e');
       setState(() => _guardando = false);
     }
+  }
+
+  Future<void> _mostrarAlertaExperto() async {
+    final prefs = await SharedPreferences.getInstance();
+    final yaVisto = prefs.getBool('alerta_experto_mostrada') ?? false;
+    if (yaVisto) return;
+    if (!mounted) return;
+    final experto = AppState.instance.fincaSeleccionada?['expertoAsignado'];
+    if (experto != null) return;
+    await prefs.setBool('alerta_experto_mostrada', true);
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.support_agent_outlined, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Próximamente tendrás un experto', style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
+          ],
+        ),
+        content: Text(
+          'Tus diagnósticos están siendo registrados. En los próximos días un experto será asignado a tu finca para darte recomendaciones personalizadas.',
+          style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: Text('Entendido', style: GoogleFonts.nunito(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showModelInfoDialog(BuildContext context) {

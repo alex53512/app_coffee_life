@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/app_state.dart';
+import '../widgets/app_header.dart';
 import 'fincaDetalleScreen.dart';
 
 class NotificacionesScreen extends StatefulWidget {
@@ -29,7 +30,8 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       _error = null;
     });
     try {
-      final data = await ApiService.get('/recomendaciones');
+      final idFinca = AppState.instance.idFincaSeleccionada;
+      final data = await ApiService.get('/recomendaciones${idFinca != null ? '?idFinca=$idFinca' : ''}');
       setState(() {
         _notificaciones = data is List ? data : (data['data'] ?? []);
         _cargando = false;
@@ -135,55 +137,19 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            AppHeader.back(context, 'Notificaciones',
+              height: 52,
+              actions: _sinLeer > 0
+                  ? [TextButton(
+                      onPressed: _marcarTodasLeidas,
+                      child: Text('Leer todas',
+                          style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                    )]
+                  : null,
+            ),
             if (_sinLeer > 0) _buildBannerSinLeer(),
             Expanded(child: _buildBody()),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
-        child: SafeArea(
-          bottom: false,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                Expanded(
-                  child: Text('Notificaciones',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                ),
-                if (_sinLeer > 0)
-                  TextButton(
-                    onPressed: _marcarTodasLeidas,
-                    child: Text('Leer todas',
-                        style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                  )
-                else
-                  const SizedBox(width: 48),
-              ],
-            ),
-          ),
         ),
       ),
     );

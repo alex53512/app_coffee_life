@@ -714,9 +714,11 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     try {
       final idCultivo = cultivo['idCultivo'] ?? cultivo['id_cultivo'];
  
+      final ahora = DateTime.now();
+      final fechaHora = '${fecha.substring(0, 10)}T${ahora.hour.toString().padLeft(2,'0')}:${ahora.minute.toString().padLeft(2,'0')}:00.000Z';
       final resMonitoreo = await ApiService.post('/monitoreos', {
         'id_cultivo':      idCultivo,
-        'fecha_monitoreo': fecha,
+        'fecha_monitoreo': fechaHora,
         'observaciones':   observaciones,
       });
       final idMonitoreo = resMonitoreo['data']?['idMonitoreo'] as int?;
@@ -817,11 +819,7 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-        ),
+        color: AppColors.verdeOscuro,
       ),
       child: Column(
         children: [
@@ -836,14 +834,14 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                       Text('Diagnósticos',
                           style: GoogleFonts.nunito(
                               fontSize: 22, fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary)),
+                              color: Colors.white)),
                       if (nombreFinca != null)
                         Text(
                           nombreCultivo != null
                               ? '$nombreFinca · $nombreCultivo'
                               : nombreFinca,
                           style: GoogleFonts.nunito(
-                              fontSize: 12, color: AppColors.textSecondary),
+                              fontSize: 12, color: Colors.white70),
                         ),
                     ],
                   ),
@@ -854,10 +852,10 @@ class _DiagnosticoExpertoScreenState extends State<DiagnosticoExpertoScreen>
                     icon: const Icon(Icons.filter_alt_off, size: 16),
                     label: Text('Limpiar',
                         style: GoogleFonts.nunito(fontSize: 12)),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    style: TextButton.styleFrom(foregroundColor: Colors.white),
                   ),
                 IconButton(
-                  icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
                   onPressed: _cargarDatos,
                 ),
               ],

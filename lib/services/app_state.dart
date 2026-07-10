@@ -45,8 +45,19 @@ class AppState extends ChangeNotifier {
   Future<void> _verificarNotificaciones() async {
     if (_fincaSeleccionada == null) return;
     try {
-      final data = await ApiService.get('/recomendaciones');
-      final lista = data is List ? data : (data['data'] ?? []);
+      final idFinca = idFincaSeleccionada;
+      final data = await ApiService.get('/recomendaciones${idFinca != null ? '?idFinca=$idFinca' : ''}');
+      List lista = data is List ? data : (data['data'] ?? []);
+      if (idFinca != null) {
+        lista = lista.where((r) {
+          try {
+            final id = r['finca']?['idFinca'] ?? r['finca']?['id_finca'] ?? r['idFinca'] ?? r['id_finca'];
+            return id != null && id.toString() == idFinca.toString();
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+      }
       final int noLeidas =
           lista.where((r) => r['leida'] != true && r['leida'] != 1).length;
       if (_ultimoConteoServer == -1) {
@@ -126,6 +137,23 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
  
+  Future<void> refrescarFincaActual() async {
+    if (_fincaSeleccionada == null) return;
+    try {
+      final data = await ApiService.get('/fincas');
+      final lista = data is List ? data : (data['data'] ?? []);
+      final idActual = idFincaSeleccionada;
+      for (final f in lista) {
+        final id = f['idFinca'] ?? f['id_finca'];
+        if (id.toString() == idActual.toString()) {
+          _fincaSeleccionada = Map<String, dynamic>.from(f as Map);
+          notifyListeners();
+          return;
+        }
+      }
+    } catch (_) {}
+  }
+
   void setCultivo(Map<String, dynamic>? cultivo, String nivelRoya) {
     _cultivoSeleccionado = cultivo != null
         ? Map<String, dynamic>.from(cultivo)

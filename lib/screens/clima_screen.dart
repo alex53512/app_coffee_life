@@ -331,16 +331,12 @@ class _ClimaScreenState extends State<ClimaScreen> {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-        ),
+        color: AppColors.verdeOscuro,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
-          const Icon(Icons.wb_cloudy_rounded, color: AppColors.primary, size: 26),
+          const Icon(Icons.wb_cloudy_rounded, color: Colors.white, size: 26),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -348,19 +344,19 @@ class _ClimaScreenState extends State<ClimaScreen> {
               children: [
                 Text('Clima · $fincaNombre',
                     style: GoogleFonts.nunito(
-                        fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
                 if (cultivoNombre.isNotEmpty)
                   Row(
                     children: [
                       Text('Cultivo: $cultivoNombre',
-                          style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
+                          style: GoogleFonts.nunito(fontSize: 11, color: Colors.white70)),
                       const SizedBox(width: 6),
                       _royaBadge(nivelRoya),
                     ],
                   )
                 else
                   Text('Selecciona un cultivo en Inicio para ver recomendaciones personalizadas',
-                      style: GoogleFonts.nunito(fontSize: 10, color: AppColors.textSecondary)),
+                      style: GoogleFonts.nunito(fontSize: 10, color: Colors.white70)),
               ],
             ),
           ),

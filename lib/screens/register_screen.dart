@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../widgets/animated_logo.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -87,15 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             width: double.infinity,
             height: double.infinity,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF4F8F1F),
-                  Color(0xFF071509),
-                  Color(0xFF4F8F1F),
-                ],
-              ),
+              color: Color(0xFF1B5E20),
             ),
           ),
 
@@ -119,48 +112,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const SizedBox(height: 20),
-                            Image.asset(
-                              'assets/images/logo_cafe.png',
-                              width: 65,
-                              height: 65,
-                            ),
-                            Transform.translate(
-                              offset: const Offset(0, -15),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'Únete a Coffee Life',
-                                    style: GoogleFonts.playfairDisplay(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w800,
-                                      color: const Color(0xFFE8F5E0),
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'CREA TU CUENTA',
-                                    style: GoogleFonts.lato(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w300,
-                                      color: const Color(0xFF9DC49E),
-                                      letterSpacing: 3,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        child: const AnimatedLogo(
+                          size: AnimatedLogoSize.md,
+                          showTagline: false,
+                          textColor: Color(0xFFE8F5E0),
+                          textAccentColor: Color(0xFF81C784),
                         ),
                       ),
                     ],
                   ),
                 ),
-
+ 
                 Expanded(
                   child: ClipPath(
                     clipper: _OvalTopClipper(),
@@ -405,7 +367,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: ElevatedButton(
                                   onPressed: _cargando ? null : _registrar,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2D6E35),
+                                    backgroundColor: const Color(0xFF1B5E20),
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),

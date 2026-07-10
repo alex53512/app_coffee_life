@@ -58,7 +58,7 @@ const camera = new THREE.PerspectiveCamera(
   0.01,
   1000
 );
-camera.position.set(0, 0, 2);
+camera.position.set(0, 0.0, 1.8);
 
 scene.add(new THREE.AmbientLight(0xffffff, 1.2));
 const key = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -101,7 +101,7 @@ function centrarEnCabeza(distanciaBase = 5.0, offsetVertical = 0.3) {
   const headWorldPos = new THREE.Vector3();
   headBone.getWorldPosition(headWorldPos);
 
-  camera.position.set(headWorldPos.x, headWorldPos.y, headWorldPos.z + distanciaBase);
+  camera.position.set(headWorldPos.x, headWorldPos.y + 0.03, headWorldPos.z + distanciaBase);//aqui para bajar la camara
   camera.near = distanciaBase / 50;
   camera.far  = distanciaBase * 50;
   camera.lookAt(headWorldPos.x, headWorldPos.y - offsetVertical, headWorldPos.z);
@@ -177,7 +177,7 @@ function _initLoader() {
       // caemos de vuelta al encuadre de cuerpo completo.
       // El segundo argumento (0.3) es lo que sube el avatar dentro del
       // encuadre. Súbelo para que suba más, bájalo para que suba menos.
-      let centrado = centrarEnCabeza(1.0, 0.0);
+      let centrado = centrarEnCabeza(0.75, 0.08);
       if (!centrado) {
         console.warn('⚠️ No se encontró headBone, usando encuadre de cuerpo completo');
         encuadrarCamara(avatar, 1.21);
@@ -324,7 +324,7 @@ function onResize() {
   // Re-centrar cámara en la cabeza para que el avatar siempre
   // se vea completo y centrado sin importar el nuevo tamaño.
   if (headBone) {
-    centrarEnCabeza(1.0, 0.0);
+    centrarEnCabeza(0.75, 0.08);
   }
 }
 window.addEventListener('resize', onResize);

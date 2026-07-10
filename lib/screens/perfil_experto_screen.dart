@@ -175,11 +175,7 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
           child: Container(
             width: double.infinity,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
+              color: AppColors.verdeOscuro,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
@@ -187,10 +183,10 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
                 Container(
                   width: 88, height: 88,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: Colors.white.withOpacity(0.2),
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: AppColors.primary.withOpacity(0.3),
+                      BoxShadow(color: Colors.black.withOpacity(0.2),
                           blurRadius: 12, offset: const Offset(0, 4)),
                     ],
                   ),
@@ -204,17 +200,17 @@ class _PerfilExpertoScreenState extends State<PerfilExpertoScreen> {
                 const SizedBox(height: 12),
                 Text(nombre,
                     style: GoogleFonts.nunito(
-                        fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text('Experto Agrónomo',
                       style: GoogleFonts.nunito(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                          fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ],
             ),

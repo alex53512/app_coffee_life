@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_header.dart';
 import 'login_screen.dart';
 
 class AjustesScreen extends StatefulWidget {
@@ -192,7 +193,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     return Scaffold(
       body: Column(
         children: [
-          _buildHeader(),
+          AppHeader.back(context, 'Ajustes', height: 52),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -211,40 +212,6 @@ class _AjustesScreenState extends State<AjustesScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
-        child: SafeArea(
-          bottom: false,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF97D340), Color(0xFF388E3C)],
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 4),
-                Text('Ajustes', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

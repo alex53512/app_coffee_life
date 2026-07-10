@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state.dart';
 import 'websocket_service.dart';
 
 class AuthService {
- static const String baseUrl = 'https://backend-coffe-lifee-production-191b.up.railway.app';
+  static const String baseUrl = 'https://backend-coffe-lifee-production-191b.up.railway.app';
 
   static const String _tokenKey = 'auth_token';
   static const String _userKey  = 'auth_user';
@@ -24,13 +25,19 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 15));
       final data = jsonDecode(response.body);
+      debugPrint('LOGIN RESPONSE: ${response.statusCode} body=$data');
       if (response.statusCode == 200) {
         AppState.instance.reset();
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, data['token']);
-        await prefs.setString(_userKey, jsonEncode(data['usuario'] ?? data['data']));
+        final token = _extractToken(data);
+        debugPrint('TOKEN EXTRAIDO: "$token"');
+        await prefs.setString(_tokenKey, token);
+        final usuario = _extractUsuario(data);
+        final tokenLeido = prefs.getString(_tokenKey);
+        debugPrint('TOKEN GUARDADO EN PREFS: "$tokenLeido"');
+        await prefs.setString(_userKey, jsonEncode(usuario));
         WebSocketService.instance.connect();
-        return {'success': true, 'data': data['usuario'] ?? data['data']};
+        return {'success': true, 'data': usuario};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Correo o contraseña incorrectos'};
       }
@@ -178,5 +185,28 @@ class AuthService {
     } catch (e) {
       return {'success': false, 'message': 'No se pudo conectar al servidor. Verifica tu conexión a internet.'};
     }
+  }
+
+  static String _extractToken(Map<String, dynamic> data) {
+    final token = data['token'] ??
+        data['accessToken'] ??
+        data['access_token'];
+    if (token != null && token.toString().isNotEmpty) return token.toString();
+    final nested = data['data'];
+    if (nested is Map) {
+      final t = nested['token'] ??
+          nested['accessToken'] ??
+          nested['access_token'];
+      if (t != null && t.toString().isNotEmpty) return t.toString();
+    }
+    return '';
+  }
+
+  static Map<String, dynamic> _extractUsuario(Map<String, dynamic> data) {
+    final usuario = data['usuario'] ?? data['user'] ?? data['data'];
+    if (usuario is Map) {
+      return Map<String, dynamic>.from(usuario);
+    }
+    return data;
   }
 }
