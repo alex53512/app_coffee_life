@@ -224,7 +224,7 @@ class _SplashRouterState extends State<SplashRouter>
                           child: const AnimatedLogo(
                             size: AnimatedLogoSize.xl,
                             showTagline: false,
-                            showText: false,
+                            showText: true,
                             textColor: Colors.white,
                             textAccentColor: Color(0xFF81C784),
                           ),
