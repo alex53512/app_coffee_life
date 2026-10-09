@@ -42,6 +42,10 @@ class AppState extends ChangeNotifier {
     _pollTimer = null;
   }
 
+  Future<void> verificarNotificaciones() async {
+    await _verificarNotificaciones();
+  }
+
   Future<void> _verificarNotificaciones() async {
     if (_fincaSeleccionada == null) return;
     try {

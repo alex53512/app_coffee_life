@@ -22,6 +22,7 @@ class _MainNavigationState extends State<MainNavigation>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   int _homeRefreshKey = 0;
+  bool _mostrandoDialogo = false;
 
   late AnimationController _fabController;
   late Animation<double> _fabScale;
@@ -29,7 +30,7 @@ class _MainNavigationState extends State<MainNavigation>
   @override
   void initState() {
     super.initState();
-    AppState.instance.addListener(_onFincaCambiada);
+    AppState.instance.addListener(_onEstadoCambiado);
     AppState.instance.iniciarPolling();
     WebSocketService.instance.on('*', _onNotificacion);
     _fabController = AnimationController(
@@ -43,15 +44,15 @@ class _MainNavigationState extends State<MainNavigation>
 
   @override
   void dispose() {
-    AppState.instance.removeListener(_onFincaCambiada);
+    AppState.instance.removeListener(_onEstadoCambiado);
     WebSocketService.instance.off('*', _onNotificacion);
     _fabController.dispose();
     super.dispose();
   }
 
-  void _onFincaCambiada() {
-    setState(() {});
-    _mostrarNuevasNotificaciones();
+  void _onEstadoCambiado() {
+    if (_currentIndex == 0) setState(() {});
+    if (!_mostrandoDialogo) _mostrarNuevasNotificaciones();
   }
 
   void _onNotificacion(Map<String, dynamic> data) {
@@ -62,10 +63,11 @@ class _MainNavigationState extends State<MainNavigation>
     }
   }
 
-  void _mostrarNuevasNotificaciones() {
+  Future<void> _mostrarNuevasNotificaciones() async {
     final notif = AppState.instance.ultimaNotificacionNueva;
     final nuevas = AppState.instance.nuevasDesdeUltimoAviso;
     if (notif == null || nuevas <= 0 || !mounted) return;
+    _mostrandoDialogo = true;
     AppState.instance.reiniciarContadorAvisos();
     final tipo =
         (notif['tipoRecomendacion'] ?? notif['tipo'] ?? '').toString();
@@ -74,8 +76,9 @@ class _MainNavigationState extends State<MainNavigation>
         ? 'Nueva notificación del experto'
         : 'Nueva notificación';
     final mensaje = notif['mensaje'] ?? notif['message'] ?? '';
-    showDialog(
+    await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
@@ -104,6 +107,7 @@ class _MainNavigationState extends State<MainNavigation>
         ],
       ),
     );
+    _mostrandoDialogo = false;
   }
 
   String get _nombreFincaActual =>
@@ -201,6 +205,7 @@ class _MainNavigationState extends State<MainNavigation>
     return GestureDetector(
       onTap: () {
         if (index == 0) _homeRefreshKey++;
+        if (index == 3) AppState.instance.verificarNotificaciones();
         setState(() => _currentIndex = index);
       },
       behavior: HitTestBehavior.opaque,
