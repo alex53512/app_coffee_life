@@ -443,8 +443,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         barrierDismissible: false,
                         builder: (ctx) => AlertDialog(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          title: Text('Crea tu primer lote', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                          content: Text('Tu finca ha sido creada correctamente. Para empezar a monitorear tus cultivos necesitas crear al menos un lote.',
+                           title: Text('Crea tu primer cultivo', style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                           content: Text('Tu finca ha sido creada correctamente. Para empezar a monitorear tus cultivos necesitas crear al menos un cultivo.',
                               style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textSecondary)),
                           actions: [
                             TextButton(
@@ -454,11 +454,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             ElevatedButton(
                               onPressed: () {
                                 Navigator.pop(ctx);
-                                _mostrarFormLote(idFinca);
+                                _mostrarFormCultivo(idFinca);
                               },
                               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                              child: Text('Crear lote', style: GoogleFonts.nunito(color: Colors.white, fontWeight: FontWeight.w700)),
+                              child: Text('Crear cultivo', style: GoogleFonts.nunito(color: Colors.white, fontWeight: FontWeight.w700)),
                             ),
                           ],
                         ),
@@ -482,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _mostrarFormLote(dynamic idFinca) {
+  void _mostrarFormCultivo(dynamic idFinca) {
     final formKey      = GlobalKey<FormState>();
     final nombreCtrl   = TextEditingController();
     final variedadCtrl = TextEditingController();
@@ -501,11 +501,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
-            Text('Nuevo lote', style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            Text('Nuevo cultivo', style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             const SizedBox(height: 4),
-            Text('Agrega un lote a esta finca', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
+            Text('Agrega un cultivo a esta finca', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 20),
-            _campo(nombreCtrl, 'Nombre del lote *',
+            _campo(nombreCtrl, 'Nombre del cultivo *',
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
             const SizedBox(height: 16),
             Text('Variedad de café', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -535,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (ctx.mounted) Navigator.pop(ctx);
                     await _cargarDatos();
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lote agregado correctamente', style: GoogleFonts.nunito()), backgroundColor: AppColors.primary));
+                      SnackBar(content: Text('Cultivo agregado correctamente', style: GoogleFonts.nunito()), backgroundColor: AppColors.primary));
                   } catch (e) {
                     setModal(() => guardando = false);
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -545,7 +545,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                 child: guardando ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                    : Text('Guardar lote', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                    : Text('Guardar cultivo', style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ],
@@ -554,13 +554,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _eliminarLote(dynamic idCultivo, String nombreLote) async {
+  Future<void> _eliminarCultivo(dynamic idCultivo, String nombreCultivo) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Eliminar lote', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-        content: Text('¿Estás seguro que quieres eliminar el lote "$nombreLote"?', style: GoogleFonts.nunito()),
+        title: Text('Eliminar cultivo', style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
+        content: Text('¿Estás seguro que quieres eliminar el cultivo "$nombreCultivo"?', style: GoogleFonts.nunito()),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false),
               child: Text('Cancelar', style: GoogleFonts.nunito(color: AppColors.textSecondary))),
@@ -575,14 +575,14 @@ class _HomeScreenState extends State<HomeScreen> {
       await ApiService.delete('/cultivos/$idCultivo');
       await _cargarDatos();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lote eliminado correctamente', style: GoogleFonts.nunito()), backgroundColor: Colors.green));
+        SnackBar(content: Text('Cultivo eliminado correctamente', style: GoogleFonts.nunito()), backgroundColor: Colors.green));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: Colors.red));
     }
   }
 
-  void _mostrarFormEditarLote(Map<String, dynamic> cultivo) {
+  void _mostrarFormEditarCultivo(Map<String, dynamic> cultivo) {
     final formKey      = GlobalKey<FormState>();
     final nombreCtrl   = TextEditingController(text: cultivo['nombreCultivo'] ?? cultivo['nombre_cultivo'] ?? '');
     final arbolesCtrl  = TextEditingController(text: (cultivo['numeroArboles'] ?? cultivo['numero_arboles'] ?? '').toString());
@@ -607,11 +607,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
-            Text('Editar lote', style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            Text('Editar cultivo', style: GoogleFonts.nunito(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             const SizedBox(height: 4),
-            Text('Actualiza los datos del lote', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
+            Text('Actualiza los datos del cultivo', style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 20),
-            _campo(nombreCtrl, 'Nombre del lote *',
+            _campo(nombreCtrl, 'Nombre del cultivo *',
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
             const SizedBox(height: 16),
             Text('Variedad de café', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -643,7 +643,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (ctx.mounted) Navigator.pop(ctx);
                     await _cargarDatos();
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lote actualizado correctamente', style: GoogleFonts.nunito()), backgroundColor: Colors.green));
+                      SnackBar(content: Text('Cultivo actualizado correctamente', style: GoogleFonts.nunito()), backgroundColor: Colors.green));
                   } catch (e) {
                     setModal(() => guardando = false);
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -661,10 +661,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _eliminarLote(idCultivo, cultivo['nombreCultivo'] ?? cultivo['nombre_cultivo'] ?? 'lote');
+                    _eliminarCultivo(idCultivo, cultivo['nombreCultivo'] ?? cultivo['nombre_cultivo'] ?? 'cultivo');
                   },
                   icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                  label: Text('Eliminar lote',
+                  label: Text('Eliminar cultivo',
                       style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.red)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.red),
@@ -1108,7 +1108,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Divider(color: AppColors.border),
             const SizedBox(height: 10),
             Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-              _fincaDato('${cultivos.length}', 'Lotes registrados'),
+              _fincaDato('${cultivos.length}', 'Cultivos registrados'),
               Container(width: 1, height: 36, color: AppColors.border),
               _fincaDato('$totalArboles', 'Plantas de café'),
             ]),
@@ -1116,23 +1116,23 @@ class _HomeScreenState extends State<HomeScreen> {
             const Divider(color: AppColors.border),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Lotes registrados', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text('Cultivos registrados', style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
               GestureDetector(
-                onTap: () => _mostrarFormLote(idFinca),
+                onTap: () => _mostrarFormCultivo(idFinca),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(16)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     const Icon(BootstrapIcons.plus, color: AppColors.primary, size: 14),
                     const SizedBox(width: 3),
-                    Text('Agregar lote', style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    Text('Agregar cultivo', style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
                   ]),
                 ),
               ),
             ]),
             if (cultivos.isEmpty) ...[
               const SizedBox(height: 10),
-              Center(child: Text('Sin lotes registrados aún', style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary))),
+              Center(child: Text('Sin cultivos registrados aún', style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textSecondary))),
             ] else ...[
               const SizedBox(height: 6),
               Text('(toca para ver su salud)', style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textSecondary)),
@@ -1180,7 +1180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ]),
                       ])),
                       IconButton(
-                        onPressed: () => _mostrarFormEditarLote(c as Map<String, dynamic>),
+                        onPressed: () => _mostrarFormEditarCultivo(c as Map<String, dynamic>),
                         icon: const Icon(BootstrapIcons.pencil, size: 18),
                         color: AppColors.primary, padding: EdgeInsets.zero, constraints: const BoxConstraints(),
                       ),

@@ -9,9 +9,9 @@ class FincaCard extends StatelessWidget {
   final List<dynamic> cultivos;
   final dynamic cultivoSeleccionado;
   final List<dynamic> monitoreos;
-  final void Function(dynamic idFinca) onAgregarLote;
-  final void Function(Map<String, dynamic> cultivo) onEditarLote;
-  final void Function(dynamic idCultivo, String nombreLote) onEliminarLote;
+  final void Function(dynamic idFinca) onAgregarCultivo;
+  final void Function(Map<String, dynamic> cultivo) onEditarCultivo;
+  final void Function(dynamic idCultivo, String nombreCultivo) onEliminarCultivo;
   final bool cargandoMas;
   final bool hasMore;
   final VoidCallback? onCargarMas;
@@ -24,9 +24,9 @@ class FincaCard extends StatelessWidget {
     required this.cultivos,
     this.cultivoSeleccionado,
     required this.monitoreos,
-    required this.onAgregarLote,
-    required this.onEditarLote,
-    required this.onEliminarLote,
+    required this.onAgregarCultivo,
+    required this.onEditarCultivo,
+    required this.onEliminarCultivo,
     this.cargandoMas = false,
     this.hasMore = false,
     this.onCargarMas,
@@ -157,7 +157,7 @@ class FincaCard extends StatelessWidget {
                     _dato(
                       Icons.grid_view_rounded,
                       '${cultivos.length}',
-                      'Lotes registrados',
+                      'Cultivos registrados',
                     ),
                     Container(
                       width: 1,
@@ -178,7 +178,7 @@ class FincaCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Lotes registrados',
+                      'Cultivos registrados',
                       style: GoogleFonts.nunito(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -186,7 +186,7 @@ class FincaCard extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => onAgregarLote(idFinca),
+                      onTap: () => onAgregarCultivo(idFinca),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -206,7 +206,7 @@ class FincaCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              'Agregar lote',
+                              'Agregar cultivo',
                               style: GoogleFonts.nunito(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -223,7 +223,7 @@ class FincaCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   Center(
                     child: Text(
-                      'Sin lotes registrados aún',
+                      'Sin cultivos registrados aún',
                       style: GoogleFonts.nunito(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -308,7 +308,7 @@ class FincaCard extends StatelessWidget {
                           ),
                           IconButton(
                             onPressed: () =>
-                                onEditarLote(c as Map<String, dynamic>),
+                                onEditarCultivo(c as Map<String, dynamic>),
               icon: const Icon(
                 Icons.edit_outlined,
                               size: 18,
@@ -319,7 +319,7 @@ class FincaCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           IconButton(
-                            onPressed: () => onEliminarLote(
+                            onPressed: () => onEliminarCultivo(
                               idCultivo,
                               c['nombreCultivo'] ??
                                   c['nombre_cultivo'] ??
@@ -405,7 +405,7 @@ class FincaCard extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        'Cargar más lotes',
+                                        'Cargar más cultivos',
                                         style: GoogleFonts.nunito(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,

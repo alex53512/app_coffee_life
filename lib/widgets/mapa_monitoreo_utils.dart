@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-const Color amarilloRiesgoLote = Color(0xFFFBC02D);
+const Color amarilloRiesgoCultivo = Color(0xFFFBC02D);
 
 Color riesgoColor(int nivel) => switch (nivel) {
       1 => AppColors.primary,
-      2 => amarilloRiesgoLote,
+      2 => amarilloRiesgoCultivo,
       3 => Colors.red,
       _ => AppColors.primary,
     };
@@ -19,10 +19,10 @@ String riesgoLabel(int nivel) => switch (nivel) {
       _ => 'Sin datos',
     };
 
-class LoteLayout {
+class CultivoLayout {
   final List<Offset> centers;
   final List<List<Offset>> cells;
-  const LoteLayout(this.centers, this.cells);
+  const CultivoLayout(this.centers, this.cells);
 }
 
 List<Offset> generarSemillas(Size size, int n) {
@@ -111,7 +111,7 @@ List<List<Offset>> calcularCeldasVoronoi(
   return cells;
 }
 
-const double factorEscalaLote = 0.92;
+const double factorEscalaCultivo = 0.92;
 
 List<Offset> encogerPoligono(List<Offset> poly, double factor) {
   if (poly.isEmpty) return poly;
@@ -130,9 +130,9 @@ List<Offset> encogerPoligono(List<Offset> poly, double factor) {
       .toList();
 }
 
-LoteLayout computeLoteLayout(Size size, int n) {
+CultivoLayout computeCultivoLayout(Size size, int n) {
   if (n <= 0 || size.width <= 0 || size.height <= 0) {
-    return const LoteLayout([], []);
+    return const CultivoLayout([], []);
   }
   if (n == 1) {
     final rect = [
@@ -141,17 +141,17 @@ LoteLayout computeLoteLayout(Size size, int n) {
       Offset(size.width, size.height),
       Offset(0, size.height),
     ];
-    return LoteLayout(
+    return CultivoLayout(
       [Offset(size.width / 2, size.height / 2)],
-      [encogerPoligono(rect, factorEscalaLote)],
+      [encogerPoligono(rect, factorEscalaCultivo)],
     );
   }
   final seeds = generarSemillas(size, n);
   final weights = generarPesos(size, n);
   final cells = calcularCeldasVoronoi(size, seeds, weights)
-      .map((celda) => encogerPoligono(celda, factorEscalaLote))
+      .map((celda) => encogerPoligono(celda, factorEscalaCultivo))
       .toList();
-  return LoteLayout(seeds, cells);
+  return CultivoLayout(seeds, cells);
 }
 
 bool puntoEnPoligono(Offset p, List<Offset> poly) {
@@ -236,10 +236,10 @@ double radioPromedio(Size size, int n) {
 }
 
 class MapaFincaPainter extends CustomPainter {
-  final List<LoteRiesgo> lotes;
+  final List<CultivoRiesgo> cultivos;
   final int? selectedIdCultivo;
 
-  MapaFincaPainter({required this.lotes, this.selectedIdCultivo});
+  MapaFincaPainter({required this.cultivos, this.selectedIdCultivo});
 
   void _drawPin(Canvas canvas, Offset center, Color color,
       {bool selected = false}) {
@@ -285,16 +285,16 @@ class MapaFincaPainter extends CustomPainter {
     );
   }
 
-  void _drawLabel(Canvas canvas, Offset center, LoteRiesgo lote,
+  void _drawLabel(Canvas canvas, Offset center, CultivoRiesgo cultivo,
       double refSize) {
-    final color = riesgoColor(lote.nivel);
-    final label = lote.nivel == 0 ? 'Sin datos' : riesgoLabel(lote.nivel);
+    final color = riesgoColor(cultivo.nivel);
+    final label = cultivo.nivel == 0 ? 'Sin datos' : riesgoLabel(cultivo.nivel);
     final nameFontSize = (refSize * 0.22).clamp(9.0, 13.0);
     final riskFontSize = (refSize * 0.16).clamp(7.0, 10.0);
 
     final tp = TextPainter(
       text: TextSpan(
-        text: lote.nombre,
+        text: cultivo.nombre,
         style: TextStyle(
           color: Colors.white,
           fontSize: nameFontSize,
@@ -353,21 +353,21 @@ class MapaFincaPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (lotes.isEmpty) return;
+    if (cultivos.isEmpty) return;
 
-    final layout = computeLoteLayout(size, lotes.length);
+    final layout = computeCultivoLayout(size, cultivos.length);
     if (layout.cells.isEmpty) return;
 
-    final refSize = radioPromedio(size, lotes.length);
+    final refSize = radioPromedio(size, cultivos.length);
 
-    for (int i = 0; i < lotes.length; i++) {
-      final lote = lotes[i];
+    for (int i = 0; i < cultivos.length; i++) {
+      final cultivo = cultivos[i];
       final cellPts = layout.cells[i];
       if (cellPts.length < 3) continue;
 
-      final color = riesgoColor(lote.nivel);
+      final color = riesgoColor(cultivo.nivel);
       final isSel =
-          selectedIdCultivo != null && lote.idCultivo == selectedIdCultivo;
+          selectedIdCultivo != null && cultivo.idCultivo == selectedIdCultivo;
 
       final path = poligonoOrganico(cellPts);
 
@@ -393,15 +393,15 @@ class MapaFincaPainter extends CustomPainter {
       );
     }
 
-    for (int i = 0; i < lotes.length; i++) {
-      final lote = lotes[i];
+    for (int i = 0; i < cultivos.length; i++) {
+      final cultivo = cultivos[i];
       final center = layout.centers[i];
-      final color = riesgoColor(lote.nivel);
+      final color = riesgoColor(cultivo.nivel);
       final isSel =
-          selectedIdCultivo != null && lote.idCultivo == selectedIdCultivo;
+          selectedIdCultivo != null && cultivo.idCultivo == selectedIdCultivo;
 
       _drawPin(canvas, center, color, selected: isSel);
-      if (isSel) _drawLabel(canvas, center, lote, refSize);
+      if (isSel) _drawLabel(canvas, center, cultivo, refSize);
     }
 
     canvas.drawRect(
@@ -415,15 +415,15 @@ class MapaFincaPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant MapaFincaPainter old) =>
-      old.lotes != lotes || old.selectedIdCultivo != selectedIdCultivo;
+      old.cultivos != cultivos || old.selectedIdCultivo != selectedIdCultivo;
 }
 
-class LoteRiesgo {
+class CultivoRiesgo {
   final int idCultivo;
   final String nombre;
   final int nivel;
 
-  const LoteRiesgo({
+  const CultivoRiesgo({
     required this.idCultivo,
     required this.nombre,
     required this.nivel,

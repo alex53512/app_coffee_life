@@ -8,8 +8,8 @@ import '../widgets/app_header.dart';
 import '../services/app_state.dart';
 
 /// Pantalla de detalle de una finca: muestra las recomendaciones que el
-/// experto le dio a cada lote/cultivo, y permite llevar el seguimiento
-/// d├¡a por d├¡a de si el tratamiento recetado se aplic├│ o no en cada lote.
+/// experto le dio a cada cultivo, y permite llevar el seguimiento
+/// día por día de si el tratamiento recetado se aplicó o no en cada cultivo.
 class FincaDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> finca;
 
@@ -92,7 +92,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
       // Usamos los cultivos que ya est├ín en AppState (los mismos del Home)
       _cultivos = List.from(AppState.instance.cultivosFinca);
 
-      // Por cada lote: traemos su recomendaci├│n m├ís reciente y su
+      // Por cada cultivo: traemos su recomendación más reciente y su
       // tratamiento recetado (mejor esfuerzo, sin romper si falla).
       for (final c in _cultivos) {
         final idCultivo =
@@ -115,7 +115,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
   }
 
   Future<void> _cargarRecomendacionYTratamiento(int idCultivo) async {
-    // ÔöÇÔöÇ Recomendaci├│n del experto para este lote ÔöÇÔöÇ
+    // ── Recomendación del experto para este cultivo ──
     try {
       dynamic dataRec;
       try {
@@ -247,7 +247,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
   }
 
   String _nombreCultivo(dynamic c) =>
-      (c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Lote').toString();
+      (c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo').toString();
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +283,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
                               }))
                                 _sinAceptados()
                               else
-                                ..._cultivos.map((c) => _buildLoteSection(c)),
+                                ..._cultivos.map((c) => _buildCultivoSection(c)),
                             ],
                           ),
                         ),
@@ -329,7 +329,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
                 style: GoogleFonts.nunito(
                     fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
             const SizedBox(height: 6),
-            Text('para ver el seguimiento de sus lotes',
+            Text('para ver el seguimiento de sus cultivos',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
           ],
@@ -350,7 +350,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
               child: const Icon(Icons.eco_outlined, color: AppColors.primary, size: 34),
             ),
             const SizedBox(height: 16),
-            Text('No hay lotes registrados en esta finca',
+            Text('No hay cultivos registrados en esta finca',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
                     fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
@@ -387,12 +387,12 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
     );
   }
 
-  Widget _buildLoteSection(dynamic c) {
+  Widget _buildCultivoSection(dynamic c) {
     final idCultivo = int.tryParse((c['idCultivo'] ?? c['id_cultivo'] ?? '').toString());
     if (idCultivo == null || !_aceptadoPorCultivo.contains(idCultivo)) {
       return const SizedBox.shrink();
     }
-    final nombreLote = _nombreCultivo(c);
+    final nombreCultivo = _nombreCultivo(c);
     final trat = _tratamientoPorCultivo[idCultivo];
 
     return Padding(
@@ -409,7 +409,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
                 child: const Icon(Icons.grass_rounded, color: AppColors.primary, size: 18),
               ),
               const SizedBox(width: 10),
-              Text(nombreLote,
+              Text(nombreCultivo,
                   style: GoogleFonts.nunito(
                       fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             ],
@@ -439,7 +439,7 @@ class _FincaDetalleScreenState extends State<FincaDetalleScreen> {
           const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.textSecondary),
           const SizedBox(width: 10),
           Expanded(
-            child: Text('Sin recomendaci├│n del experto para este lote todav├¡a.',
+            child: Text('Sin recomendación del experto para este cultivo todavía.',
                 style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textSecondary)),
           ),
         ],

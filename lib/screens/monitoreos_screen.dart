@@ -15,11 +15,11 @@ int? _toInt(dynamic v) => v == null ? null : int.tryParse(v.toString());
 double? _toDouble(dynamic v) =>
     v == null ? null : double.tryParse(v.toString());
 
-const Color _amarilloRiesgoLote = Color(0xFFFBC02D);
+const Color _amarilloRiesgoCultivo = Color(0xFFFBC02D);
 
 Color _riesgoColor(int nivel) => switch (nivel) {
       1 => AppColors.primary,
-      2 => _amarilloRiesgoLote,
+      2 => _amarilloRiesgoCultivo,
       3 => Colors.red,
       _ => AppColors.primary,
     };
@@ -32,7 +32,7 @@ String _riesgoLabel(int nivel) => switch (nivel) {
     };
 
 
-List<Offset> _generarSemillasLotes(Size size, int n) {
+List<Offset> _generarSemillasCultivos(Size size, int n) {
   if (n <= 0) return [];
   if (n == 1) return [Offset(size.width / 2, size.height / 2)];
   final marginX = size.width * 0.10;
@@ -59,13 +59,13 @@ List<Offset> _generarSemillasLotes(Size size, int n) {
   return seeds;
 }
 
-List<double> _generarPesosLotes(Size size, int n) {
+List<double> _generarPesosCultivos(Size size, int n) {
   final rnd = math.Random(5000 + n * 97);
   final escala = size.width * size.height / n;
   return List.generate(n, (_) => (rnd.nextDouble() - 0.5) * 2 * escala * 0.5);
 }
 
-List<Offset> _clipHalfPlaneLotes(List<Offset> poly, Offset normal, double c) {
+List<Offset> _clipHalfPlaneCultivos(List<Offset> poly, Offset normal, double c) {
   if (poly.isEmpty) return poly;
   final out = <Offset>[];
   for (int i = 0; i < poly.length; i++) {
@@ -83,7 +83,7 @@ List<Offset> _clipHalfPlaneLotes(List<Offset> poly, Offset normal, double c) {
   return out;
 }
 
-List<List<Offset>> _calcularCeldasLotes(
+List<List<Offset>> _calcularCeldasCultivos(
     Size size, List<Offset> seeds, List<double> weights) {
   final rect = [
     const Offset(0, 0),
@@ -104,7 +104,7 @@ List<List<Offset>> _calcularCeldasLotes(
       final c = ((t.dx * t.dx + t.dy * t.dy - wT) -
               (s.dx * s.dx + s.dy * s.dy - wS)) /
           2;
-      poly = _clipHalfPlaneLotes(poly, normal, c);
+      poly = _clipHalfPlaneCultivos(poly, normal, c);
       if (poly.isEmpty) break;
     }
     cells.add(poly);
@@ -149,9 +149,9 @@ Path _pinPath(double r) {
 
 
 class _MapaProfesionalPainter extends CustomPainter {
-  final List<_LoteRiesgo> lotes;
+  final List<_CultivoRiesgo> cultivos;
 
-  _MapaProfesionalPainter({required this.lotes});
+  _MapaProfesionalPainter({required this.cultivos});
 
   void _drawGridTexture(Canvas canvas, Path clip, Size size) {
     canvas.save();
@@ -253,11 +253,11 @@ class _MapaProfesionalPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (lotes.isEmpty) return;
-    final n = lotes.length;
-    final seeds = _generarSemillasLotes(size, n);
-    final weights = _generarPesosLotes(size, n);
-    final cells = _calcularCeldasLotes(size, seeds, weights);
+    if (cultivos.isEmpty) return;
+    final n = cultivos.length;
+    final seeds = _generarSemillasCultivos(size, n);
+    final weights = _generarPesosCultivos(size, n);
+    final cells = _calcularCeldasCultivos(size, seeds, weights);
 
     final centros = <Offset>[];
 
@@ -271,7 +271,7 @@ class _MapaProfesionalPainter extends CustomPainter {
       }
       final path = Path()..addPolygon(poly, true);
       final bounds = path.getBounds();
-      final (claro, oscuro) = _riesgoGradiente(lotes[i].nivel, i);
+      final (claro, oscuro) = _riesgoGradiente(cultivos[i].nivel, i);
 
       final shader = ui.Gradient.linear(
         bounds.topLeft,
@@ -307,20 +307,20 @@ class _MapaProfesionalPainter extends CustomPainter {
         ..strokeWidth = 2,
     );
 
-    for (int i = 0; i < centros.length && i < lotes.length; i++) {
-      _drawEtiquetaMapa(canvas, centros[i].translate(0, -30), lotes[i].nombre);
+    for (int i = 0; i < centros.length && i < cultivos.length; i++) {
+      _drawEtiquetaMapa(canvas, centros[i].translate(0, -30), cultivos[i].nombre);
     }
 
     int? indexMasAlto;
     int maxNivel = -1;
-    for (int i = 0; i < lotes.length; i++) {
-      if (lotes[i].nivel > maxNivel) {
-        maxNivel = lotes[i].nivel;
+    for (int i = 0; i < cultivos.length; i++) {
+      if (cultivos[i].nivel > maxNivel) {
+        maxNivel = cultivos[i].nivel;
         indexMasAlto = i;
       }
     }
-    for (int i = 0; i < centros.length && i < lotes.length; i++) {
-      _drawPin(canvas, centros[i], lotes[i].nivel,
+    for (int i = 0; i < centros.length && i < cultivos.length; i++) {
+      _drawPin(canvas, centros[i], cultivos[i].nivel,
           grande: i == indexMasAlto && maxNivel >= 3);
     }
 
@@ -329,16 +329,16 @@ class _MapaProfesionalPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MapaProfesionalPainter old) =>
-      old.lotes != lotes;
+      old.cultivos != cultivos;
 }
 
 
-class _LoteRiesgo {
+class _CultivoRiesgo {
   final int idCultivo;
   final String nombre;
   final int nivel;
 
-  const _LoteRiesgo({
+  const _CultivoRiesgo({
     required this.idCultivo,
     required this.nombre,
     required this.nivel,
@@ -377,8 +377,8 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   }
 
   bool _cargandoMapa = false;
-  List<_LoteRiesgo> _lotes = [];
-  _LoteRiesgo? _loteSeleccionado;
+  List<_CultivoRiesgo> _cultivos = [];
+  _CultivoRiesgo? _cultivoSeleccionado;
 
   Map<String, dynamic>? get _fincaActiva =>
       AppState.instance.fincaSeleccionada;
@@ -480,7 +480,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
 
 
   Future<void> _cargarMapa() async {
-    if (_lotes.isNotEmpty) return;
+    if (_cultivos.isNotEmpty) return;
     setState(() => _cargandoMapa = true);
     try {
       final idFinca = _idFincaActiva;
@@ -500,7 +500,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
 
       if (cultivos.isEmpty) {
         setState(() {
-          _lotes = [];
+          _cultivos = [];
           _cargandoMapa = false;
         });
         return;
@@ -523,19 +523,19 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
         if (nivel > actual) nivelPorCultivo[idCultivo] = nivel;
       }
 
-      final List<_LoteRiesgo> resultado = [];
+      final List<_CultivoRiesgo> resultado = [];
       for (final c in cultivos) {
         final idCultivo = _toInt(c['idCultivo'] ?? c['id_cultivo']);
         if (idCultivo == null) continue;
         final nombre =
-            c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Lote $idCultivo';
+            c['nombreCultivo'] ?? c['nombre_cultivo'] ?? 'Cultivo $idCultivo';
         final nivel = nivelPorCultivo[idCultivo] ?? 0;
         resultado.add(
-            _LoteRiesgo(idCultivo: idCultivo, nombre: nombre, nivel: nivel));
+            _CultivoRiesgo(idCultivo: idCultivo, nombre: nombre, nivel: nivel));
       }
 
       setState(() {
-        _lotes = resultado;
+        _cultivos = resultado;
         _cargandoMapa = false;
       });
     } catch (e) {
@@ -636,7 +636,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
   Color _colorNivel(dynamic m) {
     final nivel = _labelNivel(m).toLowerCase();
     if (nivel.contains('alt')) return Colors.red;
-    if (nivel.contains('med')) return _amarilloRiesgoLote;
+    if (nivel.contains('med')) return _amarilloRiesgoCultivo;
     return AppColors.primary;
   }
 
@@ -1026,36 +1026,36 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
       return _mapaPlaceholder(
         icon: Icons.grid_view_rounded,
         mensaje:
-            'Selecciona una finca en el inicio\npara ver sus lotes',
+            'Selecciona una finca en el inicio\npara ver sus cultivos',
       );
     }
     if (_cargandoMapa) {
       return const Center(
           child: CircularProgressIndicator(color: AppColors.primary));
     }
-    if (_lotes.isEmpty) {
+    if (_cultivos.isEmpty) {
       return _mapaPlaceholder(
         icon: Icons.eco_outlined,
-        mensaje: 'No hay lotes registrados\nen "$_nombreFincaActiva"',
+        mensaje: 'No hay cultivos registrados\nen "$_nombreFincaActiva"',
       );
     }
 
-    final nBajo = _lotes.where((l) => l.nivel == 1).length;
-    final nMedio = _lotes.where((l) => l.nivel == 2).length;
-    final nAlto = _lotes.where((l) => l.nivel == 3).length;
+    final nBajo = _cultivos.where((l) => l.nivel == 1).length;
+    final nMedio = _cultivos.where((l) => l.nivel == 2).length;
+    final nAlto = _cultivos.where((l) => l.nivel == 3).length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Lotes de $_nombreFincaActiva',
+          Text('Cultivos de $_nombreFincaActiva',
               style: GoogleFonts.nunito(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary)),
           Text(
-            '${_lotes.length} lote${_lotes.length != 1 ? "s" : ""} registrado${_lotes.length != 1 ? "s" : ""}',
+            '${_cultivos.length} cultivo${_cultivos.length != 1 ? "s" : ""} registrado${_cultivos.length != 1 ? "s" : ""}',
             style: GoogleFonts.nunito(
                 fontSize: 12, color: AppColors.textSecondary),
           ),
@@ -1103,7 +1103,7 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                           children: [
                             CustomPaint(
                               size: canvasSize,
-                              painter: _MapaProfesionalPainter(lotes: _lotes),
+                              painter: _MapaProfesionalPainter(cultivos: _cultivos),
                             ),
                             Positioned(
                               top: 12,
@@ -1191,16 +1191,16 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-                  child: Text('Estado por lote',
+                  child: Text('Estado por cultivo',
                       style: GoogleFonts.nunito(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary)),
                 ),
-                ..._lotes.map((lote) {
-                  final (bg, fg) = _riesgoChip(lote.nivel);
+                ..._cultivos.map((cultivo) {
+                  final (bg, fg) = _riesgoChip(cultivo.nivel);
                   final label =
-                      lote.nivel == 0 ? 'Sin datos' : _riesgoLabel(lote.nivel);
+                      cultivo.nivel == 0 ? 'Sin datos' : _riesgoLabel(cultivo.nivel);
                   return Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 13),
@@ -1214,13 +1214,13 @@ class _MontoreosScreenState extends State<MontoreosScreen> {
                           width: 10,
                           height: 10,
                           decoration: BoxDecoration(
-                            color: _riesgoPinStroke(lote.nivel),
+                            color: _riesgoPinStroke(cultivo.nivel),
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 11),
                         Expanded(
-                          child: Text(lote.nombre,
+                          child: Text(cultivo.nombre,
                               style: GoogleFonts.nunito(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
